@@ -2,6 +2,5 @@
 # hint: If you don't want pnpm to fail on peer dependency issues, add "strict-peer-dependencies=false" to an .npmrc file at the root of your project.
 prefer-workspace-packages: true
 packages:
-  - 'doc'
   - 'packages/*'
   - 'demos/*'
