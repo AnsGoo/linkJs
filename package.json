@@ -1,0 +1,26 @@
+{
+  "name": "linkjs-space",
+  "version": "1.0.0",
+  "description": "",
+  "homepage": "https://github.com/AnsGoo/linkJs#readme",
+  "bugs": {
+    "url": "https://github.com/AnsGoo/linkJs/issues"
+  },
+  "license": "ISC",
+  "author": "AnsGoo",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AnsGoo/linkJs.git"
+  },
+  "scripts": {
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check"
+  },
+  "devDependencies": {
+    "oxfmt": "^0.28.0",
+    "oxlint": "^1.43.0",
+    "tsdown": "^0.20.3"
+  }
+}
