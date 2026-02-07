@@ -1,7 +1,9 @@
 <script setup lang="ts">
-defineProps<{
+withDefaults(defineProps<{
   msg: string
-}>()
+}>(), {
+  msg: 'I am remote app'
+})
 </script>
 
 <template>
