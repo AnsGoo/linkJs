@@ -51,6 +51,14 @@ if (!linkInstance) {
             this.apps.clear();
             this.libs.clear();
             console.log(`${this.name} destroyed`);
+        },
+        
+        // 清除缓存方法
+        clearCache(): void {
+            // 清除所有应用的缓存
+            this.apps.clear();
+            this.libs.clear();
+            console.log(`${this.name} cache cleared`);
         }
     };
     

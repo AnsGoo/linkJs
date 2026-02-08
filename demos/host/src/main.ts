@@ -25,12 +25,11 @@ console.log('App mounted')
 
 // 然后再加载远程模块
 console.log('Loading remote module...')
-loadRemote('http://localhost:8080', {
-  name: 'remote',
+loadRemote('remote', {
+  host: 'http://localhost:8080',
 }).then((lib) => {
   console.log('Remote module loaded:', lib)
 }).catch((error) => {
   console.error('Failed to load remote module:', error)
 })
-
 

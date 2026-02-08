@@ -5,10 +5,10 @@ import { defineAsyncComponent } from 'vue';
 import { loadRemote } from 'linkjs';
 
 const RemoteComponent = defineAsyncComponent(async () => {
-    const remote = await loadRemote('http://localhost:8080', {
-        name: 'remote',
+    const remote = await loadRemote('remote/HelloWorld', {
+        host: 'http://localhost:8080',
     })
-    return remote.HelloWorld
+    return remote
 })
 </script>
 
