@@ -1,4 +1,3 @@
-
 export interface EventBus {
   on: (eventName: string, cb: Function) => void;
   emit: (eventName: string, ...args: any[]) => void;

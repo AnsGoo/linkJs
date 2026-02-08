@@ -48,16 +48,20 @@ const linkInstance = getLinkInstance();
 import { exposeLib } from 'linkjs';
 
 // 暴露一个工具库
-exposeLib('utils', {
-  add: (a, b) => a + b,
-  subtract: (a, b) => a - b
-}, {
-  version: '1.0.0'
-});
+exposeLib(
+  'utils',
+  {
+    add: (a, b) => a + b,
+    subtract: (a, b) => a - b,
+  },
+  {
+    version: '1.0.0',
+  },
+);
 
 // 暴露一个 React 组件
 exposeLib('Button', ButtonComponent, {
-  framework: 'react'
+  framework: 'react',
 });
 ```
 
@@ -73,13 +77,15 @@ import { loadRemote } from 'linkjs';
 
 // 加载远程模块
 loadRemote('http://example.com/remote-app/index.html', {
-  name: 'remote-app'
-}).then(remoteLib => {
-  // 使用远程模块
-  console.log('Remote module loaded:', remoteLib);
-}).catch(error => {
-  console.error('Failed to load remote module:', error);
-});
+  name: 'remote-app',
+})
+  .then((remoteLib) => {
+    // 使用远程模块
+    console.log('Remote module loaded:', remoteLib);
+  })
+  .catch((error) => {
+    console.error('Failed to load remote module:', error);
+  });
 ```
 
 ## 工作原理
@@ -153,8 +159,8 @@ import { loadRemote } from 'linkjs';
 
 // 加载远程子应用
 loadRemote('http://localhost:3001/index.html', {
-  name: 'remote-app'
-}).then(remoteApp => {
+  name: 'remote-app',
+}).then((remoteApp) => {
   console.log('Remote app loaded:', remoteApp);
   // 使用远程应用
   remoteApp.mount('#app-container');
@@ -167,19 +173,23 @@ loadRemote('http://localhost:3001/index.html', {
 import { exposeLib } from 'linkjs';
 
 // 暴露应用实例
-exposeLib('remote-app', {
-  mount: (container) => {
-    console.log('Mounting remote app to:', container);
-    // 挂载逻辑
+exposeLib(
+  'remote-app',
+  {
+    mount: (container) => {
+      console.log('Mounting remote app to:', container);
+      // 挂载逻辑
+    },
+    unmount: () => {
+      console.log('Unmounting remote app');
+      // 卸载逻辑
+    },
   },
-  unmount: () => {
-    console.log('Unmounting remote app');
-    // 卸载逻辑
-  }
-}, {
-  version: '1.0.0',
-  author: 'Linkjs Team'
-});
+  {
+    version: '1.0.0',
+    author: 'Linkjs Team',
+  },
+);
 ```
 
 ## 开发

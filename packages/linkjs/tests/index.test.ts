@@ -13,7 +13,7 @@ globalThis.DOMParser = class {
           return [];
         }
         return [];
-      }
+      },
     };
   }
 };
@@ -21,14 +21,14 @@ globalThis.DOMParser = class {
 globalThis.fetch = vi.fn(() =>
   Promise.resolve({
     ok: true,
-    text: () => Promise.resolve('<html><body></body></html>')
-  })
+    text: () => Promise.resolve('<html><body></body></html>'),
+  }),
 );
 
 globalThis.document = {
   head: {
-    appendChild: vi.fn()
-  }
+    appendChild: vi.fn(),
+  },
 };
 
 beforeEach(() => {
@@ -49,14 +49,14 @@ test('exposeLib should emit LIB_EXPOSE event', () => {
   const instance = getLinkInstance();
   const mockLib = { name: 'test-lib', version: '1.0.0' };
   const mockOptions = { foo: 'bar' };
-  
+
   let emittedData: any = null;
   instance.eventBus.on(LIB_EXPOSE, (data: any) => {
     emittedData = data;
   });
-  
+
   exposeLib('test-lib', mockLib, mockOptions);
-  
+
   expect(emittedData).toBeDefined();
   expect(emittedData.libName).toBe('test-lib');
   expect(emittedData.lib).toBe(mockLib);
@@ -65,40 +65,40 @@ test('exposeLib should emit LIB_EXPOSE event', () => {
 
 test('linkInstance should have app management methods', () => {
   const instance = getLinkInstance();
-  
+
   expect(typeof instance.registerApp).toBe('function');
   expect(typeof instance.unregisterApp).toBe('function');
   expect(typeof instance.getApp).toBe('function');
-  
+
   const mockApp = { name: 'test-app' };
   instance.registerApp('test-app', mockApp);
   expect(instance.getApp('test-app')).toBe(mockApp);
-  
+
   instance.unregisterApp('test-app');
   expect(instance.getApp('test-app')).toBeUndefined();
 });
 
 test('linkInstance should have lib management methods', () => {
   const instance = getLinkInstance();
-  
+
   expect(typeof instance.registerLib).toBe('function');
   expect(typeof instance.unregisterLib).toBe('function');
   expect(typeof instance.getLib).toBe('function');
-  
+
   const mockLib = { name: 'test-lib' };
   instance.registerLib('test-lib', mockLib);
   expect(instance.getLib('test-lib')).toBe(mockLib);
-  
+
   instance.unregisterLib('test-lib');
   expect(instance.getLib('test-lib')).toBeUndefined();
 });
 
 test('linkInstance should have init and destroy methods', () => {
   const instance = getLinkInstance();
-  
+
   expect(typeof instance.init).toBe('function');
   expect(typeof instance.destroy).toBe('function');
-  
+
   // 测试不会抛出异常
   expect(() => instance.init()).not.toThrow();
   expect(() => instance.destroy()).not.toThrow();

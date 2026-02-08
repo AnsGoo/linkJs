@@ -1,0 +1,34 @@
+{
+  "name": "tsdown-plugin-server",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "",
+  "exports": {
+    ".": {
+      "development": "./src/index.ts",
+      "default": "./dist/index.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "exports": {
+      ".": "./dist/index.mjs",
+      "./package.json": "./package.json"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch"
+  },
+  "dependencies": {
+    "mime": "^4",
+    "opener": "1"
+  },
+  "devDependencies": {
+    "@types/node": "^25.2.2",
+    "@types/opener": "^1.4.3",
+    "tsdown": "^0.20.3",
+    "unplugin-starter": "^0.1.0"
+  }
+}
