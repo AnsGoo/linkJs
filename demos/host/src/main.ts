@@ -18,10 +18,6 @@ app.use(router)
 
 console.log('Pinia and router installed')
 
-// 直接挂载应用，不等待远程模块加载
-console.log('Mounting app...')
-app.mount('#app')
-console.log('App mounted')
 
 // 然后再加载远程模块
 console.log('Loading remote module...')
@@ -29,6 +25,7 @@ loadRemote('remote', {
   host: 'http://localhost:8080',
 }).then((lib) => {
   console.log('Remote module loaded:', lib)
+  app.mount('#app')
 }).catch((error) => {
   console.error('Failed to load remote module:', error)
 })

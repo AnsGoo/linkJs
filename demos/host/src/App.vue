@@ -2,12 +2,10 @@
 import { RouterLink, RouterView } from 'vue-router'
 import HelloWorld from './components/HelloWorld.vue'
 import { defineAsyncComponent } from 'vue';
-import { loadRemote } from 'linkjs';
+import { getRemote } from 'linkjs';
 
 const RemoteComponent = defineAsyncComponent(async () => {
-    const remote = await loadRemote('remote/HelloWorld', {
-        host: 'http://localhost:8080',
-    })
+    const remote = await getRemote('remote/HelloWorld') 
     return remote
 })
 </script>

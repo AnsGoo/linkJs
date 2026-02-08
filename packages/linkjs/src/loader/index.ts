@@ -118,10 +118,10 @@ function loadScript(url: string): Promise<void> {
     });
 }
 
-function getRemoteModule(appName: string, modelName?: string) {
-
+function getRemote(entry: string) {
+    const [appName, modelName] = entry.split('/');
     const appModule = remoteCache.get(appName);
     return appModule?.[modelName || 'default'] || appModule || null;
 }
 
-export { loadRemote, getRemoteModule };
+export { loadRemote, getRemote };
