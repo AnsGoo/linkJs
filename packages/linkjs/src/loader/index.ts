@@ -141,4 +141,55 @@ function clearRemoteCache(appName?: string): void {
   }
 }
 
-export { loadRemote, getRemote, clearRemoteCache };
+
+function loadRemoteLib(entry: string, options: { host?: string, entryName?: string }): Promise<Module | null> {
+  const [appName, modelName] = entry.split('/');
+  if (remoteCache.has(appName)) {
+    console.log(`Remote module ${appName} already loaded, returning from cache`);
+    const appModule = remoteCache.get(appName);
+    if (!appModule) {
+      return Promise.reject(new Error(`Remote module ${appName} not found in cache`));
+    }
+    if (modelName) {
+      return Promise.resolve(appModule[modelName] || null);
+    } else {
+      return Promise.resolve(appModule['default'] || appModule || null);
+    }
+  }
+
+  return new Promise((resolve, reject) => {
+    const linkInstance = getLinkInstance();
+
+    const handleLibExpose = (data: any) => {
+      if (data.libName === appName && data.lib) {
+        linkInstance.eventBus.off(LIB_EXPOSE, handleLibExpose);
+        remoteCache.set(appName, data.lib);
+        console.log(`Remote module ${appName} cached`);
+        if (modelName) {
+          resolve(data.lib[modelName] || null);
+        } else {
+          resolve(data.lib['default'] || data.lib || null);
+        }
+      }
+    };
+
+    linkInstance.eventBus.on(LIB_EXPOSE, handleLibExpose);
+    const host = options.host || 'http://localhost:8080';
+    const entryName = options.entryName || '/mf/index.js';
+    const jsUrl = `${host}/${entryName}`;
+
+    loadScript(jsUrl)
+      .then(() => {
+        setTimeout(() => {
+          linkInstance.eventBus.off(LIB_EXPOSE, handleLibExpose);
+          reject(new Error(`Timeout waiting for module ${appName} to expose`));
+        }, 10000);
+      })
+      .catch((error) => {
+        linkInstance.eventBus.off(LIB_EXPOSE, handleLibExpose);
+        reject(error);
+      });
+  });
+}
+
+export { loadRemote, getRemote, clearRemoteCache, loadRemoteLib };
