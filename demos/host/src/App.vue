@@ -1,13 +1,21 @@
 <script setup lang="ts">
-import { RouterLink, RouterView } from 'vue-router'
-import HelloWorld from './components/HelloWorld.vue'
+import { RouterLink, RouterView } from 'vue-router';
+import HelloWorld from './components/HelloWorld.vue';
 import { defineAsyncComponent } from 'vue';
-import { getRemote } from 'linkjs';
+import { loadRemote, loadRemoteLib } from 'linkjs';
 
 const RemoteComponent = defineAsyncComponent(async () => {
-    const remote = await getRemote('remote/HelloWorld') 
-    return remote
-})
+  const remote = await loadRemote('remote/HelloWorld', {
+    host: 'http://localhost:8080',
+  });
+  return remote;
+});
+const RemoteComponentLib = defineAsyncComponent(async () => {
+  const remote = await loadRemoteLib('remote/HelloWorld', {
+    host: 'http://localhost:8080',
+  });
+  return remote;
+});
 </script>
 
 <template>
@@ -15,8 +23,9 @@ const RemoteComponent = defineAsyncComponent(async () => {
     <img alt="Vue logo" class="logo" src="@/assets/logo.svg" width="125" height="125" />
 
     <div class="wrapper">
-      <HelloWorld msg="You did it!" />
+      <HelloWorld msg="You Did It!!" />
       <RemoteComponent />
+      <RemoteComponentLib />
 
       <nav>
         <RouterLink to="/">Home</RouterLink>

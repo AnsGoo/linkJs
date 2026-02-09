@@ -14,13 +14,14 @@
     "lint": "run-s lint:*",
     "lint:oxlint": "oxlint . --fix",
     "lint:eslint": "eslint . --fix --cache",
-    "format": "oxfmt src/"
+    "format": "oxfmt src/",
+    "build:lib": "tsdown"
   },
   "dependencies": {
+    "linkjs": "workspace:*",
     "pinia": "^3.0.4",
     "vue": "^3.5.27",
-    "vue-router": "^5.0.1",
-    "linkjs": "workspace:*"
+    "vue-router": "^5.0.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.1",
@@ -43,7 +44,9 @@
     "npm-run-all2": "^8.0.4",
     "oxfmt": "^0.27.0",
     "oxlint": "~1.42.0",
+    "tsdown-plugin-server": "workspace:*",
     "typescript": "~5.9.3",
+    "unplugin-vue": "^7.1.1",
     "vite": "beta",
     "vite-plugin-vue-devtools": "^8.0.5",
     "vitest": "^4.0.18",
@@ -51,5 +54,18 @@
   },
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
+  },
+  "exports": {
+    ".": {
+      "development": "./src/index.ts",
+      "default": "./mf/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "exports": {
+      ".": "./mf/index.js",
+      "./package.json": "./package.json"
+    }
   }
 }
