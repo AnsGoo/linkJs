@@ -1,7 +1,6 @@
 import { defineConfig } from 'tsdown';
-import Vue from 'unplugin-vue/rolldown'
-import tsdownPluginServer from 'tsdown-plugin-server'
-
+import Vue from 'unplugin-vue/rolldown';
+import tsdownPluginServer from 'tsdown-plugin-server';
 
 export default defineConfig({
   exports: true,
@@ -19,10 +18,8 @@ export default defineConfig({
     }),
     Vue({
       isProduction: true,
-    }) 
+    }),
   ],
-  external: [
-    'vue'
-  ],
+  external: ['vue'],
   // ...config options
 });

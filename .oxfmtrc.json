@@ -1,5 +1,5 @@
 {
   "printWidth": 140,
   "singleQuote": true,
-  "ignorePatterns": ["**/*/node_modules/**", "**/dist/**", "**/es/**", "**/lib/**", "**/public/**", "**-lock.yaml"]
+  "ignorePatterns": ["**/*/node_modules/**", "**/dist/**", "**/es/**", "**/lib/**", "**/public/**", "**-lock.yaml", "**/mf/**"]
 }

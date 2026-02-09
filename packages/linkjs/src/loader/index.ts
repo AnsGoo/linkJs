@@ -141,8 +141,7 @@ function clearRemoteCache(appName?: string): void {
   }
 }
 
-
-function loadRemoteLib(entry: string, options: { host?: string, entryName?: string }): Promise<Module | null> {
+function loadRemoteLib(entry: string, options: { host?: string; entryName?: string }): Promise<Module | null> {
   const [appName, modelName] = entry.split('/');
   if (remoteCache.has(appName)) {
     console.log(`Remote module ${appName} already loaded, returning from cache`);
