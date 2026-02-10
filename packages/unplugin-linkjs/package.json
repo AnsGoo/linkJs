@@ -1,0 +1,33 @@
+{
+  "name": "unplugin-linkjs",
+  "version": "1.0.0",
+  "description": "A plugin for automatically generating manifest.json files when building JS packages with tsdown, rollup, etc.",
+  "license": "ISC",
+  "author": "",
+  "exports": {
+    ".": {
+      "development": "./src/index.ts",
+      "default": "./dist/index.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "exports": {
+      ".": "./dist/index.mjs",
+      "./package.json": "./package.json"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch"
+  },
+  "dependencies": {
+    "unplugin": "^2.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.2.2",
+    "rolldown": "^0.20.3",
+    "tsdown": "^0.20.3",
+    "typescript": "^5.9.3"
+  }
+}

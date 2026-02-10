@@ -3,6 +3,19 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "exports": {
+    ".": {
+      "development": "./src/index.ts",
+      "default": "./mf/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "exports": {
+      ".": "./mf/index.js",
+      "./package.json": "./package.json"
+    }
+  },
   "scripts": {
     "dev": "vite",
     "build": "run-p type-check \"build-only {@}\" --",
@@ -46,6 +59,7 @@
     "oxlint": "~1.42.0",
     "tsdown-plugin-server": "workspace:*",
     "typescript": "~5.9.3",
+    "unplugin-linkjs": "workspace:*",
     "unplugin-vue": "^7.1.1",
     "vite": "beta",
     "vite-plugin-vue-devtools": "^8.0.5",
@@ -54,18 +68,5 @@
   },
   "engines": {
     "node": "^20.19.0 || >=22.12.0"
-  },
-  "exports": {
-    ".": {
-      "development": "./src/index.ts",
-      "default": "./mf/index.js"
-    },
-    "./package.json": "./package.json"
-  },
-  "publishConfig": {
-    "exports": {
-      ".": "./mf/index.js",
-      "./package.json": "./package.json"
-    }
   }
 }

@@ -1,6 +1,7 @@
 import { defineConfig } from 'tsdown';
 import Vue from 'unplugin-vue/rolldown';
 import tsdownPluginServer from 'tsdown-plugin-server';
+import UnpluginLinkjs from 'unplugin-linkjs';
 
 export default defineConfig({
   exports: true,
@@ -13,7 +14,9 @@ export default defineConfig({
     devExports: 'development',
   },
   plugins: [
+    UnpluginLinkjs.rolldown(),
     tsdownPluginServer({
+      contentBase: 'mf',
       port: 4001,
     }),
     Vue({

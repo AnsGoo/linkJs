@@ -12,7 +12,7 @@ import opener from 'opener';
 let server: Server | null = null;
 
 interface TsdownServeOptions {
-  contentBase: string | string[];
+  contentBase?: string | string[];
   port: number;
   headers?: Record<string, string>;
   https?: boolean | Record<string, any>;
