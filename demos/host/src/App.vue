@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { RouterLink, RouterView } from 'vue-router';
 import HelloWorld from './components/HelloWorld.vue';
 import { defineAsyncComponent } from 'vue';
 import { loadRemote, loadRemoteLib } from 'linkjs';
@@ -12,7 +11,7 @@ const RemoteComponent = defineAsyncComponent(async () => {
 });
 const RemoteComponentLib = defineAsyncComponent(async () => {
   const remote = await loadRemoteLib('remote/HelloWorld', {
-    host: 'http://localhost:8080',
+    host: 'http://localhost:4001',
   });
   return remote;
 });
@@ -23,18 +22,11 @@ const RemoteComponentLib = defineAsyncComponent(async () => {
     <img alt="Vue logo" class="logo" src="@/assets/logo.svg" width="125" height="125" />
 
     <div class="wrapper">
-      <HelloWorld msg="You Did It" />
-      <RemoteComponent />
-      <RemoteComponentLib />
-
-      <nav>
-        <RouterLink to="/">Home</RouterLink>
-        <RouterLink to="/about">About</RouterLink>
-      </nav>
+      <HelloWorld msg="I am host app" />
+      <RemoteComponent msg="I am remote app" />
+      <RemoteComponentLib msg="I am remote lib"/>
     </div>
   </header>
-
-  <RouterView />
 </template>
 
 <style scoped>
@@ -47,56 +39,11 @@ header {
   display: block;
   margin: 0 auto 2rem;
 }
-
-nav {
-  width: 100%;
-  font-size: 12px;
-  text-align: center;
-  margin-top: 2rem;
-}
-
-nav a.router-link-exact-active {
-  color: var(--color-text);
-}
-
-nav a.router-link-exact-active:hover {
-  background-color: transparent;
-}
-
-nav a {
-  display: inline-block;
-  padding: 0 1rem;
-  border-left: 1px solid var(--color-border);
-}
-
-nav a:first-of-type {
-  border: 0;
-}
-
-@media (min-width: 1024px) {
-  header {
-    display: flex;
-    place-items: center;
-    padding-right: calc(var(--section-gap) / 2);
-  }
-
-  .logo {
-    margin: 0 2rem 0 0;
-  }
-
-  header .wrapper {
-    display: flex;
-    place-items: flex-start;
-    flex-wrap: wrap;
-  }
-
-  nav {
-    text-align: left;
-    margin-left: -1rem;
-    font-size: 1rem;
-
-    padding: 1rem 0;
-    margin-top: 1rem;
-  }
+.wrapper {
+  display: flex;
+  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: center;
+  width: 100vw
 }
 </style>
