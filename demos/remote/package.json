@@ -64,7 +64,8 @@
     "vite": "beta",
     "vite-plugin-vue-devtools": "^8.0.5",
     "vitest": "^4.0.18",
-    "vue-tsc": "^3.2.4"
+    "vue-tsc": "^3.2.4",
+    "vite-plugin-externals": "^0.6.2"
   },
   "engines": {
     "node": "^20.19.0 || >=22.12.0"

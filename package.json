@@ -21,7 +21,6 @@
   "devDependencies": {
     "oxfmt": "^0.28.0",
     "oxlint": "^1.43.0",
-    "tsdown": "^0.20.3",
-    "vite-plugin-externals": "^0.6.2"
+    "tsdown": "^0.20.3"
   }
 }

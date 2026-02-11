@@ -26,7 +26,7 @@
   },
   "devDependencies": {
     "@types/node": "^25.2.2",
-    "rolldown": "^0.20.3",
+    "rolldown": "^1.0.0-r3",
     "tsdown": "^0.20.3",
     "typescript": "^5.9.3"
   }
