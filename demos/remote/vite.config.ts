@@ -4,14 +4,14 @@ import { build, defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import vueJsx from '@vitejs/plugin-vue-jsx';
 // import vueDevTools from 'vite-plugin-vue-devtools';
-import  { viteExternalsPlugin }from 'vite-plugin-externals';
+import { viteExternalsPlugin } from 'vite-plugin-externals';
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     vue(),
     vueJsx(),
-    viteExternalsPlugin({vue: 'Vue'}),
+    viteExternalsPlugin({ vue: 'Vue' }),
     // vueDevTools(),
   ],
   resolve: {

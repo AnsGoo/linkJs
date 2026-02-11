@@ -1,13 +1,17 @@
 import { linkInstance } from './instance';
 import { __LINKJS_INSTANCE__ } from './constant';
 import { clearRemoteCache, getRemote, loadRemote, loadRemoteLib } from './loader';
-import { exposeLib } from './share';
+import { exposeLib } from './expose';
 
 // @ts-ignore
 window[__LINKJS_INSTANCE__] = linkInstance;
 
-function getLinkInstance() {
+function getInstance() {
   return linkInstance;
 }
 
-export { getLinkInstance, loadRemote, exposeLib, getRemote, clearRemoteCache, loadRemoteLib };
+function createInstance(options: any = {}) {
+  return linkInstance;
+}
+
+export { getInstance, createInstance, loadRemote, exposeLib, getRemote, clearRemoteCache, loadRemoteLib };

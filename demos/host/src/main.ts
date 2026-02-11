@@ -25,16 +25,18 @@ console.log('Pinia and router installed');
 
 // 加载远程模块的函数
 function loadRemoteModule() {
-  console.log('Loading remote module...')
+  console.log('Loading remote module...');
   return loadRemote('remote', {
     host: 'http://localhost:8080',
-  }).then((lib) => {
-    console.log('Remote module loaded:', lib)
-    app.mount('#app')
-  }).catch((error) => {
-    console.error('Failed to load remote module:', error)
   })
+    .then((lib) => {
+      console.log('Remote module loaded:', lib);
+      app.mount('#app');
+    })
+    .catch((error) => {
+      console.error('Failed to load remote module:', error);
+    });
 }
 
 // 初始加载远程模块
-loadRemoteModule()
+loadRemoteModule();

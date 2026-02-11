@@ -1,18 +1,10 @@
 <script setup lang="ts">
 import HelloWorld from './components/HelloWorld.vue';
 import { defineAsyncComponent } from 'vue';
-import { loadRemote, loadRemoteLib } from 'linkjs';
+import { getRemote } from 'linkjs';
 
 const RemoteComponent = defineAsyncComponent(async () => {
-  const remote = await loadRemote('remote/HelloWorld', {
-    host: 'http://localhost:8080',
-  });
-  return remote;
-});
-const RemoteComponentLib = defineAsyncComponent(async () => {
-  const remote = await loadRemoteLib('remote/HelloWorld', {
-    host: 'http://localhost:4001',
-  });
+  const remote = await getRemote('remote/HelloWorld');
   return remote;
 });
 </script>
@@ -24,7 +16,6 @@ const RemoteComponentLib = defineAsyncComponent(async () => {
     <div class="wrapper">
       <HelloWorld msg="I am host app" />
       <RemoteComponent msg="I am remote app" />
-      <RemoteComponentLib msg="I am remote lib"/>
     </div>
   </header>
 </template>
@@ -44,6 +35,6 @@ header {
   flex-wrap: wrap;
   flex-direction: column;
   align-items: center;
-  width: 100vw
+  width: 100vw;
 }
 </style>

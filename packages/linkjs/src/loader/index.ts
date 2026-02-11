@@ -1,6 +1,6 @@
 import type Module from 'module';
-import { getLinkInstance } from '..';
-import { LIB_EXPOSE } from '../event-bus/constant';
+import { getInstance } from '..';
+import { LIB_EXPOSE, LOAD_STATUS } from '../event-bus/constant';
 
 // 缓存已加载的远程模块
 const remoteCache = new Map<string, any>();
@@ -22,7 +22,7 @@ function loadRemote(entry: string, options: { host?: string }): Promise<Module |
   }
 
   return new Promise((resolve, reject) => {
-    const linkInstance = getLinkInstance();
+    const linkInstance = getInstance();
 
     // 监听子模块暴露事件
     const handleLibExpose = (data: any) => {
@@ -157,7 +157,7 @@ function loadRemoteLib(entry: string, options: { host?: string; entryName?: stri
   }
 
   return new Promise((resolve, reject) => {
-    const linkInstance = getLinkInstance();
+    const linkInstance = getInstance();
 
     const handleLibExpose = (data: any) => {
       if (data.libName === appName && data.lib) {
@@ -191,4 +191,21 @@ function loadRemoteLib(entry: string, options: { host?: string; entryName?: stri
   });
 }
 
-export { loadRemote, getRemote, clearRemoteCache, loadRemoteLib };
+interface RmoteOption {
+  name: string;
+  entry: string;
+}
+
+function registerRemote(remoteOption: RmoteOption) {
+  const { name, entry } = remoteOption;
+  const instance = getInstance();
+  if (instance.remotes.has(name)) {
+    return;
+  }
+  instance.remotes.set(name, {
+    entry,
+    status: LOAD_STATUS.UNLOADED,
+  });
+}
+
+export { loadRemote, getRemote, clearRemoteCache, loadRemoteLib, registerRemote };

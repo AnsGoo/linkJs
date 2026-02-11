@@ -62,10 +62,10 @@
     "unplugin-linkjs": "workspace:*",
     "unplugin-vue": "^7.1.1",
     "vite": "beta",
+    "vite-plugin-externals": "^0.6.2",
     "vite-plugin-vue-devtools": "^8.0.5",
     "vitest": "^4.0.18",
-    "vue-tsc": "^3.2.4",
-    "vite-plugin-externals": "^0.6.2"
+    "vue-tsc": "^3.2.4"
   },
   "engines": {
     "node": "^20.19.0 || >=22.12.0"

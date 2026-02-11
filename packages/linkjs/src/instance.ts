@@ -1,7 +1,18 @@
 import { makeEventBus } from './event-bus';
 import { __LINKJS_INSTANCE__ } from './constant';
+import type { LOAD_STATUS } from './event-bus/constant';
+import type { RuntimePlugin } from './plugins';
 
 // 检查 window 对象上是否已经存在 linkjs 实例
+
+interface RemoteInfo {
+  entry: string;
+  dependencies?: Record<string, string>;
+  version?: string;
+  export?: Record<string, any>;
+  status: keyof typeof LOAD_STATUS;
+}
+
 // @ts-ignore
 let linkInstance: any = typeof window !== 'undefined' && window[__LINKJS_INSTANCE__] ? window[__LINKJS_INSTANCE__] : null;
 
@@ -14,6 +25,9 @@ if (!linkInstance) {
     name: 'linkjs',
     apps: new Map(),
     libs: new Map(),
+    shares: new Map(),
+    remotes: new Map<string, RemoteInfo>(),
+    plugins: [] as RuntimePlugin[],
 
     // 应用管理方法
     registerApp(appName: string, app: any): void {
