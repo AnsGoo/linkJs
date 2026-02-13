@@ -64,6 +64,7 @@ function serve(options: TsdownServeOptions | string | string[] = { contentBase: 
     Object.keys(headers).forEach((key) => {
       response.setHeader(key, headers[key]);
     });
+    response.setHeader('Access-Control-Allow-Origin', '*');
 
     readFileFromContentBase(contentBase, urlPath, function (error, content, filePath) {
       if (!error && content) {
