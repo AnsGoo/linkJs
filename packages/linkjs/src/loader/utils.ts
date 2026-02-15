@@ -46,7 +46,7 @@ function getRmoteFromCache<Module>(entry: string, remoteCache: Map<string, Recor
       return null;
     }
     if (modelName) {
-      return (appModule as Record<string, Module> | undefined)?.[modelName || modelName || 'default'] || null;
+      return (appModule as Record<string, Module> | undefined)?.[modelName] || null;
     } else {
       return (appModule as Record<string, Module> | undefined)?.['default'] || (appModule as Module) || null;
     }
