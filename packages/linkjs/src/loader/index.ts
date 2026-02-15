@@ -1,11 +1,11 @@
 import type Module from 'module';
-import { getInstance } from '..';
+import { getInstance, loadShare } from '..';
 import { LIB_EXPOSE, LOAD_STATUS } from '../event-bus/constant';
 
 // 缓存已加载的远程模块
 const remoteCache = new Map<string, any>();
 
-function loadRemote(entry: string, options: { host?: string }): Promise<Module | null> {
+function loadApp(entry: string, options?: { host?: string; preload?: string[] }): Promise<Module | null> {
   // 检查缓存中是否已经存在该模块
   const [appName, modelName] = entry.split('/');
   if (remoteCache.has(appName)) {
@@ -40,7 +40,15 @@ function loadRemote(entry: string, options: { host?: string }): Promise<Module |
     };
 
     linkInstance.eventBus.on(LIB_EXPOSE, handleLibExpose);
-    const host = (options.host = options.host || 'http://localhost:8080');
+    const remoteInfo = linkInstance.remotes.get(appName);
+    const host = options?.host || remoteInfo?.host || `${location.protocol}//${location.host}`;
+
+    const preload = options?.preload || remoteInfo?.dependencies || {};
+    Promise.all(
+      Object.keys(preload).map((libName) => {
+        return loadShare(libName);
+      }),
+    );
 
     // 加载远程 HTML
     fetch(host)
@@ -141,7 +149,7 @@ function clearRemoteCache(appName?: string): void {
   }
 }
 
-function loadRemoteLib(entry: string, options: { host?: string; entryName?: string }): Promise<Module | null> {
+function loadRemoteLib(entry: string, options?: { host?: string; entryName?: string }): Promise<Module | null> {
   const [appName, modelName] = entry.split('/');
   if (remoteCache.has(appName)) {
     console.log(`Remote module ${appName} already loaded, returning from cache`);
@@ -156,7 +164,7 @@ function loadRemoteLib(entry: string, options: { host?: string; entryName?: stri
     }
   }
 
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     const linkInstance = getInstance();
 
     const handleLibExpose = (data: any) => {
@@ -173,12 +181,16 @@ function loadRemoteLib(entry: string, options: { host?: string; entryName?: stri
     };
 
     linkInstance.eventBus.on(LIB_EXPOSE, handleLibExpose);
-    const host = options.host || 'http://localhost:8080';
-    const entryName = options.entryName || '/mf/index.js';
-    const jsUrl = `${host}/${entryName}`;
+    const remoteInfo = getRemoteInfo(appName);
+    const host = options?.host || remoteInfo?.host || `${location.protocol}//${location.host}`;
+    const entryName = options?.entryName || remoteInfo?.entry;
+    const jsUrl = `${host}${entryName}`;
 
-    loadScript(jsUrl)
-      .then(() => {
+    const dependencies = remoteInfo?.dependencies || {};
+    const depNames = Object.keys(dependencies);
+    await Promise.all(depNames.map((dep) => loadShare(dep)));
+    return import(jsUrl)
+      .then((module) => {
         setTimeout(() => {
           linkInstance.eventBus.off(LIB_EXPOSE, handleLibExpose);
           reject(new Error(`Timeout waiting for module ${appName} to expose`));
@@ -188,16 +200,28 @@ function loadRemoteLib(entry: string, options: { host?: string; entryName?: stri
         linkInstance.eventBus.off(LIB_EXPOSE, handleLibExpose);
         reject(error);
       });
+
+    // loadScript(jsUrl)
+    //   .then(() => {
+    //     setTimeout(() => {
+    //       linkInstance.eventBus.off(LIB_EXPOSE, handleLibExpose);
+    //       reject(new Error(`Timeout waiting for module ${appName} to expose`));
+    //     }, 10000);
+    //   })
+    //   .catch((error) => {
+    //     linkInstance.eventBus.off(LIB_EXPOSE, handleLibExpose);
+    //     reject(error);
+    //   });
   });
 }
 
-interface RmoteOption {
+export interface RmoteConfig {
   name: string;
   entry: string;
 }
 
-function registerRemote(remoteOption: RmoteOption) {
-  const { name, entry } = remoteOption;
+function registerRemote(option: RmoteConfig) {
+  const { name, entry } = option;
   const instance = getInstance();
   if (instance.remotes.has(name)) {
     return;
@@ -208,4 +232,9 @@ function registerRemote(remoteOption: RmoteOption) {
   });
 }
 
-export { loadRemote, getRemote, clearRemoteCache, loadRemoteLib, registerRemote };
+function getRemoteInfo(name: string) {
+  const instance = getInstance();
+  return instance.remotes.get(name);
+}
+
+export { loadApp, getRemote, clearRemoteCache, loadRemoteLib, registerRemote, getRemoteInfo };

@@ -1,5 +1,4 @@
 import { defineConfig } from 'tsdown';
-import tsdownPluginServer from '../tsdown-plugin-server/dist/index.mjs';
 
 export default defineConfig({
   exports: true,
@@ -7,13 +6,10 @@ export default defineConfig({
   dtsDir: 'dist',
   entry: 'src/index.ts',
   outDir: 'dist',
+  sourceMap: true,
   exports: {
     devExports: 'development',
   },
-  plugins: [
-    tsdownPluginServer({
-      port: 4000,
-    }),
-  ],
+  plugins: [],
   // ...config options
 });
