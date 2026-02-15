@@ -2,15 +2,23 @@ import './assets/main.css';
 
 import { createApp } from 'vue';
 import { createPinia } from 'pinia';
+import registryOptions from 'runtime-registry';
 
 import * as Vue from 'vue';
 
 import App from './App.vue';
 import router from './router';
-import { loadRemote } from 'linkjs';
+import { createInstance, loadApp, overrideRemote } from 'linkjs';
 
-//@ts-ignore
-window['Vue'] = Vue;
+const instances = createInstance({
+  shares: {
+    vue: {
+      lib: Vue,
+      alias: 'Vue',
+    },
+  },
+});
+instances.loadRegistry(registryOptions);
 
 console.log('Starting host app...');
 
@@ -25,8 +33,7 @@ console.log('Pinia and router installed');
 
 // 加载远程模块的函数
 function loadRemoteModule() {
-  console.log('Loading remote module...');
-  return loadRemote('remote', {
+  return loadApp('remote', {
     host: 'http://localhost:8080',
   })
     .then((lib) => {
@@ -38,5 +45,6 @@ function loadRemoteModule() {
     });
 }
 
-// 初始加载远程模块
-loadRemoteModule();
+overrideRemote().then(() => {
+  loadRemoteModule();
+});

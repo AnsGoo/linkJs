@@ -2,7 +2,6 @@ import { fileURLToPath, URL } from 'node:url';
 
 import { build, defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
-import vueJsx from '@vitejs/plugin-vue-jsx';
 // import vueDevTools from 'vite-plugin-vue-devtools';
 import { viteExternalsPlugin } from 'vite-plugin-externals';
 
@@ -10,9 +9,9 @@ import { viteExternalsPlugin } from 'vite-plugin-externals';
 export default defineConfig({
   plugins: [
     vue(),
-    vueJsx(),
     viteExternalsPlugin({ vue: 'Vue' }),
     // vueDevTools(),
+    // linkjsPlugin(),
   ],
   resolve: {
     alias: {
@@ -31,12 +30,11 @@ export default defineConfig({
     },
   },
   build: {
+    cssCodeSplit: false,
     outDir: 'dist',
-    minify: true,
-    rollupOptions: {
-      output: {
-        format: 'umd',
-      },
+    rolldownOptions: {
+      external: ['vue'],
+      plugins: [],
     },
   },
 });

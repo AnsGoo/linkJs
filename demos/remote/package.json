@@ -3,17 +3,21 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "main": "./mf/lib.js",
+  "module": "./mf/lib.js",
   "exports": {
     ".": {
-      "development": "./src/index.ts",
-      "default": "./mf/index.js"
+      "development": "./src/lib.ts",
+      "default": "./mf/lib.js"
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./style.css": "./mf/style.css"
   },
   "publishConfig": {
     "exports": {
-      ".": "./mf/index.js",
-      "./package.json": "./package.json"
+      ".": "./mf/lib.js",
+      "./package.json": "./package.json",
+      "./style.css": "./mf/style.css"
     }
   },
   "scripts": {
