@@ -6,7 +6,7 @@ import { loadOverride, overrideRemote } from './override';
 import { exposeLib } from './expose';
 import { loadShare, registerShare } from './share';
 import type { ShareOption } from './share';
-import type {  RmoteConfig } from './loader';
+import type { RmoteConfig } from './loader';
 import { registerPlugins, type RuntimePlugin } from './plugins';
 
 function getInstance() {

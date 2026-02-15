@@ -6,7 +6,7 @@ import UnpluginLinkjs from 'unplugin-linkjs';
 export default defineConfig({
   exports: true,
   dts: false, // 禁用dts生成，避免rolldown-plugin-dts无法处理Vue文件的问题
-  format: ['esm','umd','iife'],
+  format: ['esm', 'umd', 'iife'],
   target: 'esnext',
   platform: 'browser',
   entry: 'src/lib.ts',
@@ -31,8 +31,8 @@ export default defineConfig({
   ],
   outputOptions: {
     globals: {
-      'vue': 'Vue',
-      'linkjs': '$linkjs',
-    }
-  }
+      vue: 'Vue',
+      linkjs: '$linkjs',
+    },
+  },
 });

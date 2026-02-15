@@ -109,7 +109,7 @@ if (!linkInstance) {
         lib,
         options,
       });
-    }
+    },
   };
 
   // @ts-ignore

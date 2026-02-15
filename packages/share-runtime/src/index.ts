@@ -40,9 +40,7 @@ function getLibConfig(libName: string): LibConfig | null {
     const mainEntry = require.resolve(libName);
     const libDir = resolve(mainEntry, '..');
     console.info(`resolve success${libName}: \n`, mainEntry);
-    const possibleInputs = [
-      mainEntry
-    ];
+    const possibleInputs = [mainEntry];
 
     for (const input of possibleInputs) {
       if (existsSync(input)) {

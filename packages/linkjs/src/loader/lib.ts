@@ -1,43 +1,25 @@
-import { getInstance, loadShare } from "..";
-import { LIB_EXPOSE } from "../event-bus/constant";
-import { getRemoteInfo } from "./utils";
+import { getInstance, loadShare } from '..';
+import { LIB_EXPOSE } from '../event-bus/constant';
+import { getRemoteInfo, useGetRemote, useHandleExpose } from './utils';
 
-
-export function useLoadRemoteLib<Module>(remoteCache: Map<string, Record<string, Module>|Module>) {
+export function useLoadRemoteLib<Module>(remoteCache: Map<string, Record<string, Module> | Module>) {
   return (entry: string, options?: { host?: string; entryName?: string }) => loadRemoteLib(remoteCache, entry, options);
 }
 
-function loadRemoteLib<Module>(remoteCache: Map<string, Module>, entry: string, options?: { host?: string; entryName?: string }): Promise<Module | null> {
+function loadRemoteLib<Module>(
+  remoteCache: Map<string, Record<string, Module> | Module>,
+  entry: string,
+  options?: { host?: string; entryName?: string },
+): Promise<Module | null> {
   const [appName, modelName] = entry.split('/');
-  if (remoteCache.has(appName)) {
-    console.log(`Remote module ${appName} already loaded, returning from cache`);
-    const appModule = remoteCache.get(appName);
-    if (!appModule) {
-      return Promise.reject(new Error(`Remote module ${appName} not found in cache`));
-    }
-    if (modelName) {
-      return Promise.resolve((appModule as Record<string, Module> | undefined)?.[modelName || modelName || 'default'] || null);
-    } else {
-      return Promise.resolve((appModule as Record<string, Module> | undefined)?.['default'] || appModule || null);
-    }
+  const appModule = useGetRemote(remoteCache)(entry);
+  if (appModule) {
+    return Promise.resolve(appModule as Module);
   }
 
   return new Promise(async (resolve, reject) => {
     const linkInstance = getInstance();
-
-    const handleLibExpose = (data: any) => {
-      if (data.libName === appName && data.lib) {
-        linkInstance.eventBus.off(LIB_EXPOSE, handleLibExpose);
-        remoteCache.set(appName, data.lib);
-        console.log(`Remote module ${appName} cached`);
-        if (modelName) {
-          resolve(data.lib[modelName] || null);
-        } else {
-          resolve(data.lib['default'] || data.lib || null);
-        }
-      }
-    };
-
+    const handleLibExpose = useHandleExpose(remoteCache, appName, modelName);
     linkInstance.eventBus.on(LIB_EXPOSE, handleLibExpose);
     const remoteInfo = getRemoteInfo(appName);
     const host = options?.host || remoteInfo?.host || `${location.protocol}//${location.host}`;

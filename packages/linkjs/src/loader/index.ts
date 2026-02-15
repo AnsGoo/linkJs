@@ -1,11 +1,9 @@
 import type Module from 'module';
 import { getInstance } from '..';
 import { LOAD_STATUS } from '../event-bus/constant';
-import { getRemoteInfo } from './utils';
+import { getRemoteInfo, useGetRemote } from './utils';
 import { useLoadRemoteLib } from './lib';
 import { useLoadApp } from './app';
-
-
 
 // 缓存已加载的远程模块
 const remoteCache = new Map<string, Record<string, Module> | Module>();
@@ -14,10 +12,8 @@ function loadApp(entry: string, options?: { host?: string; preload?: string[] })
   return useLoadApp(remoteCache)(entry, options);
 }
 
-function getRemote(entry: string) {
-  const [appName, modelName] = entry.split('/');
-  const appModule = remoteCache.get(appName);
-  return (appModule as Record<string, Module> | undefined)?.[modelName || 'default'] || appModule || null;
+function getRemote<Module>(entry: string) {
+  return useGetRemote<Module>(remoteCache as any)(entry);
 }
 
 // 清除远程模块缓存
@@ -31,9 +27,22 @@ function clearRemoteCache(appName?: string): void {
   }
 }
 
-
-function loadLib(entry: string, options?: { host?: string; entryName?: string }): Promise<Module | Record<string, Module> | null> {
+function loadLib(entry: string, options?: { host?: string; entryName?: string }): Promise<Module | null> {
   return useLoadRemoteLib(remoteCache)(entry, options);
+}
+
+function loadRemote(entry: string, options?: { host?: string; preload?: string[] }): Promise<Module | Record<string, Module> | null> {
+  const [appName, modelName] = entry.split('/');
+  const remoteInfo = getRemoteInfo(appName);
+  if (!remoteInfo) {
+    return Promise.reject(new Error(`Remote module ${appName} not found`));
+  }
+  if (remoteInfo.type === 'app') {
+    return loadApp(entry, options);
+  } else if (remoteInfo.type === 'lib') {
+    return loadLib(entry, options);
+  }
+  return Promise.reject(new Error(`Remote module type ${remoteInfo.type} not supported`));
 }
 
 export interface RmoteConfig {
@@ -53,4 +62,4 @@ function registerRemote(option: RmoteConfig) {
   });
 }
 
-export { loadApp, getRemote, clearRemoteCache, loadLib, registerRemote, getRemoteInfo };
+export { loadApp, getRemote, clearRemoteCache, loadLib, registerRemote, getRemoteInfo, loadRemote };
