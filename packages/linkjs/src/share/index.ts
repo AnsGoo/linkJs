@@ -10,7 +10,7 @@ export interface ShareOption {
 
 function bindShare(name: string, libModule: Module) {
   // @ts-ignore
-  window[name] = libModule;
+  globalThis[name] = libModule;
 }
 
 function registerShare(options: Record<string, ShareOption>) {
@@ -26,15 +26,16 @@ function registerShare(options: Record<string, ShareOption>) {
 
 async function loadShare(name: string) {
   const instance = getInstance();
+  const shares = instance.shares;
   // @ts-ignore
   if (globalThis[name]) {
     // @ts-ignore
     return Promise.resolve(globalThis[name]);
   }
-  if (!instance.shares.has(name)) {
+  if (!shares.has(name)) {
     return Promise.resolve(null);
   }
-  const option = instance.shares.get(name);
+  const option = shares.get(name);
   let libModule: Module = option.lib;
   if (typeof option.lib === 'function') {
     const libload = await option.lib();
