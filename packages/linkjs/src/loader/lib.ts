@@ -19,7 +19,7 @@ function loadRemoteLib<Module>(
 
   return new Promise(async (resolve, reject) => {
     const linkInstance = getInstance();
-    const handleLibExpose = useHandleExpose(remoteCache, appName, modelName);
+    const handleLibExpose = useHandleExpose(remoteCache, resolve, appName, modelName);
     linkInstance.eventBus.on(LIB_EXPOSE, handleLibExpose);
     const remoteInfo = getRemoteInfo(appName);
     const host = options?.host || remoteInfo?.host || `${location.protocol}//${location.host}`;
@@ -30,7 +30,7 @@ function loadRemoteLib<Module>(
     const depNames = Object.keys(dependencies);
     await Promise.all(depNames.map((dep) => loadShare(dep)));
     return import(jsUrl)
-      .then((module) => {
+      .then((_module) => {
         setTimeout(() => {
           linkInstance.eventBus.off(LIB_EXPOSE, handleLibExpose);
           reject(new Error(`Timeout waiting for module ${appName} to expose`));

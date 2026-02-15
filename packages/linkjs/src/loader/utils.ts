@@ -9,7 +9,7 @@ function loadCss(url: string) {
 }
 
 function loadScript(url: string): Promise<void> {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve, _reject) => {
     if (url.includes('@vite/client')) {
       resolve();
       return;
@@ -53,14 +53,15 @@ function getRmoteFromCache<Module>(entry: string, remoteCache: Map<string, Recor
   }
 }
 
-function useHandleExpose<Module>(remoteCache: Map<string, Record<string, Module> | Module>, appName: string, modelName?: string) {
+function useHandleExpose<Module>(remoteCache: Map<string, Record<string, Module> | Module>, resolve: (value: Module | null) => void, appName: string, modelName?: string) {
   return (data: { libName: string; lib: Module | Record<string, Module> }, ) => {
-    return handleLibExpose<Module>(data, remoteCache, appName, modelName);
+    return handleLibExpose<Module>(data, resolve, remoteCache, appName, modelName);
   };
 }
 
 function handleLibExpose<Module>(
   data: { libName: string; lib: Module | Record<string, Module> },
+  resolve: (value: Module | null) => void,
   remoteCache: Map<string, Record<string, Module> | Module>,
   appName: string,
   modelName?: string,
@@ -71,9 +72,9 @@ function handleLibExpose<Module>(
     remoteCache.set(appName, data.lib);
     console.log(`Remote module ${appName} cached`);
     if (modelName) {
-      return (data.lib as Record<string, Module>)[modelName] || null;
+      return resolve((data.lib as Record<string, Module>)[modelName] || null);
     } else {
-      return (data.lib as Record<string, Module>)['default'] || (data.lib as Module) || null;
+      return resolve((data.lib as Record<string, Module>)['default'] || (data.lib as Module) || null);
     }
   }
 }

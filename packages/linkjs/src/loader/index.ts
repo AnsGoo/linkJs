@@ -32,7 +32,7 @@ function loadLib(entry: string, options?: { host?: string; entryName?: string })
 }
 
 function loadRemote(entry: string, options?: { host?: string; preload?: string[] }): Promise<Module | Record<string, Module> | null> {
-  const [appName, modelName] = entry.split('/');
+  const [appName,_] = entry.split('/');
   const remoteInfo = getRemoteInfo(appName);
   if (!remoteInfo) {
     return Promise.reject(new Error(`Remote module ${appName} not found`));

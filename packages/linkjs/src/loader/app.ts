@@ -22,7 +22,7 @@ function loadApp<Module>(
     const linkInstance = getInstance();
 
     // 监听子模块暴露事件
-    const handleLibExpose = useHandleExpose(remoteCache, appName, modelName);
+    const handleLibExpose = useHandleExpose(remoteCache, resolve, appName, modelName);
     linkInstance.eventBus.on(LIB_EXPOSE, handleLibExpose);
     const remoteInfo = linkInstance.remotes.get(appName);
     const host = options?.host || remoteInfo?.host || `${location.protocol}//${location.host}`;

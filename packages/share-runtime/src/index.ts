@@ -1,5 +1,5 @@
 import { build } from 'rolldown';
-import { writeFileSync, mkdirSync, existsSync, readFileSync } from 'fs';
+import { mkdirSync, existsSync, readFileSync } from 'fs';
 import { resolve } from 'path';
 
 interface BuildOptions {
