@@ -1,12 +1,13 @@
 import { linkInstance } from './state';
 import { __LINKJS_INSTANCE__, __LINKJS_OVERRIDES__ } from './constant';
-import { clearRemoteCache, getRemote, loadApp, loadRemoteLib, registerRemote } from './loader';
+import { clearRemoteCache, getRemote, loadApp, loadLib, registerRemote } from './loader';
 
 import { loadOverride, overrideRemote } from './override';
 import { exposeLib } from './expose';
 import { loadShare, registerShare } from './share';
 import type { ShareOption } from './share';
-import type { RmoteConfig } from './loader';
+import type {  RmoteConfig } from './loader';
+import { registerPlugins, type RuntimePlugin } from './plugins';
 
 function getInstance() {
   return linkInstance;
@@ -15,14 +16,16 @@ function getInstance() {
 interface UserOption {
   remotes?: Array<RmoteConfig>;
   shares?: Record<string, ShareOption>;
+  plugins?: Array<RuntimePlugin>;
 }
 
 function createInstance(options: UserOption) {
-  const { remotes = [], shares = {} } = options;
+  const { remotes = [], shares = {}, plugins = [] } = options;
   remotes.forEach((remote) => {
     registerRemote(remote);
   });
   registerShare(shares);
+  registerPlugins(plugins);
   return linkInstance;
 }
 
@@ -33,7 +36,7 @@ export {
   exposeLib,
   getRemote,
   clearRemoteCache,
-  loadRemoteLib,
+  loadLib,
   registerShare,
   loadShare,
   loadOverride,

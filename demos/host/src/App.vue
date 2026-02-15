@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import HelloWorld from './components/HelloWorld.vue';
 import { defineAsyncComponent } from 'vue';
-import { getRemote, loadRemoteLib } from 'linkjs';
+import { getRemote, loadLib } from 'linkjs';
 
 // const RemoteComponent = defineAsyncComponent(async () => {
 //   const remote = await getRemote('remote/HelloWorld');
 //   return remote;
 // });
 const RemoteLibComponent = defineAsyncComponent(async () => {
-  const remoteLib = await loadRemoteLib('remote-lib/HelloWorld', {
+  const remoteLib = await loadLib('remote-lib/HelloWorld', {
     host: 'http://localhost:4001',
   });
   return remoteLib;
