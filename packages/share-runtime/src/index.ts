@@ -39,7 +39,7 @@ function getLibConfig(libName: string): LibConfig | null {
   try {
     const mainEntry = require.resolve(libName);
     const libDir = resolve(mainEntry, '..');
-    console.info(`resolve ${libName}: \n`, mainEntry);
+    console.info(`resolve success${libName}: \n`, mainEntry);
     const possibleInputs = [
       mainEntry
     ];
