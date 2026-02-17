@@ -1,6 +1,6 @@
 import { getInstance, loadShare } from '..';
 import { LIB_EXPOSE } from '../event-bus/constant';
-import { loadScript, useGetRemote, useHandleExpose } from './utils';
+import { loadScript, useGetRemote, useHandleExpose, type ExtOption } from './utils';
 
 function useLoadApp<Module>(remoteCache: Map<string, Record<string, Module> | Module>) {
   return (entry: string, options?: { host?: string; preload?: string[] }) => loadApp(remoteCache, entry, options);
@@ -22,7 +22,8 @@ function loadApp<Module>(
     const linkInstance = getInstance();
 
     // 监听子模块暴露事件
-    const handleLibExpose = useHandleExpose(remoteCache, resolve, appName, modelName);
+    const extOption: ExtOption = { modelName };
+    const handleLibExpose = useHandleExpose(remoteCache, resolve, appName, extOption);
     linkInstance.eventBus.on(LIB_EXPOSE, handleLibExpose);
     const remoteInfo = linkInstance.remotes.get(appName);
     const host = options?.host || remoteInfo?.host || `${location.protocol}//${location.host}`;
@@ -73,7 +74,7 @@ function loadApp<Module>(
           .then(() => {
             // 脚本加载完成，等待子模块触发 LIB_EXPOSE 事件
             // 设置超时，如果子模块没有及时触发事件，则超时
-            setTimeout(() => {
+            extOption.timeoutId = setTimeout(() => {
               linkInstance.eventBus.off(LIB_EXPOSE, handleLibExpose);
               reject(new Error(`Timeout waiting for module ${appName} to expose`));
             }, 10000); // 10秒超时

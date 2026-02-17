@@ -53,9 +53,14 @@ function getRmoteFromCache<Module>(entry: string, remoteCache: Map<string, Recor
   }
 }
 
-function useHandleExpose<Module>(remoteCache: Map<string, Record<string, Module> | Module>, resolve: (value: Module | null) => void, appName: string, modelName?: string) {
-  return (data: { libName: string; lib: Module | Record<string, Module> }, ) => {
-    return handleLibExpose<Module>(data, resolve, remoteCache, appName, modelName);
+export interface ExtOption {
+  timeoutId?: ReturnType<typeof setTimeout>;
+  modelName?: string;
+}
+
+function useHandleExpose<Module>(remoteCache: Map<string, Record<string, Module> | Module>, resolve: (value: Module | null) => void, appName: string, options: ExtOption) {
+  return (data: { libName: string; lib: Module | Record<string, Module> }) => {
+    return handleLibExpose<Module>(data, resolve, remoteCache, appName, options);
   };
 }
 
@@ -64,11 +69,15 @@ function handleLibExpose<Module>(
   resolve: (value: Module | null) => void,
   remoteCache: Map<string, Record<string, Module> | Module>,
   appName: string,
-  modelName?: string,
+  options: ExtOption,
 ) {
   const linkInstance = getInstance();
   if (data.libName === appName && data.lib) {
     linkInstance.eventBus.off(LIB_EXPOSE, handleLibExpose);
+    const { modelName } = options;
+    if (options.timeoutId) {
+      clearTimeout(options.timeoutId);
+    }
     remoteCache.set(appName, data.lib);
     console.log(`Remote module ${appName} cached`);
     if (modelName) {

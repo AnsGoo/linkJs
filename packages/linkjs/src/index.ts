@@ -7,7 +7,7 @@ import { exposeLib } from './expose';
 import { loadShare, registerShare } from './share';
 import type { ShareOption } from './share';
 import type { RmoteConfig } from './loader';
-import { registerPlugins, type RuntimePlugin } from './plugins';
+import { registerPlugin, type RuntimePlugin } from './plugins';
 
 function getInstance() {
   return linkInstance;
@@ -16,16 +16,18 @@ function getInstance() {
 interface UserOption {
   remotes?: Array<RmoteConfig>;
   shares?: Record<string, ShareOption>;
-  plugins?: Array<RuntimePlugin>;
+  plugin?: RuntimePlugin;
 }
 
 function createInstance(options: UserOption) {
-  const { remotes = [], shares = {}, plugins = [] } = options;
+  const { remotes = [], shares = {}, plugin } = options;
   remotes.forEach((remote) => {
     registerRemote(remote);
   });
   registerShare(shares);
-  registerPlugins(plugins);
+  if (plugin) {
+    registerPlugin(plugin);
+  }
   return linkInstance;
 }
 

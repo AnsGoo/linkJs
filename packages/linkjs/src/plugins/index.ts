@@ -1,12 +1,14 @@
-import { getInstance } from '..';
+import { getInstance, type RegistryOption } from '..';
+
+
 
 export interface RuntimePlugin {
   name: string;
   beforeInit(): void;
   afterInit(): void;
-  beforeLoadRemote(): void | Promise<void>;
-  afterLoadRemote(): void;
-  errorLoadRemote(): void | Promise<void>;
+  beforeLoadRemote(remoteInfo: RegistryOption): RegistryOption | Promise<RegistryOption>;
+  afterLoadRemote(resolve:(resp:any) => void, reject:(error:any) => void): void;
+  errorLoadRemote(resolve:(resp:any) => void, reject:(error:any) => void | Promise<void>): void | Promise<void>;
 
   beforeLoadShare(): void | Promise<void>;
   afterLoadShare(): void;
@@ -14,8 +16,8 @@ export interface RuntimePlugin {
   afterLoadEntry(): void;
 }
 
-function registerPlugins(plugins: RuntimePlugin[]) {
-  getInstance().plugins.push(...plugins);
+function registerPlugin(plugin: RuntimePlugin) {
+  getInstance().plugin = plugin;
 }
 
-export { registerPlugins };
+export { registerPlugin };

@@ -26,7 +26,9 @@ export interface RemoteLib extends RemoteBase {
   type: 'lib';
 }
 
-export type RegistryOption = Omit<RemoteApp | RemoteLib, 'status'>;
+export type RemoteInfo = RemoteApp | RemoteLib;
+
+export type RegistryOption = Omit<RemoteInfo, 'status'>;
 
 // @ts-ignore
 let linkInstance: any = typeof globalThis !== 'undefined' && globalThis[__LINKJS_INSTANCE__] ? globalThis[__LINKJS_INSTANCE__] : null;
@@ -41,8 +43,8 @@ if (!linkInstance) {
     apps: new Map(),
     libs: new Map(),
     shares: new Map(),
-    remotes: new Map<string, RemoteApp | RemoteLib>(),
-    plugins: [] as RuntimePlugin[],
+    remotes: new Map<string, RemoteInfo>(),
+    plugin:{} as RuntimePlugin,
 
     loadRegistry(registryOptions: RegistryOption[]): void {
       registryOptions.forEach((option) => {
