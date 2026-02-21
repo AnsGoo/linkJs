@@ -104,10 +104,11 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
       }
     },
     rolldown: {
-      transform(code: string, id: string) {
+      transform(code: string, id: string, meta: any) {
         if (id.includes('css')) {
           return null;
         }
+        console.log(meta);
 
         const supportedExtensions = ['.js', '.jsx', '.ts', '.tsx', '.vue'];
 
@@ -188,14 +189,8 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
         };
       },
       options(options: any) {
-        external.push(...(options.external || []));
-        // console.log(options);
-        // console.log(this)
+        options['experimental'] = { nativeMagicString: true };
         return options;
-      },
-      generateBundle(_outputOptions, _bundle) {
-        // console.log('generateBundle outputOptions', outputOptions);
-        // console.log('generateBundle bundle', bundle);
       },
       renderStart(_outputOptions, _inputOptions) {
         // console.log('renderStart context', this);

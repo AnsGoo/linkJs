@@ -4,7 +4,10 @@ import tsdownPluginServer from 'tsdown-plugin-server';
 import { unpluginLinkjsRollowPlugin } from 'unplugin-linkjs';
 
 export default defineConfig({
-  dts: false, // 禁用dts生成，避免rolldown-plugin-dts无法处理Vue文件的问题
+  tsconfig: './tsconfig.dts.json',
+  dts: {
+    vue: true,
+  }, // 启用dts生成
   format: ['esm'],
   target: 'esnext',
   platform: 'browser',
@@ -29,13 +32,8 @@ export default defineConfig({
         vue: 'Vue',
       },
     }),
-    tsdownPluginServer({
-      port: 4001,
-    }),
+    // tsdownPluginServer({
+    //   port: 4001,
+    // }),
   ],
-  outputOptions: {
-    globals: {
-      linkjs: '$linkjs',
-    },
-  },
 });
