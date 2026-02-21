@@ -34,76 +34,79 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
     name: 'unplugin-linkjs',
     enforce: 'post',
 
-    buildEnd() {
-      const packageJsonPath = resolve(process.cwd(), 'package.json');
-      const outDir = this.outputOptions.dir;
-      if (!existsSync(packageJsonPath)) {
-        console.warn('package.json not found in current working directory');
-        return;
-      }
-
-      try {
-        const packageJsonContent = readFileSync(packageJsonPath, 'utf-8');
-        const packageJson = JSON.parse(packageJsonContent);
-
-        const manifest: ManifestJson = {
-          name: packageJson.name || '',
-          version: packageJson.version || '',
-          types: packageJson.types || packageJson.typings,
-          exports: packageJson.exports,
-        };
-
-        const externalDeps: Record<string, string> = {};
-
-        let finalExternal: string[] = [...sharedPkgs];
-
-        if (finalExternal.length > 0) {
-          const allDeps: Record<string, string> = {};
-
-          if (packageJson.dependencies) {
-            Object.assign(allDeps, packageJson.dependencies);
-          }
-
-          if (packageJson.peerDependencies) {
-            Object.assign(allDeps, packageJson.peerDependencies);
-          }
-          finalExternal.forEach((dep) => {
-            if (allDeps[dep]) {
-              externalDeps[dep] = allDeps[dep];
-            }
-          });
-
-          const deps = Object.keys(allDeps);
-          deps.forEach((dep) => {
-            if (isExternal(finalExternal, dep)) {
-              externalDeps[dep] = allDeps[dep];
-            }
-          });
-        }
-
-        if (Object.keys(externalDeps).length > 0) {
-          manifest.dependencies = externalDeps;
-        }
-
-        if (packageJson.files) {
-          manifest.files = packageJson.files;
-        }
-
-        Object.assign(manifest, customFields);
-        const outputPath = resolve(outDir, 'manifest.json');
-        const outputDir = dirname(outputPath);
-
-        if (!existsSync(outputDir)) {
-          mkdirSync(outputDir, { recursive: true });
-        }
-        console.log(outputPath);
-        writeFileSync(outputPath, JSON.stringify(manifest, null, 2), 'utf-8');
-      } catch (error) {
-        console.error(`Failed to generate manifest.json: ${error}`);
-        throw error;
-      }
-    },
     rolldown: {
+      buildEnd() {
+        const moduleIds = this.getModuleIds();
+        const expose:string[] = [];
+        for (const moduleId of moduleIds) {
+          const module = this.getModuleInfo(moduleId);
+          if(module?.isEntry && !moduleId.endsWith('.d.ts')) {
+            expose.push(...(module.exports || []))
+          }
+        }
+        
+        const packageJsonPath = resolve(process.cwd(), 'package.json');
+        const outDir = (this as any).outputOptions?.dir;
+        if (!existsSync(packageJsonPath)) {
+          console.warn('package.json not found in current working directory');
+          return;
+        }
+
+        try {
+          const packageJsonContent = readFileSync(packageJsonPath, 'utf-8');
+          const packageJson = JSON.parse(packageJsonContent);
+
+          const manifest: ManifestJson = {
+            name: packageJson.name || '',
+            version: packageJson.version || '',
+            types: packageJson.types || packageJson.typings,
+            exports: packageJson.exports,
+            expose: [...new Set(expose)],
+          };
+
+          const externalDeps: Record<string, string> = {};
+
+          let finalExternal: string[] = [...sharedPkgs];
+
+          if (finalExternal.length > 0) {
+            const allDeps: Record<string, string> = {};
+
+            if (packageJson.dependencies) {
+              Object.assign(allDeps, packageJson.dependencies);
+            }
+
+            if (packageJson.peerDependencies) {
+              Object.assign(allDeps, packageJson.peerDependencies);
+            }
+            finalExternal.forEach((dep) => {
+              if (allDeps[dep]) {
+                externalDeps[dep] = allDeps[dep];
+              }
+            });
+
+            const deps = Object.keys(allDeps);
+            deps.forEach((dep) => {
+              if (isExternal(finalExternal, dep)) {
+                externalDeps[dep] = allDeps[dep];
+              }
+            });
+          }
+
+          if (Object.keys(externalDeps).length > 0) {
+            manifest.dependencies = externalDeps;
+          }
+          const outputPath = resolve(outDir, 'manifest.json');
+          const outputDir = dirname(outputPath);
+
+          if (!existsSync(outputDir)) {
+            mkdirSync(outputDir, { recursive: true });
+          }
+          writeFileSync(outputPath, JSON.stringify(manifest, null, 2), 'utf-8');
+        } catch (error) {
+          console.error(`Failed to generate manifest.json: ${error}`);
+          throw error;
+        }
+      },
       transform(code: string, id: string, meta: any) {
         if (id.includes('css')) {
           return null;
