@@ -2,7 +2,7 @@ import { createUnplugin } from 'unplugin';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { parseSync } from 'oxc-parser';
-import type { Node, Program, ImportDeclaration, ParseResult } from 'oxc-parser';
+import type { Node, ImportDeclaration, ParseResult } from 'oxc-parser';
 import MagicString from 'magic-string';
 
 import type { ManifestJson, UnpluginLinkjsOptions } from './types';
@@ -194,11 +194,11 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
         // console.log(this)
         return options;
       },
-      generateBundle(outputOptions, bundle) {
+      generateBundle(_outputOptions, _bundle) {
         // console.log('generateBundle outputOptions', outputOptions);
         // console.log('generateBundle bundle', bundle);
       },
-      renderStart(outputOptions, inputOptions) {
+      renderStart(_outputOptions, _inputOptions) {
         // console.log('renderStart context', this);
         // console.log('renderStart outputOptions', outputOptions);
         // console.log('renderStart inputOptions', inputOptions);

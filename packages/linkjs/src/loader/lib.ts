@@ -27,7 +27,6 @@ function loadRemoteLib<Module>(
     if (plugin && plugin.beforeLoadRemote) {
       remoteInfo = await plugin.beforeLoadRemote({ ...remoteInfo });
     }
-
     const host = options?.host || remoteInfo?.host || `${location.protocol}//${location.host}`;
     const entryName = options?.entryName || remoteInfo?.entry;
     const jsUrl = `${host}${entryName}`;

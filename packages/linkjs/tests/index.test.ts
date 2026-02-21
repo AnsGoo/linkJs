@@ -4,7 +4,7 @@ import { LIB_EXPOSE } from '../src/event-bus/constant';
 
 // 模拟 DOM API
 globalThis.DOMParser = class {
-  parseFromString(html: string, type: string) {
+  parseFromString(_html: string, _type: string) {
     return {
       querySelectorAll: (selector: string) => {
         if (selector === 'link[rel="stylesheet"]') {
