@@ -61,7 +61,7 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
 
         const externalDeps: Record<string, string> = {};
 
-        let finalExternal: string[] = [...external];
+        let finalExternal: string[] = [...sharedPkgs];
 
         if (finalExternal.length > 0) {
           const allDeps: Record<string, string> = {};
