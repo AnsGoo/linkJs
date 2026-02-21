@@ -34,8 +34,14 @@ async function loadOverride(option: { name: string; host: string }) {
     return Promise.reject(new Error(`Remote module ${name} not found`));
   }
   remote.status = LOAD_STATUS.LOADING;
-  const remoteInfo = await loadFile(`${host}/manifest.json`);
-  remote.status = LOAD_STATUS.LOADED;
+  let remoteInfo;
+  try {
+    remoteInfo = await loadFile(`${host}/manifest.json`);
+  } catch (error) {
+    return Promise.reject(new Error(`Remote module load error: ${error}`));
+  } finally {
+    remote.status = LOAD_STATUS.LOADED;
+  }
   remote.host = host;
   remote.version = remoteInfo.version;
   remote.dependencies = remoteInfo.dependencies;

@@ -38,13 +38,15 @@ function loadRemoteModule() {
   })
     .then((lib) => {
       console.log('Remote module loaded:', lib);
-      app.mount('#app');
+     
     })
     .catch((error) => {
       console.error('Failed to load remote module:', error);
+    }).finally(() => {
+      app.mount('#app');
     });
 }
 
-overrideRemote().then(() => {
-  loadRemoteModule();
+overrideRemote().finally(() => {
+    loadRemoteModule();
 });
