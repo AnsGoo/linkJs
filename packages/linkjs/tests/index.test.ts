@@ -1,5 +1,5 @@
 import { expect, test, vi, beforeEach } from 'vitest';
-import { getLinkInstance, exposeLib } from '../src';
+import { getLinkInstance, expose } from '../src';
 import { LIB_EXPOSE } from '../src/event-bus/constant';
 
 // 模拟 DOM API
@@ -45,7 +45,7 @@ test('getLinkInstance should return the linkjs instance', () => {
   expect(instance.libs).toBeInstanceOf(Map);
 });
 
-test('exposeLib should emit LIB_EXPOSE event', () => {
+test('expose should emit LIB_EXPOSE event', () => {
   const instance = getLinkInstance();
   const mockLib = { name: 'test-lib', version: '1.0.0' };
   const mockOptions = { foo: 'bar' };
@@ -55,7 +55,7 @@ test('exposeLib should emit LIB_EXPOSE event', () => {
     emittedData = data;
   });
 
-  exposeLib('test-lib', mockLib, mockOptions);
+  expose('test-lib', mockLib, mockOptions);
 
   expect(emittedData).toBeDefined();
   expect(emittedData.libName).toBe('test-lib');

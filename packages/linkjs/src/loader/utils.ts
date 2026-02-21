@@ -58,7 +58,12 @@ export interface ExtOption {
   modelName?: string;
 }
 
-function useHandleExpose<Module>(remoteCache: Map<string, Record<string, Module> | Module>, resolve: (value: Module | null) => void, appName: string, options: ExtOption) {
+function useHandleExpose<Module>(
+  remoteCache: Map<string, Record<string, Module> | Module>,
+  resolve: (value: Module | null) => void,
+  appName: string,
+  options: ExtOption,
+) {
   return (data: { libName: string; lib: Module | Record<string, Module> }) => {
     return handleLibExpose<Module>(data, resolve, remoteCache, appName, options);
   };

@@ -25,7 +25,7 @@ function loadRemoteLib<Module>(
     const plugin = linkInstance.plugin;
     let remoteInfo = getRemoteInfo(appName);
     if (plugin && plugin.beforeLoadRemote) {
-     remoteInfo = await plugin.beforeLoadRemote({...remoteInfo});
+      remoteInfo = await plugin.beforeLoadRemote({ ...remoteInfo });
     }
 
     const host = options?.host || remoteInfo?.host || `${location.protocol}//${location.host}`;
@@ -39,7 +39,7 @@ function loadRemoteLib<Module>(
       .then((_module) => {
         extOption.timeoutId = setTimeout(() => {
           linkInstance.eventBus.off(LIB_EXPOSE, handleLibExpose);
-          if(plugin && plugin.errorLoadRemote) {
+          if (plugin && plugin.errorLoadRemote) {
             plugin.errorLoadRemote(resolve, reject);
           }
           reject(new Error(`Timeout waiting for module ${appName} to expose`));
@@ -47,7 +47,7 @@ function loadRemoteLib<Module>(
       })
       .catch((error) => {
         linkInstance.eventBus.off(LIB_EXPOSE, handleLibExpose);
-        if(plugin && plugin.errorLoadRemote) {
+        if (plugin && plugin.errorLoadRemote) {
           plugin.errorLoadRemote(resolve, reject);
         }
         reject(error);

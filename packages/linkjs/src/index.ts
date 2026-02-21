@@ -3,7 +3,7 @@ import { __LINKJS_INSTANCE__, __LINKJS_OVERRIDES__ } from './constant';
 import { clearRemoteCache, getRemote, loadApp, loadLib, registerRemote } from './loader';
 
 import { loadOverride, overrideRemote } from './override';
-import { exposeLib } from './expose';
+import { expose } from './expose';
 import { loadShare, registerShare } from './share';
 import type { ShareOption } from './share';
 import type { RmoteConfig } from './loader';
@@ -35,7 +35,7 @@ export {
   getInstance,
   createInstance,
   loadApp,
-  exposeLib,
+  expose,
   getRemote,
   clearRemoteCache,
   loadLib,

@@ -36,7 +36,7 @@ const linkInstance = getLinkInstance();
 // 使用 linkInstance 的应用管理方法
 ```
 
-### exposeLib(libName, lib, options)
+### expose(libName, lib, options)
 
 暴露模块，供其他应用使用。
 
@@ -45,10 +45,10 @@ const linkInstance = getLinkInstance();
 - `options`: 模块选项
 
 ```typescript
-import { exposeLib } from 'linkjs';
+import { expose } from 'linkjs';
 
 // 暴露一个工具库
-exposeLib(
+expose(
   'utils',
   {
     add: (a, b) => a + b,
@@ -60,7 +60,7 @@ exposeLib(
 );
 
 // 暴露一个 React 组件
-exposeLib('Button', ButtonComponent, {
+expose('Button', ButtonComponent, {
   framework: 'react',
 });
 ```
@@ -90,7 +90,7 @@ loadRemote('http://example.com/remote-app/index.html', {
 
 ## 工作原理
 
-1. **模块暴露**：子应用通过 `exposeLib` 函数暴露模块，内部会触发 `LIB_EXPOSE` 事件。
+1. **模块暴露**：子应用通过 `expose` 函数暴露模块，内部会触发 `LIB_EXPOSE` 事件。
 2. **模块加载**：主应用通过 `loadRemote` 函数加载远程模块，内部会：
    - 加载远程 HTML 文件
    - 解析 HTML，提取并加载 CSS 和 JS 资源
@@ -170,10 +170,10 @@ loadRemote('http://localhost:3001/index.html', {
 ### 子应用
 
 ```typescript
-import { exposeLib } from 'linkjs';
+import { expose } from 'linkjs';
 
 // 暴露应用实例
-exposeLib(
+expose(
   'remote-app',
   {
     mount: (container) => {
