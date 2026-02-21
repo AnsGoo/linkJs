@@ -12,7 +12,7 @@ const registryOptions: RegistryOption[] = [
   },
   {
     name: 'remote-lib',
-    entry: '/mf/lib.iife.js',
+    entry: '/mf/lib.js',
     dependencies: {
       vue: '^3.5.27',
     },

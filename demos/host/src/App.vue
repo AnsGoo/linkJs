@@ -3,10 +3,10 @@ import HelloWorld from './components/HelloWorld.vue';
 import { defineAsyncComponent } from 'vue';
 import { getRemote, loadLib } from 'linkjs';
 
-// const RemoteComponent = defineAsyncComponent(async () => {
-//   const remote = await getRemote('remote/HelloWorld');
-//   return remote;
-// });
+const RemoteComponent = defineAsyncComponent(async () => {
+  const remote = await getRemote('remote/HelloWorld');
+  return remote;
+});
 const RemoteLibComponent = defineAsyncComponent(async () => {
   const remoteLib = await loadLib('remote-lib/HelloWorld', {
     host: 'http://localhost:4001',
@@ -20,8 +20,8 @@ const RemoteLibComponent = defineAsyncComponent(async () => {
     <img alt="Vue logo" class="logo" src="@/assets/logo.svg" width="125" height="125" />
 
     <div class="wrapper">
-      <HelloWorld msg="I am host app" />
-      <!-- <RemoteComponent msg="I am remote app" /> -->
+      <HelloWorld msg="I am host app!" />
+      <RemoteComponent msg="I am remote app" />
       <RemoteLibComponent msg="I am remote lib" />
     </div>
   </header>

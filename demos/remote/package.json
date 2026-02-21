@@ -3,8 +3,6 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "main": "./mf/lib.js",
-  "module": "./mf/lib.js",
   "exports": {
     ".": {
       "development": "./src/lib.ts",
@@ -66,7 +64,6 @@
     "unplugin-linkjs": "workspace:*",
     "unplugin-vue": "^7.1.1",
     "vite": "beta",
-    "vite-plugin-externals": "^0.6.2",
     "vite-plugin-vue-devtools": "^8.0.5",
     "vitest": "^4.0.18",
     "vue-tsc": "^3.2.4"

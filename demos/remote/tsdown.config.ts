@@ -5,7 +5,7 @@ import UnpluginLinkjs from 'unplugin-linkjs';
 
 export default defineConfig({
   dts: false, // 禁用dts生成，避免rolldown-plugin-dts无法处理Vue文件的问题
-  format: ['esm', 'umd', 'iife'],
+  format: ['esm'],
   target: 'esnext',
   platform: 'browser',
   entry: 'src/lib.ts',
@@ -18,19 +18,24 @@ export default defineConfig({
   exports: {
     devExports: 'development',
   },
-  external: ['vue', 'linkjs'],
+  external: ['linkjs'],
   plugins: [
-    UnpluginLinkjs.rolldown(),
-    tsdownPluginServer({
-      port: 4001,
-    }),
     Vue({
       isProduction: true,
     }),
+    UnpluginLinkjs.rolldown({
+      shared: {
+        // linkjs: '$linkjs',
+        'vue': 'Vue',
+      },
+    }),
+    tsdownPluginServer({
+      port: 4001,
+    }),
+   
   ],
   outputOptions: {
     globals: {
-      vue: 'Vue',
       linkjs: '$linkjs',
     },
   },

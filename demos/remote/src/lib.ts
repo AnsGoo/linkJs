@@ -1,9 +1,9 @@
 import HelloWorld from './components/HelloWorld.vue';
-import { exposeLib } from 'linkjs';
+import { expose } from 'linkjs';
 
 // 使用全局的 linkjs 实例
 
-exposeLib(
+expose(
   'remote-lib',
   { HelloWorld },
   {
