@@ -108,8 +108,6 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
         if (id.includes('css')) {
           return null;
         }
-        console.log(meta);
-
         const supportedExtensions = ['.js', '.jsx', '.ts', '.tsx', '.vue'];
 
         const isSupportedFile = supportedExtensions.some((ext) => id.endsWith(ext));

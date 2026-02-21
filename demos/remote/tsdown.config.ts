@@ -32,8 +32,8 @@ export default defineConfig({
         vue: 'Vue',
       },
     }),
-    // tsdownPluginServer({
-    //   port: 4001,
-    // }),
+    tsdownPluginServer({
+      port: 4001,
+    }),
   ],
 });
