@@ -1,8 +1,7 @@
 import { createUnplugin } from 'unplugin';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { resolve, dirname } from 'path';
-import { parseSync } from 'oxc-parser';
-import type { Node, ImportDeclaration, ParseResult } from 'oxc-parser';
+import type { Node, ImportDeclaration } from 'oxc-parser';
 import MagicString from 'magic-string';
 
 import type { ManifestJson, UnpluginLinkjsOptions } from './types';
@@ -123,7 +122,7 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
           return null;
         }
 
-        const ast: ParseResult = parseSync(id, code, {
+        const ast = this.parse(code, {
           sourceType: 'module',
         });
 
@@ -175,7 +174,7 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
           }
         };
 
-        walk(ast.program);
+        walk(ast);
 
         if (!hasModifications) {
           return null;
