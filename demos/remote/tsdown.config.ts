@@ -18,7 +18,7 @@ export default defineConfig({
   exports: {
     devExports: 'development',
   },
-  external: ['linkjs'],
+  external: [],
   plugins: [
     Vue({
       isProduction: true,
