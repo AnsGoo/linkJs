@@ -207,6 +207,6 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
   };
 });
 
-const rolldownPlugin = unpluginLinkjs.rolldown;
-export { rolldownPlugin };
+const unpluginLinkjsRollowPlugin = unpluginLinkjs.rolldown;
+export { unpluginLinkjsRollowPlugin };
 export default unpluginLinkjs;
