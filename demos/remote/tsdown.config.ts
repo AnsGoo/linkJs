@@ -26,13 +26,12 @@ export default defineConfig({
     UnpluginLinkjs.rolldown({
       shared: {
         // linkjs: '$linkjs',
-        'vue': 'Vue',
+        vue: 'Vue',
       },
     }),
     tsdownPluginServer({
       port: 4001,
     }),
-   
   ],
   outputOptions: {
     globals: {

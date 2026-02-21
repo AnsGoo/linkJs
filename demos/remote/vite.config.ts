@@ -14,7 +14,7 @@ export default defineConfig({
     // linkjsPlugin(),
     UnpluginLinkjs.rolldown({
       shared: {
-        'vue': 'Vue',
+        vue: 'Vue',
       },
     }),
   ],

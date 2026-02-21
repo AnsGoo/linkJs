@@ -1,7 +1,7 @@
 import { createUnplugin } from 'unplugin';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { resolve, dirname } from 'path';
-import {  parseSync } from 'oxc-parser';
+import { parseSync } from 'oxc-parser';
 import type { Node, Program, ImportDeclaration, ParseResult } from 'oxc-parser';
 import MagicString from 'magic-string';
 
@@ -111,22 +111,22 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
         }
 
         const supportedExtensions = ['.js', '.jsx', '.ts', '.tsx', '.vue'];
-        
-        const isSupportedFile = supportedExtensions.some(ext => id.endsWith(ext));
-        
+
+        const isSupportedFile = supportedExtensions.some((ext) => id.endsWith(ext));
+
         if (!isSupportedFile) {
           return null;
         }
 
         const packagesInCode = sharedPkgs.filter((pkg) => new RegExp(`from\\s+['"]${pkg}['"]`).test(code));
         const hasLinkjsImport = new RegExp(`from\\s+['"]linkjs['"]`).test(code);
-        
+
         if (packagesInCode.length === 0 && !hasLinkjsImport) {
           return null;
         }
 
         const ast: ParseResult = parseSync(id, code, {
-          sourceType: 'module'
+          sourceType: 'module',
         });
 
         const magicString = new MagicString(code);
@@ -147,9 +147,7 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
           }
 
           const importSpecifiers = node.specifiers
-            .filter((spec): spec is Extract<typeof spec, { type: 'ImportSpecifier' }> => 
-              spec.type === 'ImportSpecifier'
-            )
+            .filter((spec): spec is Extract<typeof spec, { type: 'ImportSpecifier' }> => spec.type === 'ImportSpecifier')
             .map((spec) => {
               const imported = spec.imported.type === 'Identifier' ? spec.imported.name : spec.imported.value;
               const local = spec.local.name;
@@ -161,10 +159,10 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
             return;
           }
 
-          const newCode = isLinkjs 
+          const newCode = isLinkjs
             ? `const { ${importSpecifiers} } = $linkjs;`
             : `const { ${importSpecifiers} } = $linkjs.getShare('${source}');`;
-          
+
           magicString.overwrite(node.start, node.end, newCode);
           hasModifications = true;
         };
