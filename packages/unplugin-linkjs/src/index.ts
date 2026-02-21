@@ -1,6 +1,9 @@
 import { createUnplugin } from 'unplugin';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { resolve, dirname } from 'path';
+import {  parseSync } from 'oxc-parser';
+import type { Node, Program, ImportDeclaration, ParseResult } from 'oxc-parser';
+import MagicString from 'magic-string';
 
 import type { ManifestJson, UnpluginLinkjsOptions } from './types';
 import { isRegExp } from 'util/types';
@@ -22,16 +25,22 @@ function isExternal(finalExternal: any[], dependenceName: string): boolean {
 }
 
 export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {}) => {
-  const { customFields = {} } = options;
+  const { customFields = {}, shared = {} } = options;
 
   let external: string[] = [];
+  const sharedPkgs = Object.keys(shared);
 
   return {
     name: 'unplugin-linkjs',
     enforce: 'post',
 
-    buildEnd() {
-      const outDir = this.outputOptions.dir;
+    generateBundle(outputOptions: { dir?: string }) {
+      const outDir = outputOptions.dir;
+      if (!outDir) {
+        console.warn('outputOptions.dir is not available');
+        return;
+      }
+
       const packageJsonPath = resolve(process.cwd(), 'package.json');
 
       if (!existsSync(packageJsonPath)) {
@@ -52,10 +61,8 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
 
         const externalDeps: Record<string, string> = {};
 
-        // 再次尝试获取 external 配置，确保能获取到最新的配置
         let finalExternal: string[] = [...external];
 
-        // 只包含被 external 排除的依赖
         if (finalExternal.length > 0) {
           const allDeps: Record<string, string> = {};
 
@@ -67,12 +74,6 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
             Object.assign(allDeps, packageJson.peerDependencies);
           }
 
-          // 过滤出在 external 中的依赖
-          finalExternal.forEach((dep) => {
-            if (allDeps[dep]) {
-              externalDeps[dep] = allDeps[dep];
-            }
-          });
           const deps = Object.keys(allDeps);
           deps.forEach((dep) => {
             if (isExternal(finalExternal, dep)) {
@@ -104,9 +105,105 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
       }
     },
     rolldown: {
+      transform(code: string, id: string) {
+        if (id.includes('css')) {
+          return null;
+        }
+
+        const supportedExtensions = ['.js', '.jsx', '.ts', '.tsx', '.vue'];
+        
+        const isSupportedFile = supportedExtensions.some(ext => id.endsWith(ext));
+        
+        if (!isSupportedFile) {
+          return null;
+        }
+
+        const packagesInCode = sharedPkgs.filter((pkg) => new RegExp(`from\\s+['"]${pkg}['"]`).test(code));
+        const hasLinkjsImport = new RegExp(`from\\s+['"]linkjs['"]`).test(code);
+        
+        if (packagesInCode.length === 0 && !hasLinkjsImport) {
+          return null;
+        }
+
+        const ast: ParseResult = parseSync(id, code, {
+          sourceType: 'module'
+        });
+
+        const magicString = new MagicString(code);
+        let hasModifications = false;
+
+        const transformImportDeclaration = (node: ImportDeclaration) => {
+          const source = node.source.value;
+
+          const isLinkjs = source === 'linkjs';
+          const isSharedPkg = sharedPkgs.includes(source);
+
+          if (!isLinkjs && !isSharedPkg) {
+            return;
+          }
+
+          if (node.specifiers.length === 0) {
+            return;
+          }
+
+          const importSpecifiers = node.specifiers
+            .filter((spec): spec is Extract<typeof spec, { type: 'ImportSpecifier' }> => 
+              spec.type === 'ImportSpecifier'
+            )
+            .map((spec) => {
+              const imported = spec.imported.type === 'Identifier' ? spec.imported.name : spec.imported.value;
+              const local = spec.local.name;
+              return imported === local ? local : `${imported}: ${local}`;
+            })
+            .join(', ');
+
+          if (!importSpecifiers) {
+            return;
+          }
+
+          const newCode = isLinkjs 
+            ? `const { ${importSpecifiers} } = $linkjs;`
+            : `const { ${importSpecifiers} } = $linkjs.getShare('${source}');`;
+          
+          magicString.overwrite(node.start, node.end, newCode);
+          hasModifications = true;
+        };
+
+        const walk = (node: Node) => {
+          if (node.type === 'ImportDeclaration') {
+            transformImportDeclaration(node);
+          }
+
+          if ('body' in node && Array.isArray(node.body)) {
+            node.body.forEach(walk);
+          }
+        };
+
+        walk(ast.program);
+
+        if (!hasModifications) {
+          return null;
+        }
+
+        return {
+          code: magicString.toString(),
+          map: magicString.generateMap({ hires: true }),
+        };
+      },
       options(options: any) {
         external.push(...(options.external || []));
+        // console.log(options);
+        // console.log(this)
         return options;
+      },
+      generateBundle(outputOptions, bundle) {
+        // console.log('generateBundle outputOptions', outputOptions);
+        // console.log('generateBundle bundle', bundle);
+      },
+      renderStart(outputOptions, inputOptions) {
+        // console.log('renderStart context', this);
+        // console.log('renderStart outputOptions', outputOptions);
+        // console.log('renderStart inputOptions', inputOptions);
       },
     },
   };

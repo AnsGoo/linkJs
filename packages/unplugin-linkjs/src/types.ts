@@ -10,4 +10,5 @@ export interface ManifestJson {
 export interface UnpluginLinkjsOptions {
   includeExternalOnly?: boolean;
   customFields?: Record<string, any>;
+  shared?: Record<string, any>;
 }
