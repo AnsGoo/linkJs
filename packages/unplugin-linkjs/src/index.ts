@@ -25,9 +25,7 @@ function isExternal(finalExternal: any[], dependenceName: string): boolean {
 }
 
 export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {}) => {
-  const { customFields = {}, shared = {} } = options;
-
-  let external: string[] = [];
+  const { extensions = ['.js', '.jsx', '.ts', '.tsx', '.vue'], shared = {} } = options;
   const sharedPkgs = Object.keys(shared);
 
   return {
@@ -37,14 +35,14 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
     rolldown: {
       buildEnd() {
         const moduleIds = this.getModuleIds();
-        const expose:string[] = [];
+        const exposes: string[] = [];
         for (const moduleId of moduleIds) {
           const module = this.getModuleInfo(moduleId);
-          if(module?.isEntry && !moduleId.endsWith('.d.ts')) {
-            expose.push(...(module.exports || []))
+          if (module?.isEntry && !moduleId.endsWith('.d.ts')) {
+            exposes.push(...(module.exports || []));
           }
         }
-        
+
         const packageJsonPath = resolve(process.cwd(), 'package.json');
         const outDir = (this as any).outputOptions?.dir;
         if (!existsSync(packageJsonPath)) {
@@ -61,7 +59,7 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
             version: packageJson.version || '',
             types: packageJson.types || packageJson.typings,
             exports: packageJson.exports,
-            expose: [...new Set(expose)],
+            exposes: [...new Set(exposes)],
           };
 
           const externalDeps: Record<string, string> = {};
@@ -111,9 +109,8 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
         if (id.includes('css')) {
           return null;
         }
-        const supportedExtensions = ['.js', '.jsx', '.ts', '.tsx', '.vue'];
-
-        const isSupportedFile = supportedExtensions.some((ext) => id.endsWith(ext));
+        
+        const isSupportedFile = extensions.some((ext) => id.endsWith(ext));
 
         if (!isSupportedFile) {
           return null;

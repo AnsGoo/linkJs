@@ -28,7 +28,6 @@ export default defineConfig({
     }),
     unpluginLinkjsRollowPlugin({
       shared: {
-        // linkjs: '$linkjs',
         vue: 'Vue',
       },
     }),
