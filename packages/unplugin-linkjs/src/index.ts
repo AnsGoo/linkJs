@@ -34,15 +34,9 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
     name: 'unplugin-linkjs',
     enforce: 'post',
 
-    generateBundle(outputOptions: { dir?: string }) {
-      const outDir = outputOptions.dir;
-      if (!outDir) {
-        console.warn('outputOptions.dir is not available');
-        return;
-      }
-
+    buildEnd() {
       const packageJsonPath = resolve(process.cwd(), 'package.json');
-
+      const outDir = this.outputOptions.dir;
       if (!existsSync(packageJsonPath)) {
         console.warn('package.json not found in current working directory');
         return;
@@ -73,6 +67,11 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
           if (packageJson.peerDependencies) {
             Object.assign(allDeps, packageJson.peerDependencies);
           }
+          finalExternal.forEach((dep) => {
+            if (allDeps[dep]) {
+              externalDeps[dep] = allDeps[dep];
+            }
+          });
 
           const deps = Object.keys(allDeps);
           deps.forEach((dep) => {
@@ -97,7 +96,7 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
         if (!existsSync(outputDir)) {
           mkdirSync(outputDir, { recursive: true });
         }
-
+        console.log(outputPath);
         writeFileSync(outputPath, JSON.stringify(manifest, null, 2), 'utf-8');
       } catch (error) {
         console.error(`Failed to generate manifest.json: ${error}`);
