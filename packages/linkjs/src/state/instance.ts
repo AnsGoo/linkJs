@@ -60,6 +60,7 @@ if (!linkInstance) {
     sharedMap: new Map<string, Map<string, Module>>(),
     remotes: new Map<string, RemoteInfo>(),
     plugin: {} as RuntimePlugin,
+    shareStrategy: 'loaded-first',
 
     loadRegistry(registryOptions: RegistryOption[]): void {
       registryOptions.forEach((option) => {
@@ -82,6 +83,7 @@ if (!linkInstance) {
       });
     },
     getShare: getShare,
+
   };
   // @ts-ignore
   globalThis[__LINKJS_INSTANCE__] = linkInstance;

@@ -5,15 +5,6 @@ import { VersionComparator } from './version-comparator';
 
 export type { ShareOption };
 
-/**
- * 将共享模块绑定到全局对象上
- * @param name - 模块名称
- * @param libModule - 模块对象
- */
-function bindShare(name: string, libModule: Module) {
-  // @ts-ignore
-  // globalThis[name] = libModule;
-}
 
 /**
  * 注册共享模块配置
@@ -143,11 +134,6 @@ async function loadShare(
     }
     const versionKey = `${name}@${shareInfo.version || '0.0.0'}`;
     loadedModules.set(versionKey, libModule);
-    if (shareInfo.alias) {
-      bindShare(shareInfo.alias, libModule);
-    } else {
-      bindShare(name, libModule);
-    }
     return libModule;
   }
 

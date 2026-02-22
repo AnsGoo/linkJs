@@ -14,13 +14,14 @@ function getInstance() {
 }
 
 interface UserOption {
+  shareStrategy?: 'version-first' | 'loaded-first';
   remotes?: Array<RmoteConfig>;
   shares?: Record<string, ShareOption>;
   plugin?: RuntimePlugin;
 }
 
 function createInstance(options: UserOption) {
-  const { remotes = [], shares = {}, plugin } = options;
+  const { shareStrategy = 'version-first', remotes = [], shares = {}, plugin } = options;
   remotes.forEach((remote) => {
     registerRemote(remote);
   });
@@ -28,6 +29,7 @@ function createInstance(options: UserOption) {
   if (plugin) {
     registerPlugin(plugin);
   }
+  linkInstance.shareStrategy = shareStrategy;
   return linkInstance;
 }
 
