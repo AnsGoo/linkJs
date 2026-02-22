@@ -5,7 +5,6 @@ import { VersionComparator } from './version-comparator';
 
 export type { ShareOption };
 
-
 /**
  * 注册共享模块配置
  * @param options - 共享模块选项的键值对
@@ -30,6 +29,118 @@ function registerShare(options: Record<string, ShareOption>) {
     }
     scopeMap.set(name, [option]);
   }
+}
+
+async function loadModule(shareInfo: any): Promise<Module> {
+  let libModule: Module = shareInfo.lib;
+  if (typeof shareInfo.lib === 'function') {
+    const libload = await shareInfo.lib();
+    if (libload instanceof Promise) {
+      libModule = await libload;
+    } else {
+      libModule = libload;
+    }
+  }
+  return libModule;
+}
+
+async function loadAndCacheModule(name: string, shareInfo: any, loadedModules: Map<string, Module>): Promise<Module> {
+  const libModule = await loadModule(shareInfo);
+  const versionKey = `${name}@${shareInfo.version || '0.0.0'}`;
+  loadedModules.set(versionKey, libModule);
+  return libModule;
+}
+
+async function loadShareVersionFirst(
+  name: string,
+  version: string | undefined,
+  shareInfos: any[],
+  loadedModules: Map<string, Module>,
+  loadedVersions: Array<{ version: string; module: any }>,
+): Promise<Module | null> {
+  if (!version) {
+    if (loadedVersions.length > 0) {
+      const latestLoaded = VersionComparator.findLatestVersion(loadedVersions);
+      return Promise.resolve(latestLoaded?.module || null);
+    }
+
+    const latestShare = VersionComparator.findLatestVersion(
+      shareInfos.map((info: any) => ({ version: info.version || '0.0.0', module: info })),
+    );
+
+    if (latestShare) {
+      const shareInfo = latestShare.module;
+      return loadAndCacheModule(name, shareInfo, loadedModules);
+    }
+
+    return Promise.resolve(null);
+  }
+
+  const loadedMatch = VersionComparator.findBestMatch(version, loadedVersions, []);
+
+  if (loadedMatch) {
+    return Promise.resolve(loadedMatch.module);
+  }
+
+  const availableVersions = shareInfos.map((info: any) => ({
+    version: info.version || '0.0.0',
+    module: info,
+  }));
+
+  const bestMatch = VersionComparator.findBestMatch(version, [], availableVersions);
+
+  if (bestMatch) {
+    const shareInfo = bestMatch.module;
+    return loadAndCacheModule(name, shareInfo, loadedModules);
+  }
+
+  return Promise.resolve(null);
+}
+
+async function loadShareLoadedFirst(
+  name: string,
+  version: string | undefined,
+  shareInfos: any[],
+  loadedModules: Map<string, Module>,
+  loadedVersions: Array<{ version: string; module: any }>,
+): Promise<Module | null> {
+  if (!version) {
+    if (loadedVersions.length > 0) {
+      const latestLoaded = VersionComparator.findLatestVersion(loadedVersions);
+      return Promise.resolve(latestLoaded?.module || null);
+    }
+
+    const latestShare = VersionComparator.findLatestVersion(
+      shareInfos.map((info: any) => ({ version: info.version || '0.0.0', module: info })),
+    );
+
+    if (latestShare) {
+      const shareInfo = latestShare.module;
+      return loadAndCacheModule(name, shareInfo, loadedModules);
+    }
+
+    return Promise.resolve(null);
+  }
+
+  const loadedMatch = VersionComparator.findBestMatch(version, loadedVersions, []);
+
+  if (loadedMatch) {
+    return Promise.resolve(loadedMatch.module);
+  }
+
+  const availableVersions = shareInfos.map((info: any) => ({
+    version: info.version || '0.0.0',
+    module: info,
+  }));
+
+  const bestMatch = VersionComparator.findBestMatch(version, [], availableVersions);
+
+  if (bestMatch) {
+    const shareInfo = bestMatch.module;
+    return loadAndCacheModule(name, shareInfo, loadedModules);
+  }
+
+  return Promise.resolve(null);
 }
 
 /**
@@ -79,65 +190,47 @@ async function loadShare(
     }
   });
 
+  const strategy = instance.shareStrategy || 'loaded-first';
+
+  if (strategy === 'version-first') {
+    return loadShareVersionFirst(name, version, shareInfos, loadedModules, loadedVersions);
+  } else {
+    return loadShareLoadedFirst(name, version, shareInfos, loadedModules, loadedVersions);
+  }
+}
+
+function getShareVersionFirst(
+  version: string | undefined,
+  loadedVersions: Array<{ version: string; module: any }>,
+): Module | null {
   if (!version) {
     if (loadedVersions.length > 0) {
       const latestLoaded = VersionComparator.findLatestVersion(loadedVersions);
-      return Promise.resolve(latestLoaded?.module || null);
+      return latestLoaded?.module || null;
     }
-
-    const latestShare = VersionComparator.findLatestVersion(
-      shareInfos.map((info: any) => ({ version: info.version || '0.0.0', module: info })),
-    );
-
-    if (latestShare) {
-      const shareInfo = latestShare.module;
-      let libModule: Module = shareInfo.lib;
-      if (typeof shareInfo.lib === 'function') {
-        const libload = await shareInfo.lib();
-        if (libload instanceof Promise) {
-          libModule = await libload;
-        } else {
-          libModule = libload;
-        }
-      }
-      const versionKey = `${name}@${shareInfo.version || '0.0.0'}`;
-      loadedModules.set(versionKey, libModule);
-      return libModule;
-    }
-
-    return Promise.resolve(null);
+    return null;
   }
 
-  const loadedMatch = VersionComparator.findBestMatch(version, loadedVersions, []);
+  const bestMatch = VersionComparator.findBestMatch(version, loadedVersions, []);
 
-  if (loadedMatch) {
-    return Promise.resolve(loadedMatch.module);
-  }
+  return bestMatch?.module || null;
+}
 
-  const availableVersions = shareInfos.map((info: any) => ({
-    version: info.version || '0.0.0',
-    module: info,
-  }));
-
-  const bestMatch = VersionComparator.findBestMatch(version, [], availableVersions);
-
-  if (bestMatch) {
-    const shareInfo = bestMatch.module;
-    let libModule: Module = shareInfo.lib;
-    if (typeof shareInfo.lib === 'function') {
-      const libload = await shareInfo.lib();
-      if (libload instanceof Promise) {
-        libModule = await libload;
-      } else {
-        libModule = libload;
-      }
+function getShareLoadedFirst(
+  version: string | undefined,
+  loadedVersions: Array<{ version: string; module: any }>,
+): Module | null {
+  if (!version) {
+    if (loadedVersions.length > 0) {
+      const latestLoaded = VersionComparator.findLatestVersion(loadedVersions);
+      return latestLoaded?.module || null;
     }
-    const versionKey = `${name}@${shareInfo.version || '0.0.0'}`;
-    loadedModules.set(versionKey, libModule);
-    return libModule;
+    return null;
   }
 
-  return Promise.resolve(null);
+  const bestMatch = VersionComparator.findBestMatch(version, loadedVersions, []);
+
+  return bestMatch?.module || null;
 }
 
 /**
@@ -175,17 +268,13 @@ function getShare(
     }
   });
 
-  if (!version) {
-    if (loadedVersions.length > 0) {
-      const latestLoaded = VersionComparator.findLatestVersion(loadedVersions);
-      return latestLoaded?.module || null;
-    }
-    return null;
+  const strategy = instance.shareStrategy || 'loaded-first';
+
+  if (strategy === 'version-first') {
+    return getShareVersionFirst(version, loadedVersions);
+  } else {
+    return getShareLoadedFirst(version, loadedVersions);
   }
-
-  const bestMatch = VersionComparator.findBestMatch(version, loadedVersions, []);
-
-  return bestMatch?.module || null;
 }
 
 export { registerShare, loadShare, getShare };
