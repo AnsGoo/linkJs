@@ -39,9 +39,12 @@
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "pnpm run build"
   },
+  "dependencies": {
+    "semver": "^7.7.4"
+  },
   "devDependencies": {
     "@types/node": "^25.0.3",
-    "bumpp": "^10.3.2",
+    "@types/semver": "^7.7.1",
     "tsdown": "^0.18.1",
     "typescript": "^5.9.3",
     "vitest": "^4.0.16"

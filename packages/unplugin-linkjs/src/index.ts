@@ -24,7 +24,7 @@ function isExternal(finalExternal: any[], dependenceName: string): boolean {
 }
 
 export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {}) => {
-  const { extensions = ['.js', '.jsx', '.ts', '.tsx', '.vue'], shared = {} } = options;
+  const { extensions = ['.js', '.jsx', '.ts', '.tsx', '.vue'], shared = {}, isReplaceLinkjs = true } = options;
   const sharedPkgs = Object.keys(shared);
 
   return {
@@ -108,7 +108,7 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
         if (id.includes('css')) {
           return null;
         }
-        
+
         const isSupportedFile = extensions.some((ext) => id.endsWith(ext));
 
         if (!isSupportedFile) {
@@ -132,7 +132,7 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
         const transformImportDeclaration = (node: ImportDeclaration) => {
           const source = node.source.value;
 
-          const isLinkjs = source === 'linkjs';
+          const isLinkjs = source === 'linkjs' && isReplaceLinkjs;
           const isSharedPkg = sharedPkgs.includes(source);
 
           if (!isLinkjs && !isSharedPkg) {

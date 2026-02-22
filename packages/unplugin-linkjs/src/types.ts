@@ -10,4 +10,6 @@ export interface ManifestJson {
 export interface UnpluginLinkjsOptions {
   extensions?: string[];
   shared?: Record<string, any>;
+  isReplaceLinkjs?: boolean;
+
 }
