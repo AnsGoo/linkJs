@@ -2,7 +2,7 @@ import { build } from 'rolldown';
 import { updateManifestFile } from './build-manifest';
 import path from 'path';
 
-async function generateSharedFileContent(sharedConfig: Record<string, any>): Promise<string> {
+export async function generateSharedFileContent(sharedConfig: Record<string, any>): Promise<string> {
   const imports: string[] = [];
   const exports: string[] = [];
 
@@ -28,9 +28,9 @@ ${exports.join('\n')}
   return entryContent;
 }
 
-export async function buildSharedFile(sharedConfig: Record<string, any>, outDir: string): Promise<void> {
+export async function buildSharedFile(sharedConfig: Record<string, any>, outDir: string): Promise<Record<string, string>> {
   if (Object.keys(sharedConfig).length === 0) {
-    return;
+    return {};
   }
 
   const entryContent = await generateSharedFileContent(sharedConfig);
@@ -56,17 +56,19 @@ export async function buildSharedFile(sharedConfig: Record<string, any>, outDir:
             }
             return null;
           },
-          generateBundle(options, bundle) {
+          writeBundle(options, bundle) {
+            console.log('writeBundle called in build-shared');
             const bundleKeys = Object.keys(bundle);
-            const outDir = (this as any).outputOptions?.dir;
-            const baseDir = outDir.replace(process.cwd(), '');
+            const outDir = (this as any).outputOptions?.dir || 'dist';
+            const absoluteOutDir = path.resolve(process.cwd(), outDir);
+            const baseDir = absoluteOutDir.replace(process.cwd(), '');
+            console.log('writeBundle absoluteOutDir:', absoluteOutDir);
             bundleKeys.forEach((key) => {
               const bundleItem = bundle[key];
               if (bundleItem.type === 'chunk' && bundleItem.isEntry) {
                 entry[key.endsWith('shared.js') ? 'shared' : 'js'] = path.join(baseDir, key);
               }
             });
-            updateManifestFile(outDir, { entry });
           },
         },
       ],
@@ -79,6 +81,7 @@ export async function buildSharedFile(sharedConfig: Record<string, any>, outDir:
       },
       platform: 'browser',
     });
+    return entry;
   } catch (error) {
     console.error(`Failed to build shared.js: ${error}`);
     throw error;

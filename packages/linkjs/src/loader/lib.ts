@@ -28,11 +28,11 @@ function loadRemoteLib<Module>(
       remoteInfo = await plugin.beforeLoadRemote({ ...remoteInfo });
     }
     const host = options?.host || remoteInfo?.host || `${location.protocol}//${location.host}`;
-    const entryName = options?.entryName || remoteInfo?.entry;
+    const entryName = options?.entryName || remoteInfo?.entry.js;
     const jsUrl = `${host}${entryName}`;
 
-    const dependencies = remoteInfo?.dependencies || {};
-    const depNames = Object.keys(dependencies);
+    const shared = remoteInfo?.shared || {};
+    const depNames = Object.keys(shared);
     await Promise.all(depNames.map((dep) => loadShare(dep)));
     return import(jsUrl)
       .then((_module) => {

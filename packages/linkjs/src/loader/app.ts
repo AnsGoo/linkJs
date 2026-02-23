@@ -28,7 +28,7 @@ function loadApp<Module>(
     const remoteInfo = linkInstance.remotes.get(appName);
     const host = options?.host || remoteInfo?.host || `${location.protocol}//${location.host}`;
 
-    const preload = options?.preload || remoteInfo?.dependencies || {};
+    const preload = options?.preload || remoteInfo?.shared || {};
     Promise.all(
       Object.keys(preload).map((libName) => {
         return loadShare(libName);

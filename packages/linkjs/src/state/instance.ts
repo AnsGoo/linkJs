@@ -12,7 +12,7 @@ export interface RemoteBase {
   entry: string;
   host?: string;
   type?: 'app' | 'lib';
-  dependencies?: Record<string, string>;
+  shared?: Record<string, Omit<ShareInfo, 'name' | 'lib' | 'status'>>;
   version?: string;
   expose?: Record<string, any>;
   status: keyof typeof LOAD_STATUS;

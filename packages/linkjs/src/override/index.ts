@@ -44,7 +44,7 @@ async function loadOverride(option: { name: string; host: string }) {
   }
   remote.host = host;
   remote.version = remoteInfo.version;
-  remote.dependencies = remoteInfo.dependencies;
+  remote.shared = remoteInfo.shared;
   remote.status = LOAD_STATUS.LOADED;
   console.log(`【Loaded override】: [${name}] in  ${host}`);
   return remoteInfo;

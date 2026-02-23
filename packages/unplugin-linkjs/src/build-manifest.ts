@@ -84,7 +84,7 @@ function generateManifestFile(outDir: string, exposes: string[], shared: Record<
         singleton: depConfig.singleton ?? true,
       };
     }
-
+    console.log('outputPath', outputPath);
     writeFileSync(outputPath, JSON.stringify(manifest, null, 2), 'utf-8');
   } catch (error) {
     console.error(`Failed to generate manifest.json: ${error}`);

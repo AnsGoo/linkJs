@@ -2,11 +2,12 @@ import { createUnplugin } from 'unplugin';
 import type { Node, ImportDeclaration } from 'oxc-parser';
 import MagicString from 'magic-string';
 
-import { buildSharedFile } from './build-shared';
+import { generateSharedFileContent } from './build-shared';
 import type { ManifestJson, UnpluginLinkjsOptions } from './types';
 import { generateManifestFile, updateManifestFile } from './build-manifest';
-import { resolve } from 'dns';
 import path from 'path';
+import { writeFileSync, mkdirSync, existsSync } from 'fs';
+import { dirname } from 'path';
 
 export type { ManifestJson, UnpluginLinkjsOptions };
 
@@ -20,7 +21,8 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
 
     rolldown: {
       buildEnd() {
-        console.log('buildEnd');
+      },
+      async writeBundle(options, bundle) {
         const moduleIds = this.getModuleIds();
         const exposes: string[] = [];
         for (const moduleId of moduleIds) {
@@ -29,11 +31,34 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
             exposes.push(...(module.exports || []));
           }
         }
-        const outDir = (this as any).outputOptions?.dir;
-        generateManifestFile(outDir, exposes, shared);
+        
+        const bundleKeys = Object.keys(bundle);
+        const outDir = (this as any).outputOptions?.dir || 'dist';
+        const absoluteOutDir = path.resolve(process.cwd(), outDir);
+        const baseDir = absoluteOutDir.replace(process.cwd(), '');
+        
+        generateManifestFile(absoluteOutDir, exposes, shared);
+        
         if (Object.keys(shared).length > 0) {
-          buildSharedFile(shared, outDir);
+          const sharedContent = await generateSharedFileContent(shared);
+          const sharedPath = path.resolve(absoluteOutDir, 'shared.js');
+          if (!existsSync(absoluteOutDir)) {
+            mkdirSync(absoluteOutDir, { recursive: true });
+          }
+          writeFileSync(sharedPath, sharedContent, 'utf-8');
+          entry['shared'] = path.join(baseDir, 'shared.js');
         }
+        
+        bundleKeys.forEach((key) => {
+          const bundleItem = bundle[key];
+          if (bundleItem.type === 'chunk' && bundleItem.isEntry) {
+            entry[key.endsWith('.d.ts') ? 'types' : 'js'] = path.join(baseDir, key);
+          } else if (bundleItem.type === 'asset') {
+            entry[key.endsWith('.css') ? 'css' : 'html'] = path.join(baseDir, key);
+          }
+        });
+
+        updateManifestFile(absoluteOutDir, { entry });
       },
       transform(code: string, id: string, meta: any) {
         if (id.includes('css')) {
@@ -119,21 +144,6 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
       options(options: any) {
         options['experimental'] = { nativeMagicString: true };
         return options;
-      },
-      generateBundle(options, bundle) {
-        const bundleKeys = Object.keys(bundle);
-        const outDir = (this as any).outputOptions?.dir;
-        const baseDir = outDir.replace(process.cwd(), '');
-        bundleKeys.forEach((key) => {
-          const bundleItem = bundle[key];
-          if (bundleItem.type === 'chunk' && bundleItem.isEntry) {
-            entry[key.endsWith('.d.ts') ? 'types' : 'js'] = path.join(baseDir, key);
-          } else if (bundleItem.type === 'asset') {
-            entry['css'] = path.join(baseDir, key);
-          }
-        });
-
-        updateManifestFile(outDir, { entry });
       },
     },
   };
