@@ -7,7 +7,6 @@ import type { ManifestJson, UnpluginLinkjsOptions } from './types';
 import { generateManifestFile, updateManifestFile } from './build-manifest';
 import path from 'path';
 import { writeFileSync, mkdirSync, existsSync } from 'fs';
-import { dirname } from 'path';
 
 export type { ManifestJson, UnpluginLinkjsOptions };
 
@@ -20,8 +19,7 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
     enforce: 'post',
 
     rolldown: {
-      buildEnd() {
-      },
+      buildEnd() {},
       async writeBundle(options, bundle) {
         const moduleIds = this.getModuleIds();
         const exposes: string[] = [];
@@ -31,14 +29,14 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
             exposes.push(...(module.exports || []));
           }
         }
-        
+
         const bundleKeys = Object.keys(bundle);
         const outDir = (this as any).outputOptions?.dir || 'dist';
         const absoluteOutDir = path.resolve(process.cwd(), outDir);
         const baseDir = absoluteOutDir.replace(process.cwd(), '');
-        
+
         generateManifestFile(absoluteOutDir, exposes, shared);
-        
+
         if (Object.keys(shared).length > 0) {
           const sharedContent = await generateSharedFileContent(shared);
           const sharedPath = path.resolve(absoluteOutDir, 'shared.js');
@@ -48,7 +46,7 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
           writeFileSync(sharedPath, sharedContent, 'utf-8');
           entry['shared'] = path.join(baseDir, 'shared.js');
         }
-        
+
         bundleKeys.forEach((key) => {
           const bundleItem = bundle[key];
           if (bundleItem.type === 'chunk' && bundleItem.isEntry) {
