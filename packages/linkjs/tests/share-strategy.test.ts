@@ -15,7 +15,7 @@ describe('Share Strategy', () => {
 
     test('loadShare should return loaded module when no version specified', async () => {
       registerShare({
-        'lodash': {
+        lodash: {
           version: '4.17.21',
           lib: { name: 'lodash-4.17.21' },
         },
@@ -48,7 +48,7 @@ describe('Share Strategy', () => {
 
     test('loadShare should return loaded module when version matches loaded version', async () => {
       registerShare({
-        'lodash': {
+        lodash: {
           version: '4.17.21',
           lib: { name: 'lodash-4.17.21' },
         },
@@ -81,7 +81,7 @@ describe('Share Strategy', () => {
 
     test('loadShare should return null when version does not match any available version', async () => {
       registerShare({
-        'lodash': {
+        lodash: {
           version: '4.17.21',
           lib: { name: 'lodash-4.17.21' },
         },
@@ -93,7 +93,7 @@ describe('Share Strategy', () => {
 
     test('getShare should return null when no version specified and no loaded version', () => {
       registerShare({
-        'lodash': {
+        lodash: {
           version: '4.17.21',
           lib: { name: 'lodash-4.17.21' },
         },
@@ -105,7 +105,7 @@ describe('Share Strategy', () => {
 
     test('getShare should return loaded module when no version specified', async () => {
       registerShare({
-        'lodash': {
+        lodash: {
           version: '4.17.21',
           lib: { name: 'lodash-4.17.21' },
         },
@@ -119,7 +119,7 @@ describe('Share Strategy', () => {
 
     test('getShare should return null when version does not match loaded version', async () => {
       registerShare({
-        'lodash': {
+        lodash: {
           version: '4.17.21',
           lib: { name: 'lodash-4.17.21' },
         },
@@ -139,7 +139,7 @@ describe('Share Strategy', () => {
 
     test('loadShare should return loaded module when no version specified', async () => {
       registerShare({
-        'lodash': {
+        lodash: {
           version: '4.17.21',
           lib: { name: 'lodash-4.17.21' },
         },
@@ -172,7 +172,7 @@ describe('Share Strategy', () => {
 
     test('loadShare should return loaded module when version matches loaded version', async () => {
       registerShare({
-        'lodash': {
+        lodash: {
           version: '4.17.21',
           lib: { name: 'lodash-4.17.21' },
         },
@@ -205,7 +205,7 @@ describe('Share Strategy', () => {
 
     test('loadShare should return null when version does not match any available version', async () => {
       registerShare({
-        'lodash': {
+        lodash: {
           version: '4.17.21',
           lib: { name: 'lodash-4.17.21' },
         },
@@ -217,7 +217,7 @@ describe('Share Strategy', () => {
 
     test('getShare should return null when no version specified and no loaded version', () => {
       registerShare({
-        'lodash': {
+        lodash: {
           version: '4.17.21',
           lib: { name: 'lodash-4.17.21' },
         },
@@ -229,7 +229,7 @@ describe('Share Strategy', () => {
 
     test('getShare should return loaded module when no version specified', async () => {
       registerShare({
-        'lodash': {
+        lodash: {
           version: '4.17.21',
           lib: { name: 'lodash-4.17.21' },
         },
@@ -243,7 +243,7 @@ describe('Share Strategy', () => {
 
     test('getShare should return null when version does not match loaded version', async () => {
       registerShare({
-        'lodash': {
+        lodash: {
           version: '4.17.21',
           lib: { name: 'lodash-4.17.21' },
         },
@@ -261,7 +261,7 @@ describe('Share Strategy', () => {
       linkInstance.shareStrategy = 'version-first';
 
       registerShare({
-        'lodash': {
+        lodash: {
           version: '4.17.21',
           lib: { name: 'lodash-app1' },
           scope: 'app1',
@@ -269,7 +269,7 @@ describe('Share Strategy', () => {
       });
 
       registerShare({
-        'lodash': {
+        lodash: {
           version: '4.17.20',
           lib: { name: 'lodash-app2' },
           scope: 'app2',
@@ -290,7 +290,7 @@ describe('Share Strategy', () => {
       linkInstance.shareStrategy = 'version-first';
 
       registerShare({
-        'lodash': {
+        lodash: {
           version: '4.17.21',
           lib: async () => {
             return { name: 'lodash-async' };
@@ -307,7 +307,7 @@ describe('Share Strategy', () => {
 
       let loadCount = 0;
       registerShare({
-        'lodash': {
+        lodash: {
           version: '4.17.21',
           lib: async () => {
             loadCount++;

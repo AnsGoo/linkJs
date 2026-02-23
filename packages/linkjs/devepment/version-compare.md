@@ -40,11 +40,11 @@
 
 ```typescript
 interface ShareOption {
-  name: string;           // 共享模块名称
-  version?: string;        // 模块版本号
-  lib: Module | (() => Promise<Module>) | (() => Module);  // 模块内容或加载函数
-  scope?: string;         // 作用域，默认为 'global'
-  singleton?: boolean;    // 是否为单例模式
+  name: string; // 共享模块名称
+  version?: string; // 模块版本号
+  lib: Module | (() => Promise<Module>) | (() => Module); // 模块内容或加载函数
+  scope?: string; // 作用域，默认为 'global'
+  singleton?: boolean; // 是否为单例模式
 }
 ```
 
@@ -52,7 +52,7 @@ interface ShareOption {
 
 ```typescript
 interface ShareConfig {
-  strategy?: 'version-first' | 'loaded-first';  // 共享策略，默认为 'version-first'
+  strategy?: 'version-first' | 'loaded-first'; // 共享策略，默认为 'version-first'
 }
 ```
 
@@ -76,11 +76,11 @@ import { registerShare, loadShare, getShare } from 'linkjs';
 
 // 注册共享模块
 registerShare({
-  'lodash': {
+  lodash: {
     version: '4.17.21',
     lib: () => import('lodash'),
   },
-  'lodash': {
+  lodash: {
     version: '4.17.20',
     lib: () => import('lodash'),
   },
@@ -108,7 +108,7 @@ const loadedLodash = getShare('lodash', { version: '4.17.21' });
 ```typescript
 // 在不同作用域中注册和加载模块
 registerShare({
-  'lodash': {
+  lodash: {
     version: '4.17.21',
     lib: () => import('lodash'),
     scope: 'app1',
@@ -124,7 +124,7 @@ const lodash = await loadShare('lodash', { scope: 'app1' });
 ```typescript
 // 使用函数动态加载模块
 registerShare({
-  'react': {
+  react: {
     version: '18.2.0',
     lib: async () => {
       const React = await import('react');
@@ -144,9 +144,9 @@ const react = await loadShare('react');
 
 ```typescript
 const bestMatch = VersionComparator.findBestMatch(
-  '^1.2.0',           // 版本范围
-  loadedVersions,          // 已加载的版本列表
-  availableVersions        // 可用的版本列表
+  '^1.2.0', // 版本范围
+  loadedVersions, // 已加载的版本列表
+  availableVersions, // 可用的版本列表
 );
 ```
 

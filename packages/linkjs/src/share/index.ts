@@ -199,10 +199,7 @@ async function loadShare(
   }
 }
 
-function getShareVersionFirst(
-  version: string | undefined,
-  loadedVersions: Array<{ version: string; module: any }>,
-): Module | null {
+function getShareVersionFirst(version: string | undefined, loadedVersions: Array<{ version: string; module: any }>): Module | null {
   if (!version) {
     if (loadedVersions.length > 0) {
       const latestLoaded = VersionComparator.findLatestVersion(loadedVersions);
@@ -216,10 +213,7 @@ function getShareVersionFirst(
   return bestMatch?.module || null;
 }
 
-function getShareLoadedFirst(
-  version: string | undefined,
-  loadedVersions: Array<{ version: string; module: any }>,
-): Module | null {
+function getShareLoadedFirst(version: string | undefined, loadedVersions: Array<{ version: string; module: any }>): Module | null {
   if (!version) {
     if (loadedVersions.length > 0) {
       const latestLoaded = VersionComparator.findLatestVersion(loadedVersions);

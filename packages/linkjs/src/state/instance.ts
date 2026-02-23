@@ -83,7 +83,6 @@ if (!linkInstance) {
       });
     },
     getShare: getShare,
-
   };
   // @ts-ignore
   globalThis[__LINKJS_INSTANCE__] = linkInstance;
