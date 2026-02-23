@@ -1,7 +1,19 @@
 {
   "name": "remote",
   "version": "0.0.0",
-  "dependencies": {
-    "vue": "^3.5.27"
+  "description": "",
+  "entry": {
+    "shared": "/dist/shared.js",
+    "js": "/dist/assets/index-BdlWu8bz.js",
+    "css": "/dist/assets/style-C82ZCTyC.css",
+    "html": "/dist/index.html"
+  },
+  "expose": [],
+  "shared": {
+    "vue": {
+      "version": "^3.5.27",
+      "scope": "global",
+      "singleton": true
+    }
   }
 }
