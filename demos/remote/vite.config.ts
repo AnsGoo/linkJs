@@ -10,7 +10,11 @@ export default defineConfig({
     vue(),
     unpluginLinkjsRollowPlugin({
       shared: {
-        vue: 'Vue',
+        vue: {
+          lib: () => import('vue'),
+          scope: 'global',
+          singleton: true,
+        },
       },
     }),
   ],

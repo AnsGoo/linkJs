@@ -1,38 +1,26 @@
 import { createUnplugin } from 'unplugin';
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
-import { resolve, dirname } from 'path';
 import type { Node, ImportDeclaration } from 'oxc-parser';
 import MagicString from 'magic-string';
 
+import { buildSharedFile } from './build-shared';
 import type { ManifestJson, UnpluginLinkjsOptions } from './types';
-import { isRegExp } from 'util/types';
+import { generateManifestFile, updateManifestFile } from './build-manifest';
+import { resolve } from 'dns';
+import path from 'path';
 
-function isExternal(finalExternal: any[], dependenceName: string): boolean {
-  for (const item of finalExternal) {
-    if (typeof item === 'string') {
-      return item === dependenceName;
-    }
-
-    if (isRegExp(item)) {
-      return item.test(dependenceName);
-    }
-    if (typeof item === 'function') {
-      return item(dependenceName);
-    }
-  }
-  return false;
-}
+export type { ManifestJson, UnpluginLinkjsOptions };
 
 export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {}) => {
   const { extensions = ['.js', '.jsx', '.ts', '.tsx', '.vue'], shared = {}, isReplaceLinkjs = true } = options;
   const sharedPkgs = Object.keys(shared);
-
+  const entry: Record<string, string> = {};
   return {
     name: 'unplugin-linkjs',
     enforce: 'post',
 
     rolldown: {
       buildEnd() {
+        console.log('buildEnd');
         const moduleIds = this.getModuleIds();
         const exposes: string[] = [];
         for (const moduleId of moduleIds) {
@@ -41,67 +29,10 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
             exposes.push(...(module.exports || []));
           }
         }
-
-        const packageJsonPath = resolve(process.cwd(), 'package.json');
         const outDir = (this as any).outputOptions?.dir;
-        if (!existsSync(packageJsonPath)) {
-          console.warn('package.json not found in current working directory');
-          return;
-        }
-
-        try {
-          const packageJsonContent = readFileSync(packageJsonPath, 'utf-8');
-          const packageJson = JSON.parse(packageJsonContent);
-
-          const manifest: ManifestJson = {
-            name: packageJson.name || '',
-            version: packageJson.version || '',
-            types: packageJson.types || packageJson.typings,
-            exports: packageJson.exports,
-            exposes: [...new Set(exposes)],
-          };
-
-          const externalDeps: Record<string, string> = {};
-
-          let finalExternal: string[] = [...sharedPkgs];
-
-          if (finalExternal.length > 0) {
-            const allDeps: Record<string, string> = {};
-
-            if (packageJson.dependencies) {
-              Object.assign(allDeps, packageJson.dependencies);
-            }
-
-            if (packageJson.peerDependencies) {
-              Object.assign(allDeps, packageJson.peerDependencies);
-            }
-            finalExternal.forEach((dep) => {
-              if (allDeps[dep]) {
-                externalDeps[dep] = allDeps[dep];
-              }
-            });
-
-            const deps = Object.keys(allDeps);
-            deps.forEach((dep) => {
-              if (isExternal(finalExternal, dep)) {
-                externalDeps[dep] = allDeps[dep];
-              }
-            });
-          }
-
-          if (Object.keys(externalDeps).length > 0) {
-            manifest.dependencies = externalDeps;
-          }
-          const outputPath = resolve(outDir, 'manifest.json');
-          const outputDir = dirname(outputPath);
-
-          if (!existsSync(outputDir)) {
-            mkdirSync(outputDir, { recursive: true });
-          }
-          writeFileSync(outputPath, JSON.stringify(manifest, null, 2), 'utf-8');
-        } catch (error) {
-          console.error(`Failed to generate manifest.json: ${error}`);
-          throw error;
+        generateManifestFile(outDir, exposes, shared);
+        if (Object.keys(shared).length > 0) {
+          buildSharedFile(shared, outDir);
         }
       },
       transform(code: string, id: string, meta: any) {
@@ -189,10 +120,20 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
         options['experimental'] = { nativeMagicString: true };
         return options;
       },
-      renderStart(_outputOptions, _inputOptions) {
-        // console.log('renderStart context', this);
-        // console.log('renderStart outputOptions', outputOptions);
-        // console.log('renderStart inputOptions', inputOptions);
+      generateBundle(options, bundle) {
+        const bundleKeys = Object.keys(bundle);
+        const outDir = (this as any).outputOptions?.dir;
+        const baseDir = outDir.replace(process.cwd(), '');
+        bundleKeys.forEach((key) => {
+          const bundleItem = bundle[key];
+          if (bundleItem.type === 'chunk' && bundleItem.isEntry) {
+            entry[key.endsWith('.d.ts') ? 'types' : 'js'] = path.join(baseDir, key);
+          } else if (bundleItem.type === 'asset') {
+            entry['css'] = path.join(baseDir, key);
+          }
+        });
+
+        updateManifestFile(outDir, { entry });
       },
     },
   };

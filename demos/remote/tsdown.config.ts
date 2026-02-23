@@ -1,7 +1,8 @@
 import { defineConfig } from 'tsdown';
-import Vue from 'unplugin-vue/rolldown';
+import VuePlugin from 'unplugin-vue/rolldown';
 import tsdownPluginServer from 'tsdown-plugin-server';
 import { unpluginLinkjsRollowPlugin } from 'unplugin-linkjs';
+import * as Vue from 'vue';
 
 export default defineConfig({
   tsconfig: './tsconfig.dts.json',
@@ -23,16 +24,30 @@ export default defineConfig({
   },
   external: [],
   plugins: [
-    Vue({
+    VuePlugin({
       isProduction: true,
     }),
     unpluginLinkjsRollowPlugin({
       shared: {
-        vue: 'Vue',
+        vue: {
+          lib: Vue,
+          scope: 'global',
+          singleton: true,
+        },
+        pinia: {
+          lib: () => import('pinia'),
+          scope: 'global',
+          singleton: true,
+        },
+        'vue-router': {
+          lib: () => import('vue-router'),
+          scope: 'global',
+          singleton: true,
+        },
       },
     }),
-    tsdownPluginServer({
-      port: 4001,
-    }),
+    // tsdownPluginServer({
+    //   port: 4001,
+    // }),
   ],
 });
