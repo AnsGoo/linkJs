@@ -1,8 +1,6 @@
 const LIB_EXPOSE = 'libExpose';
 const SHARED_EXPOSE = 'SharedExpose';
 
-
-
 const LIB_READY = 'libReady';
 const SHARED_READY = 'SharedReady';
 

@@ -9,7 +9,11 @@ export function expose(libName: string, lib: Record<string, Module>, options: an
     options,
   });
 }
-export function shared(libName: string, shared: Record<string, Module | (() => Promise<Module>) | (() => Promise<Module | Module>)>, options: any) {
+export function shared(
+  libName: string,
+  shared: Record<string, Module | (() => Promise<Module>) | (() => Promise<Module | Module>)>,
+  options: any,
+) {
   getInstance().eventBus.emit(SHARED_EXPOSE, {
     libName,
     shared,
