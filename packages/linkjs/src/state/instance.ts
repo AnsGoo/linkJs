@@ -38,11 +38,10 @@ interface ShareInfo {
   lib: Module | (() => Promise<Module>) | (() => Module);
   status: keyof typeof LOAD_STATUS;
   scope?: string;
-  module?: Module;
   singleton?: boolean;
 }
 
-export type ShareOption = Omit<ShareInfo, 'status' | 'module'>;
+export type ShareOption = Omit<ShareInfo, 'status'>;
 
 // @ts-ignore
 let linkInstance: any = typeof globalThis !== 'undefined' && globalThis[__LINKJS_INSTANCE__] ? globalThis[__LINKJS_INSTANCE__] : null;

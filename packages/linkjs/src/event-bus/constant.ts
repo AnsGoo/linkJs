@@ -1,6 +1,10 @@
 const LIB_EXPOSE = 'libExpose';
+const SHARED_EXPOSE = 'SharedExpose';
+
+
 
 const LIB_READY = 'libReady';
+const SHARED_READY = 'SharedReady';
 
 const LOAD_STATUS = {
   LOADED: 'loaded',
@@ -8,4 +12,4 @@ const LOAD_STATUS = {
   LOADING: 'loading',
 };
 
-export { LIB_EXPOSE, LIB_READY, LOAD_STATUS };
+export { LIB_EXPOSE, SHARED_EXPOSE, LIB_READY, SHARED_READY, LOAD_STATUS };
