@@ -57,12 +57,9 @@ export async function buildSharedFile(sharedConfig: Record<string, any>, outDir:
             return null;
           },
           writeBundle(options, bundle) {
-            console.log('writeBundle called in build-shared');
             const bundleKeys = Object.keys(bundle);
             const outDir = (this as any).outputOptions?.dir || 'dist';
-            const absoluteOutDir = path.resolve(process.cwd(), outDir);
-            const baseDir = absoluteOutDir.replace(process.cwd(), '');
-            console.log('writeBundle absoluteOutDir:', absoluteOutDir);
+            const baseDir = outDir.replace(process.cwd(), '');
             bundleKeys.forEach((key) => {
               const bundleItem = bundle[key];
               if (bundleItem.type === 'chunk' && bundleItem.isEntry) {

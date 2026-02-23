@@ -32,16 +32,16 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
 
         const bundleKeys = Object.keys(bundle);
         const outDir = (this as any).outputOptions?.dir || 'dist';
-        const absoluteOutDir = path.resolve(process.cwd(), outDir);
-        const baseDir = absoluteOutDir.replace(process.cwd(), '');
+        const baseDir = outDir.replace(process.cwd(), '');
 
-        generateManifestFile(absoluteOutDir, exposes, shared);
+        generateManifestFile(outDir, exposes, shared);
 
         if (Object.keys(shared).length > 0) {
           const sharedContent = await generateSharedFileContent(shared);
-          const sharedPath = path.resolve(absoluteOutDir, 'shared.js');
-          if (!existsSync(absoluteOutDir)) {
-            mkdirSync(absoluteOutDir, { recursive: true });
+          const sharedPath = path.resolve(outDir, 'shared.js');
+
+          if (!existsSync(outDir)) {
+            mkdirSync(outDir, { recursive: true });
           }
           writeFileSync(sharedPath, sharedContent, 'utf-8');
           entry['shared'] = path.join(baseDir, 'shared.js');
@@ -56,7 +56,7 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
           }
         });
 
-        updateManifestFile(absoluteOutDir, { entry });
+        updateManifestFile(outDir, { entry });
       },
       transform(code: string, id: string, meta: any) {
         if (id.includes('css')) {
