@@ -2,7 +2,7 @@ import { createUnplugin } from 'unplugin';
 import type { Node, ImportDeclaration } from 'oxc-parser';
 import MagicString from 'magic-string';
 
-import { generateSharedFileContent } from './build-shared';
+import { generateSharedFileContent, buildSharedFile } from './build-shared';
 import type { ManifestJson, UnpluginLinkjsOptions } from './types';
 import { generateManifestFile, updateManifestFile } from './build-manifest';
 import path from 'path';
@@ -38,7 +38,8 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
 
         if (Object.keys(shared).length > 0) {
           const sharedContent = await generateSharedFileContent(shared);
-          const sharedPath = path.resolve(outDir, 'shared.js');
+          const sharedPath = path.resolve(outDir, 'shared.ts');
+          const sharedEntry = await buildSharedFile(shared, outDir);
 
           if (!existsSync(outDir)) {
             mkdirSync(outDir, { recursive: true });
