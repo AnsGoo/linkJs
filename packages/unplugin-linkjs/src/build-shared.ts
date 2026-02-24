@@ -1,5 +1,4 @@
 import { build } from 'rolldown';
-import { updateManifestFile } from './build-manifest';
 import path from 'path';
 
 export async function generateSharedFileContent(sharedConfig: Record<string, any>): Promise<string> {
@@ -63,7 +62,11 @@ export async function buildSharedFile(sharedConfig: Record<string, any>, outDir:
             bundleKeys.forEach((key) => {
               const bundleItem = bundle[key];
               if (bundleItem.type === 'chunk' && bundleItem.isEntry) {
-                entry[key.endsWith('shared.js') ? 'shared' : 'js'] = path.join(baseDir, key);
+                if (key.endsWith('shared.js')) {
+                  entry['shared'] = path.join(baseDir, key);
+                } else {
+                  entry[key.replace('.js', '')] = path.join(baseDir, key);
+                }
               }
             });
           },

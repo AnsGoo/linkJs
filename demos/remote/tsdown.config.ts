@@ -46,8 +46,8 @@ export default defineConfig({
         },
       },
     }),
-    // tsdownPluginServer({
-    //   port: 4001,
-    // }),
+    tsdownPluginServer({
+      port: 4001,
+    }),
   ],
 });

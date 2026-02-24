@@ -34,6 +34,14 @@ function loadRemoteLib<Module>(
     const shared = remoteInfo?.shared || {};
     const depNames = Object.keys(shared);
     await Promise.all(depNames.map((dep) => loadShare(dep)));
+
+    const sharedEntry = remoteInfo?.entry?.shared;
+    if (sharedEntry) {
+      const sharedUrl = `${host}${sharedEntry}`;
+      const t = await import(sharedUrl);
+      console.log(t);
+    }
+
     return import(jsUrl)
       .then((_module) => {
         extOption.timeoutId = setTimeout(() => {
