@@ -2,16 +2,14 @@ import { createUnplugin } from 'unplugin';
 import type { Node, ImportDeclaration } from 'oxc-parser';
 import MagicString from 'magic-string';
 
-import { generateSharedFileContent, buildSharedFile } from './build-shared';
 import type { ManifestJson, UnpluginLinkjsOptions } from './types';
 import { generateManifestFile, updateManifestFile } from './build-manifest';
 import path from 'path';
-import { writeFileSync, mkdirSync, existsSync } from 'fs';
 
 export type { ManifestJson, UnpluginLinkjsOptions };
 
 export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {}) => {
-  const { extensions = ['.js', '.jsx', '.ts', '.tsx', '.vue'], shared = {}, isReplaceLinkjs = true } = options;
+  const { extensions = ['.js', '.jsx', '.ts', '.tsx', '.vue', '.d.ts','.mjs','.cjs'], shared = {}, isReplaceLinkjs = true } = options;
   const sharedPkgs = Object.keys(shared);
   const entry: Record<string, string> = {};
   return {
@@ -36,18 +34,6 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
 
         generateManifestFile(outDir, exposes, shared);
 
-        if (Object.keys(shared).length > 0) {
-          const sharedContent = await generateSharedFileContent(shared);
-          const sharedPath = path.resolve(outDir, 'shared.ts');
-          const sharedEntry = await buildSharedFile(shared, outDir);
-
-          if (!existsSync(outDir)) {
-            mkdirSync(outDir, { recursive: true });
-          }
-          writeFileSync(sharedPath, sharedContent, 'utf-8');
-          entry['shared'] = path.join(baseDir, 'shared.js');
-        }
-
         bundleKeys.forEach((key) => {
           const bundleItem = bundle[key];
           if (bundleItem.type === 'chunk' && bundleItem.isEntry) {
@@ -64,12 +50,13 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
           return null;
         }
 
+        // 移除文件类型检查，处理所有文件，包括外部依赖
         const isSupportedFile = extensions.some((ext) => id.endsWith(ext));
-
         if (!isSupportedFile) {
           return null;
         }
 
+        // 检查是否包含共享包或linkjs的导入
         const packagesInCode = sharedPkgs.filter((pkg) => new RegExp(`from\\s+['"]${pkg}['"]`).test(code));
         const hasLinkjsImport = new RegExp(`from\\s+['"]linkjs['"]`).test(code);
 
@@ -77,6 +64,7 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
           return null;
         }
 
+        // 解析AST
         const ast = this.parse(code, {
           sourceType: 'module',
         });
@@ -84,6 +72,7 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
         const magicString = new MagicString(code);
         let hasModifications = false;
 
+        // 转换导入声明
         const transformImportDeclaration = (node: ImportDeclaration) => {
           const source = node.source.value;
 
@@ -119,13 +108,27 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
           hasModifications = true;
         };
 
+        // 遍历AST
         const walk = (node: Node) => {
+          // 确保节点是一个对象
+          if (!node || typeof node !== 'object') {
+            return;
+          }
+
           if (node.type === 'ImportDeclaration') {
             transformImportDeclaration(node);
           }
 
+          // 递归遍历所有子节点
           if ('body' in node && Array.isArray(node.body)) {
             node.body.forEach(walk);
+          }
+          // 处理其他可能包含导入的节点类型
+          if ('expression' in node) {
+            walk(node.expression);
+          }
+          if ('declarations' in node) {
+            node.declarations.forEach(walk);
           }
         };
 

@@ -10,6 +10,7 @@ export interface ManifestJson {
     html?: string;
     i18n?: string;
     shared?: string;
+    expose?: string;
   };
   expose?: string[];
   shared?: Record<
@@ -34,5 +35,8 @@ export interface UnpluginLinkjsOptions {
     }
   >;
   isReplaceLinkjs?: boolean;
-  generateSharedFile?: boolean;
+  exposeOptions?: {
+    name?: string;
+    version?: string;
+  };
 }
