@@ -1,0 +1,68 @@
+{
+  "name": "vue-components-starter",
+  "type": "module",
+  "version": "0.0.0",
+  "description": "A starter for creating a Vue component library.",
+  "author": "Author Name <author.name@mail.com>",
+  "license": "MIT",
+  "homepage": "https://github.com/author/library#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/author/library.git"
+  },
+  "bugs": {
+    "url": "https://github.com/author/library/issues"
+  },
+  "exports": {
+    ".": {
+      "development": "./src/lib.ts",
+      "default": "./mf/lib.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./mf/lib.js",
+  "module": "./mf/lib.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": "./mf/lib.js",
+      "./package.json": "./package.json"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "play": "vite",
+    "test": "vitest",
+    "typecheck": "vue-tsc --noEmit",
+    "release": "bumpp && pnpm publish",
+    "prepublishOnly": "pnpm run build"
+  },
+  "dependencies": {
+    "linkjs": "workspace:*",
+    "pinia": "^3.0.4",
+    "vue": "^3.5.27",
+    "vue-router": "^5.0.1"
+  },
+  "devDependencies": {
+    "tsdown-plugin-server": "workspace:*",
+    "unplugin-linkjs": "workspace:*",
+    "@types/node": "^25.0.3",
+    "@vitejs/plugin-vue": "^6.0.3",
+    "@vitest/browser-playwright": "^4.0.16",
+    "unplugin-vue": "^7.1.1",
+    "bumpp": "^10.3.2",
+    "playwright": "^1.57.0",
+    "tsdown": "^0.18.1",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.0",
+    "vitest": "^4.0.16",
+    "vitest-browser-vue": "^2.0.1",
+    "vue": "^3.5.25",
+    "vue-tsc": "^3.1.8"
+  }
+}
