@@ -1,0 +1,29 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug unplugin-linkjs (build remote-lib)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "pnpm build",
+      "cwd": "${workspaceFolder}/demos/remote-lib",
+      "internalConsoleOptions": "openOnSessionStart"
+    },
+    {
+      "name": "Debug unplugin-linkjs (watch mode)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "pnpm dev",
+      "cwd": "${workspaceFolder}/demos/remote-lib",
+      "internalConsoleOptions": "openOnSessionStart"
+    },
+    {
+      "name": "Debug unplugin-linkjs (build package)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "pnpm build",
+      "cwd": "${workspaceFolder}/packages/unplugin-linkjs",
+      "internalConsoleOptions": "openOnSessionStart"
+    }
+  ]
+}
