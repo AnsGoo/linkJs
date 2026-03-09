@@ -29,7 +29,7 @@
     "magic-string": "0.30.21",
     "oxc-parser": "^0.114.0",
     "rolldown": "^1.0.0-r3",
-    "tsdown": "^0.20.3",
+    "tsdown": "^0.21.0",
     "typescript": "^5.9.3"
   }
 }
