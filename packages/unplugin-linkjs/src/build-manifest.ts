@@ -19,7 +19,7 @@ function isExternal(finalExternal: any[], dependenceName: string): boolean {
   return false;
 }
 
-function generateManifestFile(outDir: string, exposes: string[], shared: Record<string, any>) {
+function generateManifestFile(outDir: string, exposes: string[], shared: Record<string, any>, sharedDeps: Record<string, string[]> = {}) {
   const packageJsonPath = resolve(process.cwd(), 'package.json');
 
   if (!existsSync(packageJsonPath)) {
@@ -82,6 +82,7 @@ function generateManifestFile(outDir: string, exposes: string[], shared: Record<
         version: version === 'workspace:*' ? '1.0.0' : version,
         scope: depConfig.scope || 'global',
         singleton: depConfig.singleton ?? true,
+        dependencies: sharedDeps[depName] || depConfig.dependencies || [],
       };
     }
     writeFileSync(outputPath, JSON.stringify(manifest, null, 2), 'utf-8');
@@ -91,7 +92,7 @@ function generateManifestFile(outDir: string, exposes: string[], shared: Record<
   }
 }
 
-function updateManifestFile(outDir: string, content?: Partial<Pick<ManifestJson, 'expose' | 'entry'>>) {
+function updateManifestFile(outDir: string, content?: Partial<Pick<ManifestJson, 'expose' | 'entry' | 'dependencies'>>, sharedDeps: Record<string, string[]> = {}) {
   const manifestJsonPath = resolve(outDir, 'manifest.json');
 
   if (!existsSync(manifestJsonPath)) {
@@ -103,9 +104,20 @@ function updateManifestFile(outDir: string, content?: Partial<Pick<ManifestJson,
     const manifestJsonContent = readFileSync(manifestJsonPath, 'utf-8');
     const manifestJson = JSON.parse(manifestJsonContent);
 
-    const { expose = [], entry = {} } = content || {};
+    const { expose = [], entry = {}, dependencies = [] } = content || {};
     manifestJson.expose = Array.from(new Set([...expose, ...(manifestJson.expose || [])]));
     manifestJson.entry = { ...(manifestJson.entry || {}), ...entry };
+    manifestJson.dependencies = dependencies;
+
+    // 更新 shared 依赖的 dependencies 字段
+    if (Object.keys(sharedDeps).length > 0) {
+      manifestJson.shared = manifestJson.shared || {};
+      Object.keys(sharedDeps).forEach(depName => {
+        if (manifestJson.shared[depName]) {
+          manifestJson.shared[depName].dependencies = sharedDeps[depName] || [];
+        }
+      });
+    }
 
     writeFileSync(manifestJsonPath, JSON.stringify(manifestJson, null, 2), 'utf-8');
   } catch (error) {

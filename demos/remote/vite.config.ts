@@ -8,15 +8,6 @@ import { unpluginLinkjsRollowPlugin } from 'unplugin-linkjs';
 export default defineConfig({
   plugins: [
     vue(),
-    unpluginLinkjsRollowPlugin({
-      shared: {
-        vue: {
-          lib: () => import('vue'),
-          scope: 'global',
-          singleton: true,
-        },
-      },
-    }),
   ],
   resolve: {
     alias: {
@@ -38,8 +29,27 @@ export default defineConfig({
     cssCodeSplit: false,
     outDir: 'dist',
     rolldownOptions: {
-      external: ['vue'],
-      plugins: [],
+      plugins: [
+        unpluginLinkjsRollowPlugin({
+          shared: {
+            vue: {
+              lib: () => import('vue'),
+              scope: 'global',
+              singleton: true,
+            },
+            'vue-router': {
+              lib: () => import('vue-router'),
+              scope: 'global',
+              singleton: true,
+            },
+            pinia: {
+              lib: () => import('pinia'),
+              scope: 'global',
+              singleton: true,
+            },
+          },
+        }),
+      ],
     },
   },
 });
