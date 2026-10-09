@@ -1,5 +1,6 @@
 import { getInstance, loadShare } from '..';
 import { LIB_EXPOSE } from '../event-bus/constant';
+import { activateSandbox } from '../sandbox';
 import { loadCss, loadScript, preloadModule, useGetRemote, useHandleExpose, type ExtOption } from './utils';
 
 export interface LoadAppOptions {
@@ -15,6 +16,8 @@ export interface LoadAppOptions {
   retries?: number;
   /** 单个脚本加载失败是否忽略，默认 false */
   ignoreScriptError?: boolean;
+  /** 是否启用快照沙箱：加载前快照全局，unloadRemote 时回滚子应用对全局的增改 */
+  sandbox?: boolean;
 }
 
 async function fetchHtml(url: string, retries: number): Promise<string> {
@@ -109,6 +112,11 @@ async function loadApp<Module>(
         preloadModule(new URL(href, htmlUrl).href, appName);
       }
     });
+
+    // 快照沙箱：在注入脚本前记录全局状态，卸载时回滚
+    if (options?.sandbox) {
+      activateSandbox(appName);
+    }
 
     // 加载 JS 资源
     const scripts = Array.from(doc.querySelectorAll('script[src]'));

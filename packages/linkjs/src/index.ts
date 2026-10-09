@@ -52,3 +52,12 @@ export {
 };
 
 export type { RegistryOption } from './state';
+
+export {
+  captureSnapshot,
+  restoreSnapshot,
+  activateSandbox,
+  deactivateSandbox,
+  deactivateAllSandboxes,
+} from './sandbox';
+export type { SandboxSnapshot } from './sandbox';

@@ -1,6 +1,6 @@
 import { expect, test, beforeEach, vi } from 'vitest';
 import { linkInstance } from '../src/state/instance';
-import { loadApp, clearRemoteCache } from '../src/loader';
+import { loadApp, clearRemoteCache, unloadRemote } from '../src/loader';
 import { LIB_EXPOSE } from '../src/event-bus/constant';
 
 interface FakeElement {
@@ -97,6 +97,34 @@ test('loadApp injects stylesheet/script and resolves on expose', async () => {
 
   const script = created.find((el) => el.tagName === 'script');
   expect(script?.src).toBe('http://localhost:8081/main.js');
+});
+
+test('loadApp with sandbox reverts globals on unloadRemote', async () => {
+  globalThis.DOMParser = class {
+    parseFromString() {
+      return {
+        querySelectorAll: (selector: string) =>
+          selector === 'script[src]' ? [{ getAttribute: (n: string) => (n === 'src' ? '/main.js' : null) }] : [],
+      };
+    }
+  } as any;
+  globalThis.fetch = vi.fn(async () => ({ ok: true, text: async () => '<html></html>' })) as any;
+  globalThis.document = {
+    head: { appendChild: () => {} },
+    body: { appendChild: (el: FakeElement) => queueMicrotask(() => el.onload?.()) },
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    createElement: (tag: string) => createElement(tag),
+  } as any;
+
+  const promise = loadApp('remote', { host: 'http://localhost:8081', sandbox: true });
+  await new Promise((r) => setTimeout(r, 30));
+  linkInstance.eventBus.emit(LIB_EXPOSE, { libName: 'remote', lib: { default: 'COMP' } });
+  await promise;
+
+  (globalThis as any).__remote_pollutes__ = 1;
+  unloadRemote('remote');
+  expect('__remote_pollutes__' in globalThis).toBe(false);
 });
 
 test('loadApp rejects when script fails and ignoreScriptError is false', async () => {

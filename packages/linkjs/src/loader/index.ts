@@ -4,6 +4,7 @@ import { LOAD_STATUS } from '../event-bus/constant';
 import { getRemoteInfo, useGetRemote } from './utils';
 import { useLoadRemoteLib } from './lib';
 import { useLoadApp, type LoadAppOptions } from './app';
+import { deactivateAllSandboxes, deactivateSandbox } from '../sandbox';
 
 // 缓存已加载的远程模块
 const remoteCache = new Map<string, Record<string, Module> | Module>();
@@ -37,6 +38,11 @@ function clearRemoteCache(appName?: string): void {
  */
 function unloadRemote(appName?: string): void {
   clearRemoteCache(appName);
+  if (appName) {
+    deactivateSandbox(appName);
+  } else {
+    deactivateAllSandboxes();
+  }
   if (typeof document === 'undefined') {
     return;
   }

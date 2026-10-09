@@ -17,6 +17,7 @@ instances.loadRegistry(registryOptions);
 function loadRemoteModule() {
   return loadApp('remote', {
     host: 'http://localhost:8081',
+    sandbox: true,
   })
     .then((lib) => {
       console.log('Remote module loaded:', lib);
