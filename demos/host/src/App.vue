@@ -21,8 +21,12 @@ const RemoteLibComponent = defineAsyncComponent(async () => {
 
     <div class="wrapper">
       <HelloWorld msg="I am host app!" />
-      <RemoteComponent msg="I am remote app" />
-      <RemoteLibComponent msg="I am remote lib" />
+      <div data-linkjs-scope="remote">
+        <RemoteComponent msg="I am remote app" />
+      </div>
+      <div data-linkjs-scope="remote-lib">
+        <RemoteLibComponent msg="I am remote lib" />
+      </div>
     </div>
   </header>
 </template>

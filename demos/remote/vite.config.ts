@@ -2,7 +2,7 @@ import { fileURLToPath, URL } from 'node:url';
 
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
-import { unpluginLinkjs, unpluginLinkjsRollowPlugin } from 'unplugin-linkjs';
+import { unpluginLinkjs, unpluginLinkjsRollowPlugin, createCssScopePlugin } from 'unplugin-linkjs';
 
 const shared = {
   vue: {
@@ -46,6 +46,12 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
+  css: {
+    // CSS 作用域隔离：所有选择器加 [data-linkjs-scope="remote"] 前缀
+    postcss: {
+      plugins: [createCssScopePlugin('remote') as any],
     },
   },
   server: {

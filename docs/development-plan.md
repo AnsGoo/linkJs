@@ -70,7 +70,7 @@
 
 ---
 
-## P4 类型与接口一致性（中）~
+## P4 类型与接口一致性（中）✅
 
 - [x] `RemoteBase.entry` 支持 `string | RemoteEntry`（`RemoteEntry` 定义）。
 - [x] `loadApp`/`loadRemote`/`loadLib` 选项接口化并补 JSDoc（`LoadAppOptions`/`LoadLibOptions`）。
@@ -100,17 +100,17 @@
 - [x] `overrideRemote` 输入校验：仅接受合法 http(s) URL，非法项跳过并告警；单个 host 失败不影响其它 host；fetch 增加超时。
 - [x] **scoped 样式 id 跨应用冲突修复**：`@vitejs/plugin-vue` 6 在 dev 下用 `hash(相对路径)` 生成 scopeId（不含内容），不同应用相同路径的组件（如都以 `src/components/HelloWorld.vue`）会得到相同 `data-v-*`，导致样式互相覆盖。修复：`features.componentIdGenerator` 按应用加盐（host/remote 各自唯一），见 `demos/*/vite.config.ts`。
   - 通用建议：把该 salt 做成共享插件/构建约定；或做更彻底的 CSS 隔离（Shadow DOM / scoped 前缀）。
-- [-] CSS 隔离（Shadow DOM / window 代理级）。
+- [x] **CSS 作用域隔离**：`unplugin-linkjs` 提供 `createCssScopePlugin(scope)`（PostCSS），把子应用所有选择器加 `[data-linkjs-scope="<scope>"]` 前缀；宿主用该属性容器包裹子应用（独立运行时挂到根节点）。已接入 demo（remote），验证 host/remote 样式互不覆盖（host 500 / remote 900）。
 - [-] JS 沙箱（window/document 代理）。
 - [ ] CSP / SRI integrity（需宿主与远端配合）。
 
 ---
 
-## P8 测试与 CI（高）~
+## P8 测试与 CI（高）✅
 
-- [x] `packages/linkjs` 单测覆盖 share/loader（31 用例）。
+- [x] `packages/linkjs` 单测覆盖 share/loader（33 用例）。
 - [x] 根 `package.json` 增加 `build`/`test`/`typecheck` 脚本。
-- [x] `unplugin-linkjs` 增加 vitest（10 用例：dependency-graph / build-shared / transform）。
+- [x] `unplugin-linkjs` 增加 vitest（17 用例：dependency-graph / build-shared / transform / css-scope）。
 - [x] lint/typecheck 全绿（本轮范围内）。
 
 ---
@@ -125,8 +125,8 @@
 | P4 | 完成 | entry 联合类型 + 选项接口 + 导出补齐；runtime-registry 去重 |
 | P5 | 完成 | manifest 分类确定化 + `workspace:*` 版本解析 |
 | P6 | 完成 | dev 共享重写 + 子应用更新刷新宿主 |
-| P7 | 部分 | `overrideRemote` 安全校验完成；CSS/JS 隔离为远期设计 |
-| P8 | 完成 | linkjs 33 + unplugin 10 用例；根脚本齐全 |
+| P7 | 部分 | `overrideRemote` 校验 + CSS 作用域隔离完成；JS 沙箱/CSP 远期 |
+| P8 | 完成 | linkjs 33 + unplugin 17 用例；根脚本齐全 |
 
 ### 验证命令
 ```bash

@@ -354,4 +354,5 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
 
 const unpluginLinkjsRollowPlugin = unpluginLinkjs.rolldown;
 export { unpluginLinkjsRollowPlugin };
+export { createCssScopePlugin, scopeSelector, LINKJS_SCOPE_ATTR } from './css-scope';
 export default unpluginLinkjs;
