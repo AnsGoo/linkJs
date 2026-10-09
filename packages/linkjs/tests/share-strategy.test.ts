@@ -2,326 +2,154 @@ import { describe, expect, test, beforeEach } from 'vitest';
 import { linkInstance } from '../src/state/instance';
 import { registerShare, loadShare, getShare } from '../src/share';
 
-describe('Share Strategy', () => {
-  beforeEach(() => {
-    linkInstance.shares.clear();
-    linkInstance.sharedMap.clear();
+function reset() {
+  linkInstance.shares.clear();
+  linkInstance.sharedMap.clear();
+  if (linkInstance.shareInflight) {
+    linkInstance.shareInflight.clear();
+  }
+}
+
+describe('registerShare', () => {
+  beforeEach(reset);
+
+  test('singleton: first registration wins, later ignored', () => {
+    registerShare({ lodash: { version: '1.0.0', lib: { name: 'v1' }, singleton: true } });
+    registerShare({ lodash: { version: '2.0.0', lib: { name: 'v2' }, singleton: true } });
+
+    const scopeMap = linkInstance.shares.get('global');
+    expect(scopeMap!.get('lodash')).toHaveLength(1);
+    expect(scopeMap!.get('lodash')![0].version).toBe('1.0.0');
   });
 
-  describe('version-first strategy', () => {
-    beforeEach(() => {
-      linkInstance.shareStrategy = 'version-first';
-    });
+  test('non-singleton: multiple versions are kept', () => {
+    registerShare({ lodash: { version: '1.0.0', lib: { name: 'v1' } } });
+    registerShare({ lodash: { version: '2.0.0', lib: { name: 'v2' } } });
 
-    test('loadShare should return loaded module when no version specified', async () => {
-      registerShare({
-        lodash: {
-          version: '4.17.21',
-          lib: { name: 'lodash-4.17.21' },
-        },
-      });
+    const scopeMap = linkInstance.shares.get('global');
+    expect(scopeMap!.get('lodash')).toHaveLength(2);
+  });
+});
 
-      const module1 = await loadShare('lodash');
-      expect(module1).toEqual({ name: 'lodash-4.17.21' });
+describe('loadShare / getShare without version', () => {
+  beforeEach(reset);
 
-      const module2 = await loadShare('lodash');
-      expect(module2).toEqual({ name: 'lodash-4.17.21' });
-      expect(module2).toBe(module1);
-    });
+  test('loaded-first reuses the already loaded version even if a newer one is available', async () => {
+    linkInstance.shareStrategy = 'loaded-first';
+    registerShare({ lodash: { version: '1.0.0', lib: { name: 'v1' } } });
+    registerShare({ lodash: { version: '2.0.0', lib: { name: 'v2' } } });
 
-    test('loadShare should load latest version when no version specified and no loaded version', async () => {
-      const shares: Record<string, any> = {};
-      shares['lodash'] = {
-        version: '4.17.20',
-        lib: { name: 'lodash-4.17.20' },
-      };
-      shares['lodash'] = {
-        version: '4.17.21',
-        lib: { name: 'lodash-4.17.21' },
-      };
+    // 先加载 v1
+    const first = await loadShare('lodash', { version: '1.0.0' });
+    expect(first).toEqual({ name: 'v1' });
 
-      registerShare(shares);
-
-      const module = await loadShare('lodash');
-      expect(module).toEqual({ name: 'lodash-4.17.21' });
-    });
-
-    test('loadShare should return loaded module when version matches loaded version', async () => {
-      registerShare({
-        lodash: {
-          version: '4.17.21',
-          lib: { name: 'lodash-4.17.21' },
-        },
-      });
-
-      await loadShare('lodash', { version: '4.17.21' });
-
-      const module = await loadShare('lodash', { version: '4.17.21' });
-      expect(module).toEqual({ name: 'lodash-4.17.21' });
-    });
-
-    test('loadShare should load new version when version does not match loaded version', async () => {
-      const shares: Record<string, any> = {};
-      shares['lodash'] = {
-        version: '4.17.20',
-        lib: { name: 'lodash-4.17.20' },
-      };
-      shares['lodash'] = {
-        version: '4.17.21',
-        lib: { name: 'lodash-4.17.21' },
-      };
-
-      registerShare(shares);
-
-      await loadShare('lodash', { version: '4.17.20' });
-
-      const module = await loadShare('lodash', { version: '4.17.21' });
-      expect(module).toEqual({ name: 'lodash-4.17.21' });
-    });
-
-    test('loadShare should return null when version does not match any available version', async () => {
-      registerShare({
-        lodash: {
-          version: '4.17.21',
-          lib: { name: 'lodash-4.17.21' },
-        },
-      });
-
-      const module = await loadShare('lodash', { version: '5.0.0' });
-      expect(module).toBeNull();
-    });
-
-    test('getShare should return null when no version specified and no loaded version', () => {
-      registerShare({
-        lodash: {
-          version: '4.17.21',
-          lib: { name: 'lodash-4.17.21' },
-        },
-      });
-
-      const module = getShare('lodash');
-      expect(module).toBeNull();
-    });
-
-    test('getShare should return loaded module when no version specified', async () => {
-      registerShare({
-        lodash: {
-          version: '4.17.21',
-          lib: { name: 'lodash-4.17.21' },
-        },
-      });
-
-      await loadShare('lodash');
-
-      const module = getShare('lodash');
-      expect(module).toEqual({ name: 'lodash-4.17.21' });
-    });
-
-    test('getShare should return null when version does not match loaded version', async () => {
-      registerShare({
-        lodash: {
-          version: '4.17.21',
-          lib: { name: 'lodash-4.17.21' },
-        },
-      });
-
-      await loadShare('lodash', { version: '4.17.21' });
-
-      const module = getShare('lodash', { version: '5.0.0' });
-      expect(module).toBeNull();
-    });
+    // 未指定版本：应复用已加载的 v1，而不是升级到 v2
+    const module = await loadShare('lodash');
+    expect(module).toEqual({ name: 'v1' });
   });
 
-  describe('loaded-first strategy', () => {
-    beforeEach(() => {
-      linkInstance.shareStrategy = 'loaded-first';
-    });
+  test('version-first upgrades to the highest available version', async () => {
+    linkInstance.shareStrategy = 'version-first';
+    registerShare({ lodash: { version: '1.0.0', lib: { name: 'v1' } } });
+    registerShare({ lodash: { version: '2.0.0', lib: { name: 'v2' } } });
 
-    test('loadShare should return loaded module when no version specified', async () => {
-      registerShare({
-        lodash: {
-          version: '4.17.21',
-          lib: { name: 'lodash-4.17.21' },
-        },
-      });
+    await loadShare('lodash', { version: '1.0.0' });
 
-      const module1 = await loadShare('lodash');
-      expect(module1).toEqual({ name: 'lodash-4.17.21' });
+    const module = await loadShare('lodash');
+    expect(module).toEqual({ name: 'v2' });
+  });
+});
 
-      const module2 = await loadShare('lodash');
-      expect(module2).toEqual({ name: 'lodash-4.17.21' });
-      expect(module2).toBe(module1);
-    });
+describe('loadShare with version', () => {
+  beforeEach(reset);
 
-    test('loadShare should load latest version when no version specified and no loaded version', async () => {
-      const shares: Record<string, any> = {};
-      shares['lodash'] = {
-        version: '4.17.20',
-        lib: { name: 'lodash-4.17.20' },
-      };
-      shares['lodash'] = {
-        version: '4.17.21',
-        lib: { name: 'lodash-4.17.21' },
-      };
+  test('loaded-first prefers a loaded version satisfying the range', async () => {
+    linkInstance.shareStrategy = 'loaded-first';
+    registerShare({ lodash: { version: '1.2.0', lib: { name: 'v1.2' } } });
+    registerShare({ lodash: { version: '1.9.0', lib: { name: 'v1.9' } } });
 
-      registerShare(shares);
+    await loadShare('lodash', { version: '1.2.0' });
 
-      const module = await loadShare('lodash');
-      expect(module).toEqual({ name: 'lodash-4.17.21' });
-    });
-
-    test('loadShare should return loaded module when version matches loaded version', async () => {
-      registerShare({
-        lodash: {
-          version: '4.17.21',
-          lib: { name: 'lodash-4.17.21' },
-        },
-      });
-
-      await loadShare('lodash', { version: '4.17.21' });
-
-      const module = await loadShare('lodash', { version: '4.17.21' });
-      expect(module).toEqual({ name: 'lodash-4.17.21' });
-    });
-
-    test('loadShare should load new version when version does not match loaded version', async () => {
-      const shares: Record<string, any> = {};
-      shares['lodash'] = {
-        version: '4.17.20',
-        lib: { name: 'lodash-4.17.20' },
-      };
-      shares['lodash'] = {
-        version: '4.17.21',
-        lib: { name: 'lodash-4.17.21' },
-      };
-
-      registerShare(shares);
-
-      await loadShare('lodash', { version: '4.17.20' });
-
-      const module = await loadShare('lodash', { version: '4.17.21' });
-      expect(module).toEqual({ name: 'lodash-4.17.21' });
-    });
-
-    test('loadShare should return null when version does not match any available version', async () => {
-      registerShare({
-        lodash: {
-          version: '4.17.21',
-          lib: { name: 'lodash-4.17.21' },
-        },
-      });
-
-      const module = await loadShare('lodash', { version: '5.0.0' });
-      expect(module).toBeNull();
-    });
-
-    test('getShare should return null when no version specified and no loaded version', () => {
-      registerShare({
-        lodash: {
-          version: '4.17.21',
-          lib: { name: 'lodash-4.17.21' },
-        },
-      });
-
-      const module = getShare('lodash');
-      expect(module).toBeNull();
-    });
-
-    test('getShare should return loaded module when no version specified', async () => {
-      registerShare({
-        lodash: {
-          version: '4.17.21',
-          lib: { name: 'lodash-4.17.21' },
-        },
-      });
-
-      await loadShare('lodash');
-
-      const module = getShare('lodash');
-      expect(module).toEqual({ name: 'lodash-4.17.21' });
-    });
-
-    test('getShare should return null when version does not match loaded version', async () => {
-      registerShare({
-        lodash: {
-          version: '4.17.21',
-          lib: { name: 'lodash-4.17.21' },
-        },
-      });
-
-      await loadShare('lodash', { version: '4.17.21' });
-
-      const module = getShare('lodash', { version: '5.0.0' });
-      expect(module).toBeNull();
-    });
+    const module = await loadShare('lodash', { version: '^1.0.0' });
+    expect(module).toEqual({ name: 'v1.2' });
   });
 
-  describe('scope isolation', () => {
-    test('modules in different scopes should not interfere with each other', async () => {
-      linkInstance.shareStrategy = 'version-first';
+  test('version-first picks the highest satisfying version across candidates', async () => {
+    linkInstance.shareStrategy = 'version-first';
+    registerShare({ lodash: { version: '1.2.0', lib: { name: 'v1.2' } } });
+    registerShare({ lodash: { version: '1.9.0', lib: { name: 'v1.9' } } });
 
-      registerShare({
-        lodash: {
-          version: '4.17.21',
-          lib: { name: 'lodash-app1' },
-          scope: 'app1',
-        },
-      });
+    await loadShare('lodash', { version: '1.2.0' });
 
-      registerShare({
-        lodash: {
-          version: '4.17.20',
-          lib: { name: 'lodash-app2' },
-          scope: 'app2',
-        },
-      });
-
-      const module1 = await loadShare('lodash', { scope: 'app1' });
-      const module2 = await loadShare('lodash', { scope: 'app2' });
-
-      expect(module1).toEqual({ name: 'lodash-app1' });
-      expect(module2).toEqual({ name: 'lodash-app2' });
-      expect(module1).not.toBe(module2);
-    });
+    const module = await loadShare('lodash', { version: '^1.0.0' });
+    expect(module).toEqual({ name: 'v1.9' });
   });
 
-  describe('async module loading', () => {
-    test('should handle async module loading functions', async () => {
-      linkInstance.shareStrategy = 'version-first';
+  test('returns null when no version matches', async () => {
+    registerShare({ lodash: { version: '1.0.0', lib: { name: 'v1' } } });
+    expect(await loadShare('lodash', { version: '^5.0.0' })).toBeNull();
+  });
 
-      registerShare({
-        lodash: {
-          version: '4.17.21',
-          lib: async () => {
-            return { name: 'lodash-async' };
-          },
+  test('returns null for unknown module', async () => {
+    expect(await loadShare('nope')).toBeNull();
+  });
+});
+
+describe('concurrent loading', () => {
+  beforeEach(reset);
+
+  test('merges concurrent loads of the same name@version', async () => {
+    linkInstance.shareStrategy = 'loaded-first';
+    let loadCount = 0;
+    registerShare({
+      lodash: {
+        version: '4.17.21',
+        lib: async () => {
+          loadCount++;
+          await new Promise((r) => setTimeout(r, 20));
+          return { name: 'lodash', loadCount };
         },
-      });
-
-      const module = await loadShare('lodash');
-      expect(module).toEqual({ name: 'lodash-async' });
+      },
     });
 
-    test('should cache async loaded modules', async () => {
-      linkInstance.shareStrategy = 'version-first';
+    const [a, b] = await Promise.all([loadShare('lodash'), loadShare('lodash')]);
+    expect(a).toBe(b);
+    expect(loadCount).toBe(1);
+  });
+});
 
-      let loadCount = 0;
-      registerShare({
-        lodash: {
-          version: '4.17.21',
-          lib: async () => {
-            loadCount++;
-            return { name: 'lodash-async', count: loadCount };
-          },
-        },
-      });
+describe('getShare', () => {
+  beforeEach(reset);
 
-      const module1 = await loadShare('lodash');
-      const module2 = await loadShare('lodash');
+  test('returns null before load and latest loaded after load', async () => {
+    linkInstance.shareStrategy = 'version-first';
+    registerShare({ lodash: { version: '1.0.0', lib: { name: 'v1' } } });
 
-      expect(module1).toEqual({ name: 'lodash-async', count: 1 });
-      expect(module2).toEqual({ name: 'lodash-async', count: 1 });
-      expect(module1).toBe(module2);
-    });
+    expect(getShare('lodash')).toBeNull();
+    await loadShare('lodash');
+    expect(getShare('lodash')).toEqual({ name: 'v1' });
+  });
+
+  test('filters by version range and returns null when not loaded', async () => {
+    linkInstance.shareStrategy = 'version-first';
+    registerShare({ lodash: { version: '1.0.0', lib: { name: 'v1' } } });
+
+    await loadShare('lodash', { version: '1.0.0' });
+    expect(getShare('lodash', { version: '^1.0.0' })).toEqual({ name: 'v1' });
+    expect(getShare('lodash', { version: '^2.0.0' })).toBeNull();
+  });
+});
+
+describe('scope isolation', () => {
+  beforeEach(reset);
+
+  test('modules in different scopes do not interfere', async () => {
+    registerShare({ lodash: { version: '1.0.0', lib: { name: 'app1' }, scope: 'app1' } });
+    registerShare({ lodash: { version: '1.0.0', lib: { name: 'app2' }, scope: 'app2' } });
+
+    const a = await loadShare('lodash', { scope: 'app1' });
+    const b = await loadShare('lodash', { scope: 'app2' });
+    expect(a).toEqual({ name: 'app1' });
+    expect(b).toEqual({ name: 'app2' });
   });
 });

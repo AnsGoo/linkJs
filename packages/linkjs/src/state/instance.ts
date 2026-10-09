@@ -1,15 +1,25 @@
 import { makeEventBus } from '../event-bus';
 import { __LINKJS_INSTANCE__, __LINKJS_OVERRIDES__ } from '../constant';
-import { LIB_EXPOSE, LOAD_STATUS } from '../event-bus/constant';
+import { LIB_EXPOSE, SHARED_EXPOSE, LOAD_STATUS } from '../event-bus/constant';
 import type { RuntimePlugin } from '../plugins';
-import { getShare } from '../share';
+import { getShare, loadShare } from '../share';
 import type { Module } from 'module';
 
 // 检查 window 对象上是否已经存在 linkjs 实例
 
+export interface RemoteEntry {
+  js?: string;
+  css?: string;
+  html?: string;
+  i18n?: string;
+  shared?: string;
+  types?: string;
+  expose?: string;
+}
+
 export interface RemoteBase {
   name: string;
-  entry: string;
+  entry: string | RemoteEntry;
   host?: string;
   type?: 'app' | 'lib';
   shared?: Record<string, Omit<ShareInfo, 'name' | 'lib' | 'status'>>;
@@ -59,7 +69,7 @@ if (!linkInstance) {
     sharedMap: new Map<string, Map<string, Module>>(),
     remotes: new Map<string, RemoteInfo>(),
     plugin: {} as RuntimePlugin,
-    shareStrategy: 'loaded-first',
+    shareStrategy: 'version-first',
 
     loadRegistry(registryOptions: RegistryOption[]): void {
       registryOptions.forEach((option) => {
@@ -81,7 +91,15 @@ if (!linkInstance) {
         options,
       });
     },
+    shared(libName: string, sharedModules: any, options: any) {
+      eventBus.emit(SHARED_EXPOSE, {
+        libName,
+        shared: sharedModules,
+        options,
+      });
+    },
     getShare: getShare,
+    loadShare: loadShare,
   };
   // @ts-ignore
   globalThis[__LINKJS_INSTANCE__] = linkInstance;
@@ -96,6 +114,10 @@ globalThis['$linkjs'] = {
     },
   },
   expose: linkInstance.expose,
+  shared: linkInstance.shared,
   getShare: linkInstance.getShare,
+  loadShare: linkInstance.loadShare,
+  getShared: linkInstance.getShare,
+  loadShared: linkInstance.loadShare,
 };
 export { linkInstance };

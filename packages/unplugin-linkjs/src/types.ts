@@ -1,5 +1,3 @@
-import Module from 'module';
-
 export interface ManifestJson {
   name: string;
   version: string;
@@ -11,6 +9,7 @@ export interface ManifestJson {
     i18n?: string;
     shared?: string;
     expose?: string;
+    types?: string;
   };
   expose?: string[];
   shared?: Record<
@@ -19,6 +18,7 @@ export interface ManifestJson {
       version: string;
       scope: 'global' | string;
       singleton: boolean;
+      dependencies?: string[];
     }
   >;
   [key: string]: any;

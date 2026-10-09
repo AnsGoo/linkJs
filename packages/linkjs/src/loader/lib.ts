@@ -2,62 +2,77 @@ import { getInstance, loadShare } from '..';
 import { LIB_EXPOSE } from '../event-bus/constant';
 import { getRemoteInfo, useGetRemote, useHandleExpose, type ExtOption } from './utils';
 
-export function useLoadRemoteLib<Module>(remoteCache: Map<string, Record<string, Module> | Module>) {
-  return (entry: string, options?: { host?: string; entryName?: string }) => loadRemoteLib(remoteCache, entry, options);
+export interface LoadLibOptions {
+  host?: string;
+  entryName?: string;
+  timeout?: number;
 }
 
-function loadRemoteLib<Module>(
+export function useLoadRemoteLib<Module>(remoteCache: Map<string, Record<string, Module> | Module>) {
+  return (entry: string, options?: LoadLibOptions) => loadRemoteLib(remoteCache, entry, options);
+}
+
+async function loadRemoteLib<Module>(
   remoteCache: Map<string, Record<string, Module> | Module>,
   entry: string,
-  options?: { host?: string; entryName?: string },
+  options?: LoadLibOptions,
 ): Promise<Module | null> {
   const [appName, modelName] = entry.split('/');
-  const appModule = useGetRemote(remoteCache)(entry);
-  if (appModule) {
-    return Promise.resolve(appModule as Module);
+  const cached = useGetRemote(remoteCache)(entry);
+  if (cached) {
+    return cached as Module;
   }
 
-  return new Promise(async (resolve, reject) => {
-    const linkInstance = getInstance();
-    const extOption: ExtOption = { modelName };
+  const linkInstance = getInstance();
+  const extOption: ExtOption = { modelName };
+  const plugin = linkInstance.plugin;
+  let remoteInfo = getRemoteInfo(appName) as any;
+  if (plugin?.beforeLoadRemote) {
+    remoteInfo = await plugin.beforeLoadRemote({ ...remoteInfo });
+  }
+
+  const host = options?.host || remoteInfo?.host || `${location.protocol}//${location.host}`;
+  const entryName = options?.entryName || remoteInfo?.entry?.js;
+  const jsUrl = `${host}${entryName}`;
+  const timeout = options?.timeout ?? 10000;
+
+  // 预加载该远程声明的共享依赖
+  const shared = remoteInfo?.shared || {};
+  await Promise.all(Object.keys(shared).map((dep) => loadShare(dep).catch(() => null)));
+
+  // 加载共享依赖入口文件，注册远程提供的共享依赖。
+  // 共享入口是可选产物，缺失或加载失败时不应阻塞主模块加载。
+  const sharedEntry = remoteInfo?.entry?.shared;
+  if (sharedEntry) {
+    const sharedUrl = `${host}${sharedEntry}`;
+    try {
+      await import(/* @vite-ignore */ sharedUrl);
+    } catch (error) {
+      console.warn(`[linkjs] Failed to load shared entry "${sharedUrl}":`, error);
+    }
+  }
+
+  return new Promise<Module | null>((resolve, reject) => {
     const handleLibExpose = useHandleExpose(remoteCache, resolve, appName, extOption);
     linkInstance.eventBus.on(LIB_EXPOSE, handleLibExpose);
-    const plugin = linkInstance.plugin;
-    let remoteInfo = getRemoteInfo(appName);
-    if (plugin && plugin.beforeLoadRemote) {
-      remoteInfo = await plugin.beforeLoadRemote({ ...remoteInfo });
-    }
-    const host = options?.host || remoteInfo?.host || `${location.protocol}//${location.host}`;
-    const entryName = options?.entryName || remoteInfo?.entry.js;
-    const jsUrl = `${host}${entryName}`;
 
-    const shared = remoteInfo?.shared || {};
-    const depNames = Object.keys(shared);
-    await Promise.all(depNames.map((dep) => loadShare(dep)));
+    const fail = (error: unknown) => {
+      linkInstance.eventBus.off(LIB_EXPOSE, handleLibExpose);
+      if (extOption.timeoutId) {
+        clearTimeout(extOption.timeoutId);
+      }
+      if (plugin?.errorLoadRemote) {
+        plugin.errorLoadRemote(resolve, reject);
+      }
+      reject(error);
+    };
 
-    const sharedEntry = remoteInfo?.entry?.shared;
-    if (sharedEntry) {
-      const sharedUrl = `${host}${sharedEntry}`;
-      const t = await import(sharedUrl);
-      console.log(t);
-    }
-
-    return import(jsUrl)
-      .then((_module) => {
+    import(/* @vite-ignore */ jsUrl)
+      .then(() => {
         extOption.timeoutId = setTimeout(() => {
-          linkInstance.eventBus.off(LIB_EXPOSE, handleLibExpose);
-          if (plugin && plugin.errorLoadRemote) {
-            plugin.errorLoadRemote(resolve, reject);
-          }
-          reject(new Error(`Timeout waiting for module ${appName} to expose`));
-        }, 10000);
+          fail(new Error(`Timeout waiting for module ${appName} to expose`));
+        }, timeout);
       })
-      .catch((error) => {
-        linkInstance.eventBus.off(LIB_EXPOSE, handleLibExpose);
-        if (plugin && plugin.errorLoadRemote) {
-          plugin.errorLoadRemote(resolve, reject);
-        }
-        reject(error);
-      });
+      .catch(fail);
   });
 }

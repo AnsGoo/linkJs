@@ -1,5 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
 
 /**
  * 生成依赖拓扑图
@@ -12,22 +15,26 @@ export function generateDependencyGraph(
   outDir: string,
   dependencyGraph: Map<string, Set<string>>,
   bundle: any,
-  sharedDeps: Record<string, string[]> = {}
+  sharedDeps: Record<string, string[]> = {},
+  entrySharedDeps: string[] = []
 ) {
   if (!fs.existsSync(outDir)) {
     fs.mkdirSync(outDir, { recursive: true });
   }
 
+  // 真实包名 -> 共享依赖名称的映射（基于 package.json 依赖闭包自动推导）
+  const pkgMap = buildSharedPackageMap(Object.keys(sharedDeps));
+
   // 生成文本格式的依赖图
-  const textGraph = generateTextGraph(dependencyGraph, sharedDeps);
+  const textGraph = generateTextGraph(dependencyGraph, sharedDeps, entrySharedDeps, pkgMap);
   fs.writeFileSync(path.join(outDir, 'dependency-graph.txt'), textGraph, 'utf-8');
 
   // 生成JSON格式的依赖图
-  const jsonGraph = generateJsonGraph(dependencyGraph, sharedDeps);
+  const jsonGraph = generateJsonGraph(dependencyGraph, sharedDeps, entrySharedDeps, pkgMap);
   fs.writeFileSync(path.join(outDir, 'dependency-graph.json'), JSON.stringify(jsonGraph, null, 2), 'utf-8');
 
   // 生成Mermaid格式的依赖图（用于可视化）
-  const mermaidGraph = generateMermaidGraph(dependencyGraph, sharedDeps);
+  const mermaidGraph = generateMermaidGraph(dependencyGraph, sharedDeps, entrySharedDeps, pkgMap);
   fs.writeFileSync(path.join(outDir, 'dependency-graph.mmd'), mermaidGraph, 'utf-8');
 }
 
@@ -36,7 +43,9 @@ export function generateDependencyGraph(
  */
 function generateTextGraph(
   dependencyGraph: Map<string, Set<string>>,
-  sharedDeps: Record<string, string[]>
+  sharedDeps: Record<string, string[]>,
+  entrySharedDeps: string[] = [],
+  pkgMap: Map<string, string> = new Map()
 ): string {
   let textGraph = '=== Dependency Graph ===\n\n';
 
@@ -48,9 +57,10 @@ function generateTextGraph(
     const moduleName = path.basename(moduleId);
     textGraph += `${moduleName}\n`;
 
-    // 基于 shared 函数中配置的依赖，分析入口文件和共享依赖之间的依赖关系
-    // 只显示根共享依赖（如 vue），不显示其他共享依赖（如 vue-router 和 pinia）
-    const collectedSharedDeps = collectRootSharedDeps(sharedDeps);
+    // 入口声明的共享依赖优先；否则基于模块依赖图推断
+    const collectedSharedDeps = entrySharedDeps.length > 0
+      ? new Set(entrySharedDeps)
+      : findUsedSharedDeps(moduleId, dependencyGraph, pkgMap);
 
     // 输出收集到的共享依赖
     if (collectedSharedDeps.size > 0) {
@@ -97,13 +107,17 @@ function generateTextGraph(
  */
 function generateJsonGraph(
   dependencyGraph: Map<string, Set<string>>,
-  sharedDeps: Record<string, string[]>
+  sharedDeps: Record<string, string[]>,
+  entrySharedDeps: string[] = [],
+  pkgMap: Map<string, string> = new Map()
 ) {
   const entryModules = identifyEntryModules(dependencyGraph);
   const jsonGraph: Record<string, string[]> = {};
 
   entryModules.forEach(moduleId => {
-    const collectedSharedDeps = collectRootSharedDeps(sharedDeps);
+    const collectedSharedDeps = entrySharedDeps.length > 0
+      ? new Set(entrySharedDeps)
+      : findUsedSharedDeps(moduleId, dependencyGraph, pkgMap);
     jsonGraph[moduleId] = Array.from(collectedSharedDeps).sort();
   });
 
@@ -122,7 +136,9 @@ function generateJsonGraph(
  */
 function generateMermaidGraph(
   dependencyGraph: Map<string, Set<string>>,
-  sharedDeps: Record<string, string[]>
+  sharedDeps: Record<string, string[]>,
+  entrySharedDeps: string[] = [],
+  pkgMap: Map<string, string> = new Map()
 ): string {
   const entryModules = identifyEntryModules(dependencyGraph);
   let mermaidGraph = 'graph TD\n';
@@ -146,10 +162,12 @@ function generateMermaidGraph(
     }
   });
 
-  // 基于 shared 函数中配置的依赖，分析入口文件和共享依赖之间的依赖关系
+  // 入口声明的共享依赖优先；否则基于模块依赖图推断
   const entryToSharedDeps: Record<string, Set<string>> = {};
   entryModules.forEach(moduleId => {
-    entryToSharedDeps[moduleId] = collectRootSharedDeps(sharedDeps);
+    entryToSharedDeps[moduleId] = entrySharedDeps.length > 0
+      ? new Set(entrySharedDeps)
+      : findUsedSharedDeps(moduleId, dependencyGraph, pkgMap);
   });
 
   // 添加 entry 到共享依赖的边
@@ -197,178 +215,262 @@ function identifyEntryModules(dependencyGraph: Map<string, Set<string>>): Set<st
 }
 
 /**
- * 收集根共享依赖（没有依赖的依赖）
+ * 从入口模块出发，找出其（直接或间接）使用到的所有共享依赖
+ * @param entryModule 入口模块路径
+ * @param dependencyGraph 依赖图
+ * @param pkgMap 真实包名 -> 共享依赖名称的映射
  */
-function collectRootSharedDeps(sharedDeps: Record<string, string[]>): Set<string> {
-  const collectedSharedDeps = new Set<string>();
+function findUsedSharedDeps(
+  entryModule: string,
+  dependencyGraph: Map<string, Set<string>>,
+  pkgMap: Map<string, string>
+): Set<string> {
+  const used = new Set<string>();
+  const visited = new Set<string>();
 
-  Object.keys(sharedDeps).forEach(sharedDep => {
-    if (sharedDeps[sharedDep].length === 0) {
-      collectedSharedDeps.add(sharedDep);
+  const walk = (modulePath: string) => {
+    if (visited.has(modulePath)) {
+      return;
     }
-  });
+    visited.add(modulePath);
 
-  return collectedSharedDeps;
+    const deps = dependencyGraph.get(modulePath);
+    if (!deps) {
+      return;
+    }
+
+    deps.forEach(dep => {
+      const pkgName = extractPkgName(dep);
+      if (pkgName) {
+        const sharedName = pkgMap.get(pkgName);
+        if (sharedName) {
+          used.add(sharedName);
+        }
+      }
+      walk(dep);
+    });
+  };
+
+  walk(entryModule);
+  return used;
 }
 
 /**
- * 自动分析依赖关系
- * @param dependencyGraph 依赖图
+ * 自动分析共享依赖之间的子依赖关系。
+ *
+ * 不使用打包后的模块依赖图，而是基于各共享依赖的 package.json 依赖闭包推导，
+ * 原因：插件会把共享依赖的 import 改写成 `$linkjs.loadShare()`，会破坏解析后的模块依赖边。
+ * 使用 package.json 闭包既能避开该问题，又天然通用（无需硬编码任何包名）。
+ *
+ * 例如：
+ *   shared = { vue, pinia, vue-router }
+ *   pinia 的闭包含 vue（peerDependency）        -> pinia 依赖 vue
+ *   vue-router 的闭包含 vue                     -> vue-router 依赖 vue
+ *
  * @param shared 共享依赖配置
- * @returns 共享依赖关系
+ * @returns 每个共享依赖所依赖的其它共享依赖列表
  */
-export function analyzeDependencies(
-  dependencyGraph: Map<string, Set<string>>,
-  shared: Record<string, any>
-): Record<string, string[]> {
-  const sharedDeps: Record<string, string[]> = {};
+export function analyzeDependencies(shared: Record<string, any>): Record<string, string[]> {
   const sharedKeys = Object.keys(shared);
+  const sharedSet = new Set(sharedKeys);
+  const resolveFrom = process.cwd();
 
-  // 初始化 sharedDeps
-  sharedKeys.forEach(key => {
-    sharedDeps[key] = [];
-  });
-
-  // 打印调试信息
-  console.log('=== Analyzing Dependencies ===');
-  console.log('Shared keys:', sharedKeys);
-  console.log('Dependency graph entries:', dependencyGraph.size);
-
-  // 分析每个共享依赖
-  sharedKeys.forEach(sharedDep => {
-    console.log(`\nAnalyzing ${sharedDep}:`);
-
-    // 检查其他共享依赖是否依赖于当前共享依赖
-    sharedKeys.forEach(otherDep => {
-      if (sharedDep === otherDep) {
-        return;
-      }
-
-      // 遍历依赖图，找到属于 otherDep 的模块
-      let hasDep = false;
-      dependencyGraph.forEach((deps, moduleId) => {
-        if (isSharedDep(moduleId, otherDep, sharedKeys)) {
-          console.log(`  Checking module: ${moduleId}`);
-          if (hasDependencyOn(moduleId, sharedDep, dependencyGraph, sharedKeys)) {
-            console.log(`  -> ${otherDep} depends on ${sharedDep}`);
-            hasDep = true;
-          }
-        }
-      });
-
-      if (hasDep && !sharedDeps[otherDep].includes(sharedDep)) {
-        sharedDeps[otherDep].push(sharedDep);
+  const sharedDeps: Record<string, string[]> = {};
+  sharedKeys.forEach((key) => {
+    const deps: string[] = [];
+    getPackageClosure(key, resolveFrom).forEach((dep) => {
+      if (dep !== key && sharedSet.has(dep) && !deps.includes(dep)) {
+        deps.push(dep);
       }
     });
+    sharedDeps[key] = deps;
   });
-
-  console.log('=== Result ===');
-  console.log('Shared deps:', sharedDeps);
 
   return sharedDeps;
 }
 
+const pkgNameByDirCache = new Map<string, string | null>();
+
 /**
- * 从路径中提取包名
+ * 从目录向上查找最近的 package.json，返回其 name。
+ * 结果按目录缓存（包括沿途访问过的目录），避免重复 IO。
  */
-function extractPkgName(modulePath: string): string | null {
-  // 处理 pnpm 的路径格式：.pnpm/xxx@version/node_modules/xxx/...
-  // 或者 .pnpm/@vue+devtools-api@version/node_modules/@vue/devtools-api/...
-  // 注意：pnpm 使用 + 替代 /，所以 @vue+devtools-api 代表 @vue/devtools-api
+function readPkgNameFromDir(dir: string): string | null {
+  const cached = pkgNameByDirCache.get(dir);
+  if (cached !== undefined) {
+    return cached;
+  }
 
-  // 匹配 .pnpm/xxx@version/node_modules/xxx
-  // 或者 .pnpm/@vue+devtools-api@version/node_modules/@vue/devtools-api
-  // 或者 .pnpm/pinia@3.0.4_typescript@5.9.3_vue@3.5.27_typescript@5.9.3_/node_modules/pinia/dist/pinia.mjs
-  // 或者 .pnpm/vue-router@5.0.2_@vue+compiler-sfc@3.5.27_pinia@3.0.4_typescript@5.9.3_vue@3.5.27_types_7f1a033688e072c9ca94d78ef4f964d2/node_modules/vue-router/dist/vue-router.mjs
-  const pnpmMatch = modulePath.match(/\.pnpm\/([^/]+)\/node_modules\/([^/]+)(?:\/([^/]+))?/);
-  if (pnpmMatch) {
-    // 从 node_modules 后面提取包名
-    const nodeModulesPkgName = pnpmMatch[2];
-    // 检查是否是 scoped 包（如 @vue/devtools-api）
-    if (nodeModulesPkgName === '@vue' && pnpmMatch[3]) {
-      return `${nodeModulesPkgName}/${pnpmMatch[3]}`;
+  const visited: string[] = [];
+  let current = dir;
+  let result: string | null = null;
+  const root = path.parse(current).root;
+
+  while (current && current !== root) {
+    const cachedCurrent = pkgNameByDirCache.get(current);
+    if (cachedCurrent !== undefined) {
+      result = cachedCurrent;
+      break;
     }
-    return nodeModulesPkgName;
+
+    visited.push(current);
+    const candidate = path.join(current, 'package.json');
+    if (fs.existsSync(candidate)) {
+      try {
+        const json = JSON.parse(fs.readFileSync(candidate, 'utf-8'));
+        result = typeof json.name === 'string' ? json.name : null;
+      } catch {
+        result = null;
+      }
+      break;
+    }
+
+    current = path.dirname(current);
   }
 
-  // 处理普通格式：node_modules/@vue/xxx/...
-  const match = modulePath.match(/node_modules\/(@[^/]+\/[^/]+)\//);
-  if (match) {
-    return match[1];
+  visited.forEach((v) => pkgNameByDirCache.set(v, result));
+  pkgNameByDirCache.set(dir, result);
+  return result;
+}
+
+/**
+ * 解析模块路径对应的真实包名。
+ *
+ * 通过读取最近的 package.json 的 `name` 得到，这是与包管理器/目录结构完全无关的通用方式，
+ * 天然适配 npm / pnpm / yarn / workspace 软链，不依赖也不特判 `node_modules`、`.pnpm` 等任何约定。
+ *
+ * 无法确定（虚拟模块、非绝对路径、缺少 package.json）时返回 null。
+ */
+export function extractPkgName(modulePath: string): string | null {
+  if (!modulePath || !path.isAbsolute(modulePath)) {
+    return null;
   }
-  // 处理普通格式：node_modules/xxx/...
-  const match2 = modulePath.match(/node_modules\/([^/]+)(\/|$)/);
-  if (match2) {
-    return match2[1];
+  return readPkgNameFromDir(path.dirname(modulePath));
+}
+
+/**
+ * 定位某个包的 package.json 绝对路径。
+ * 优先直接解析 `${pkg}/package.json`，若该包通过 exports 限制了 package.json 的导出，
+ * 则回退到解析包主入口后向上查找 name 匹配的 package.json。
+ */
+function resolvePackageJson(pkgName: string, resolveFrom: string): string | null {
+  try {
+    return require.resolve(`${pkgName}/package.json`, { paths: [resolveFrom] });
+  } catch {
+    // fallthrough
   }
+
+  try {
+    const mainEntry = require.resolve(pkgName, { paths: [resolveFrom] });
+    let dir = path.dirname(mainEntry);
+    const root = path.parse(dir).root;
+    while (dir && dir !== root) {
+      const candidate = path.join(dir, 'package.json');
+      if (fs.existsSync(candidate)) {
+        try {
+          const json = JSON.parse(fs.readFileSync(candidate, 'utf-8'));
+          if (json.name === pkgName) {
+            return candidate;
+          }
+        } catch {
+          // ignore malformed package.json
+        }
+      }
+      dir = path.dirname(dir);
+    }
+  } catch {
+    // package not resolvable
+  }
+
   return null;
 }
 
 /**
- * 检查模块是否是指定的共享依赖
+ * 读取某个包 package.json 中的运行时依赖（dependencies + 非可选 peerDependencies）。
+ *
+ * 排除 `peerDependenciesMeta` 中标记为 `optional: true` 的 peer，
+ * 避免把可选集成（如 vue-router 可选依赖 pinia）误判为真实依赖。
  */
-function isSharedDep(modulePath: string, sharedDep: string, sharedKeys: string[]): boolean {
-  const pkgName = extractPkgName(modulePath);
-  if (!pkgName) {
-    return false;
+function getPackageDependencies(pkgName: string, resolveFrom: string): string[] {
+  const pkgJsonPath = resolvePackageJson(pkgName, resolveFrom);
+  if (!pkgJsonPath) {
+    return [];
   }
-  // 对于 @vue/ 前缀的包
-  if (pkgName.startsWith('@vue/')) {
-    return sharedDep === 'vue';
+  try {
+    const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf-8'));
+    const deps: Record<string, string> = { ...(pkgJson.dependencies || {}), ...(pkgJson.peerDependencies || {}) };
+    const peerMeta: Record<string, { optional?: boolean }> = pkgJson.peerDependenciesMeta || {};
+    for (const name of Object.keys(deps)) {
+      if (peerMeta[name]?.optional) {
+        delete deps[name];
+      }
+    }
+    return Object.keys(deps);
+  } catch {
+    return [];
   }
-  return pkgName === sharedDep;
 }
 
 /**
- * 从模块路径中获取导入的包名
+ * 计算某个包的完整依赖闭包（dependencies + peerDependencies，递归）。
+ * 解析失败的包计为叶子节点。
  */
-function getImportedPkgName(modulePath: string): string | null {
-  // 从路径中提取包名
-  const pkgName = extractPkgName(modulePath);
-  if (!pkgName) {
-    return null;
-  }
-  // 对于 @vue/ 前缀的包，视为 vue
-  if (pkgName.startsWith('@vue/')) {
-    return 'vue';
-  }
-  return pkgName;
-}
-
-/**
- * 检查模块是否直接或间接依赖于指定的共享依赖
- */
-function hasDependencyOn(
-  modulePath: string,
-  targetDep: string,
-  dependencyGraph: Map<string, Set<string>>,
-  sharedKeys: string[]
-): boolean {
+function getPackageClosure(pkgName: string, resolveFrom: string): Set<string> {
   const visited = new Set<string>();
+  const queue = [pkgName];
 
-  const checkDependency = (currentPath: string): boolean => {
-    if (visited.has(currentPath)) {
-      return false;
+  while (queue.length > 0) {
+    const current = queue.shift() as string;
+    if (visited.has(current)) {
+      continue;
     }
-    visited.add(currentPath);
+    visited.add(current);
 
-    const deps = dependencyGraph.get(currentPath);
-    if (!deps) {
-      return false;
-    }
-
-    for (const dep of deps) {
-      const importedPkg = getImportedPkgName(dep);
-      if (importedPkg === targetDep) {
-        return true;
+    getPackageDependencies(current, resolveFrom).forEach((dep) => {
+      if (!visited.has(dep)) {
+        queue.push(dep);
       }
-      if (checkDependency(dep)) {
-        return true;
+    });
+  }
+
+  return visited;
+}
+
+const sharedPackageMapCache = new Map<string, Map<string, string>>();
+
+/**
+ * 构建“真实包名 -> 共享依赖名称”的映射。
+ *
+ * 对每个共享依赖，基于其 package.json 的依赖闭包，把闭包内的所有包都归属到该共享依赖，
+ * 因此无需硬编码任何具体包名。例如 shared.vue 的闭包包含 @vue/runtime-dom、@vue/shared 等，
+ * 这些包的模块会自动归属到 vue。
+ *
+ * @param sharedKeys 共享依赖名称（真实包名）
+ * @param resolveFrom 解析依赖的起始目录，默认为 cwd
+ */
+export function buildSharedPackageMap(
+  sharedKeys: string[],
+  resolveFrom: string = process.cwd()
+): Map<string, string> {
+  const cacheKey = `${resolveFrom}::${[...sharedKeys].sort().join(',')}`;
+  const cached = sharedPackageMapCache.get(cacheKey);
+  if (cached) {
+    return cached;
+  }
+
+  const map = new Map<string, string>();
+
+  // 共享依赖自身始终映射到自己（精确匹配优先）
+  sharedKeys.forEach((key) => map.set(key, key));
+
+  sharedKeys.forEach((key) => {
+    getPackageClosure(key, resolveFrom).forEach((dep) => {
+      if (!map.has(dep)) {
+        map.set(dep, key);
       }
-    }
+    });
+  });
 
-    return false;
-  };
-
-  return checkDependency(modulePath);
+  sharedPackageMapCache.set(cacheKey, map);
+  return map;
 }

@@ -1,27 +1,78 @@
 import { getInstance } from '..';
 import { LIB_EXPOSE } from '../event-bus/constant';
 
-function loadCss(url: string) {
+/**
+ * 注入 CSS 样式表。`remoteName` 会写到 `data-linkjs-remote`，便于卸载时回收。
+ */
+function loadCss(url: string, remoteName?: string): Promise<void> {
+  return new Promise((resolve) => {
+    if (document.querySelector(`link[rel="stylesheet"][href="${url}"]`)) {
+      resolve();
+      return;
+    }
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = url;
+    if (remoteName) {
+      link.dataset.linkjsRemote = remoteName;
+    }
+    link.onload = () => resolve();
+    link.onerror = () => {
+      console.warn(`[linkjs] Failed to load stylesheet: ${url}`);
+      resolve();
+    };
+    document.head.appendChild(link);
+  });
+}
+
+/**
+ * 预加载 module（仅缓存，不执行）
+ */
+function preloadModule(url: string, remoteName?: string): void {
+  if (document.querySelector(`link[rel="modulepreload"][href="${url}"]`)) {
+    return;
+  }
   const link = document.createElement('link');
-  link.rel = 'stylesheet';
+  link.rel = 'modulepreload';
   link.href = url;
+  if (remoteName) {
+    link.dataset.linkjsRemote = remoteName;
+  }
   document.head.appendChild(link);
 }
 
-function loadScript(url: string): Promise<void> {
-  return new Promise((resolve, _reject) => {
+interface LoadScriptOptions {
+  /** 加载失败时是否忽略（默认 false，即 reject） */
+  ignoreError?: boolean;
+  /** 归属的远程应用名，写到 data-linkjs-remote 便于卸载 */
+  remoteName?: string;
+}
+
+/**
+ * 以 `<script type="module">` 方式加载远程脚本。
+ * 默认加载失败会 reject，便于上层感知并重试/报错。
+ */
+function loadScript(url: string, options?: LoadScriptOptions): Promise<void> {
+  return new Promise((resolve, reject) => {
     if (url.includes('@vite/client')) {
       resolve();
       return;
     }
     const script = document.createElement('script');
-    console.log(`Loading script: ${url}`);
     script.src = url;
     script.type = 'module';
+    if (options?.remoteName) {
+      script.dataset.linkjsRemote = options.remoteName;
+    }
     script.onload = () => resolve();
     script.onerror = () => {
-      console.warn(`Failed to load script: ${url}, but continuing`);
-      resolve(); // 即使脚本加载失败也继续，避免整个加载过程失败
+      const error = new Error(`Failed to load script: ${url}`);
+      if (options?.ignoreError) {
+        console.warn(`[linkjs] ${error.message}, but continuing`);
+        resolve();
+      } else {
+        reject(error);
+      }
     };
     document.body.appendChild(script);
   });
@@ -93,4 +144,4 @@ function handleLibExpose<Module>(
   }
 }
 
-export { loadCss, loadScript, getRemoteInfo, useGetRemote, useHandleExpose };
+export { loadCss, preloadModule, loadScript, getRemoteInfo, useGetRemote, useHandleExpose };

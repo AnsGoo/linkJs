@@ -1,7 +1,32 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { resolve, dirname } from 'path';
+import { createRequire } from 'module';
 import { isRegExp } from 'util/types';
 import { ManifestJson } from './types';
+
+const require = createRequire(import.meta.url);
+
+/**
+ * 解析共享依赖的版本号。
+ * `workspace:*` / `workspace:^` 等协议会读取对应工作区包 package.json 的 version，
+ * 而不是写死 `1.0.0`。
+ */
+function resolveDependencyVersion(pkgName: string, declared: string | undefined): string {
+  if (!declared) {
+    return '1.0.0';
+  }
+  if (declared.startsWith('workspace:')) {
+    try {
+      const pkgJsonPath = require.resolve(`${pkgName}/package.json`, { paths: [process.cwd()] });
+      const pkgJson = JSON.parse(readFileSync(pkgJsonPath, 'utf-8'));
+      return pkgJson.version || '0.0.0';
+    } catch {
+      // 工作区包未安装/无法解析时退回一个中性版本
+      return '0.0.0';
+    }
+  }
+  return declared;
+}
 
 function isExternal(finalExternal: any[], dependenceName: string): boolean {
   for (const item of finalExternal) {
@@ -77,9 +102,9 @@ function generateManifestFile(outDir: string, exposes: string[], shared: Record<
     };
 
     for (const [depName, depConfig] of Object.entries(shared)) {
-      const version = externalDeps[depName] || packageJson.dependencies?.[depName] || packageJson.peerDependencies?.[depName] || '1.0.0';
+      const declared = externalDeps[depName] || packageJson.dependencies?.[depName] || packageJson.peerDependencies?.[depName];
       manifest.shared![depName] = {
-        version: version === 'workspace:*' ? '1.0.0' : version,
+        version: resolveDependencyVersion(depName, declared),
         scope: depConfig.scope || 'global',
         singleton: depConfig.singleton ?? true,
         dependencies: sharedDeps[depName] || depConfig.dependencies || [],

@@ -16,7 +16,7 @@ instances.loadRegistry(registryOptions);
 // 加载远程模块的函数
 function loadRemoteModule() {
   return loadApp('remote', {
-    host: 'http://localhost:8080',
+    host: 'http://localhost:8081',
   })
     .then((lib) => {
       console.log('Remote module loaded:', lib);

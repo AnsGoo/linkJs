@@ -2,63 +2,110 @@ import { getInstance } from '..';
 import { __LINKJS_OVERRIDES__ } from '../constant';
 import { LOAD_STATUS } from '../event-bus/constant';
 
-function overrideRemote() {
-  const overridesContent = localStorage.getItem(__LINKJS_OVERRIDES__);
-  const overridePromises: Array<Promise<void>> = [];
-  if (overridesContent) {
-    let content;
-    try {
-      content = JSON.parse(overridesContent);
-    } catch (error) {
-      console.error(`Error parsing overrides:`, error);
-      throw error;
-    }
-    const overrideKeys = Object.keys(content || []);
-    (overrideKeys || []).forEach((name: string) => {
-      const host = content[name];
-      if (host && typeof host === 'string' && (host.startsWith('http') || host.startsWith('https'))) {
-        overridePromises.push(loadOverride({ name, host }));
-      } else {
-        console.warn(`Invalid override: ${JSON.stringify({ name, host })}`);
-      }
-    });
-  }
-  return Promise.all(overridePromises);
+const DEFAULT_TIMEOUT = 10000;
+
+interface OverrideEntry {
+  name: string;
+  host: string;
 }
 
-async function loadOverride(option: { name: string; host: string }) {
+/**
+ * 校验 host 是否为合法的 http(s) URL。防止 localStorage 注入任意协议/相对路径。
+ */
+function isValidRemoteHost(host: unknown): host is string {
+  if (typeof host !== 'string' || host.length === 0) {
+    return false;
+  }
+  try {
+    const url = new URL(host);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 读取并应用 localStorage 中的远程覆盖配置。
+ *
+ * 配置格式：`{ [remoteName]: 'https://host' }`。
+ * 非法的 host 会被跳过并告警；单个 host 加载失败不会影响其它 host。
+ */
+function overrideRemote() {
+  const overridesContent = localStorage.getItem(__LINKJS_OVERRIDES__);
+  if (!overridesContent) {
+    return Promise.resolve([]);
+  }
+
+  let content: Record<string, unknown>;
+  try {
+    content = JSON.parse(overridesContent);
+  } catch (error) {
+    console.error('[linkjs] Error parsing overrides:', error);
+    return Promise.resolve([]);
+  }
+
+  const entries: OverrideEntry[] = [];
+  Object.keys(content || {}).forEach((name) => {
+    const host = content[name];
+    if (!name) {
+      return;
+    }
+    if (isValidRemoteHost(host)) {
+      entries.push({ name, host });
+    } else {
+      console.warn(`[linkjs] Invalid override for "${name}": ${JSON.stringify(host)}`);
+    }
+  });
+
+  return Promise.all(
+    entries.map((entry) => loadOverride(entry).catch((error) => {
+      console.warn(`[linkjs] Failed to apply override for "${entry.name}":`, error);
+      return null;
+    })),
+  );
+}
+
+async function loadOverride(option: OverrideEntry) {
   const { name, host } = option;
   const instance = getInstance();
   const remote = instance.remotes.get(name);
   if (!remote) {
-    return Promise.reject(new Error(`Remote module ${name} not found`));
+    throw new Error(`Remote module ${name} not found`);
   }
+
   remote.status = LOAD_STATUS.LOADING;
-  let remoteInfo;
+  let remoteInfo: any;
   try {
     remoteInfo = await loadFile(`${host}/manifest.json`);
-  } catch (error) {
-    return Promise.reject(new Error(`Remote module load error: ${error}`));
   } finally {
     remote.status = LOAD_STATUS.LOADED;
   }
+
+  if (!remoteInfo || typeof remoteInfo !== 'object') {
+    throw new Error(`Invalid manifest from ${host}`);
+  }
+
   remote.host = host;
   remote.version = remoteInfo.version;
   remote.shared = remoteInfo.shared;
+  if (remoteInfo.entry) {
+    remote.entry = remoteInfo.entry;
+  }
   remote.status = LOAD_STATUS.LOADED;
-  console.log(`【Loaded override】: [${name}] in  ${host}`);
+  console.log(`[linkjs] Loaded override: [${name}] in ${host}`);
   return remoteInfo;
 }
 
-function loadFile(url: string): Promise<any | void> {
-  return fetch(url)
+function loadFile(url: string, timeout = DEFAULT_TIMEOUT): Promise<any> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeout);
+
+  return fetch(url, { signal: controller.signal })
     .then((response) => {
       if (!response.ok) {
         throw new Error(`Failed to load file: ${response.statusText}`);
       }
-      // 根据文件扩展名判断如何处理响应
       const extension = url.split('.').pop()?.toLowerCase();
-
       switch (extension) {
         case 'json':
           return response.json();
@@ -78,14 +125,14 @@ function loadFile(url: string): Promise<any | void> {
         case 'svg':
           return response.blob();
         default:
-          // 对于未知类型，尝试作为文本处理
           return response.text();
       }
     })
     .catch((error) => {
-      console.error(`Error loading file ${url}:`, error);
+      console.error(`[linkjs] Error loading file ${url}:`, error);
       throw error;
-    });
+    })
+    .finally(() => clearTimeout(timer));
 }
 
 export { overrideRemote, loadOverride };

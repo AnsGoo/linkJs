@@ -19,7 +19,8 @@
   },
   "scripts": {
     "build": "tsdown",
-    "dev": "tsdown --watch"
+    "dev": "tsdown --watch",
+    "test": "vitest run"
   },
   "dependencies": {
     "unplugin": "^2.1.0"
@@ -30,6 +31,7 @@
     "oxc-parser": "^0.114.0",
     "rolldown": "^1.0.0-r3",
     "tsdown": "^0.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.16"
   }
 }

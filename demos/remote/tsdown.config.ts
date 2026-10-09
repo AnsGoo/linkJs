@@ -1,6 +1,5 @@
 import { defineConfig } from 'tsdown';
 import VuePlugin from 'unplugin-vue/rolldown';
-import tsdownPluginServer from 'tsdown-plugin-server';
 import { unpluginLinkjsRollowPlugin } from 'unplugin-linkjs';
 import * as Vue from 'vue';
 

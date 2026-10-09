@@ -11,7 +11,7 @@ withDefaults(
 
 <template>
   <div class="greetings">
-    <h1 class="green">{{ msg }} hot update</h1>
+    <h1 class="green">{{ msg }} hot update7</h1>
     <h3>
       You’ve successfully created a project with
       <a href="https://vite.dev/" target="_blank" rel="noopener">Vite</a> +
@@ -22,7 +22,7 @@ withDefaults(
 
 <style scoped>
 h1 {
-  font-weight: 500;
+  font-weight: 900;
   font-size: 2.6rem;
   position: relative;
   top: -10px;

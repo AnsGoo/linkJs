@@ -5,154 +5,190 @@ import { VersionComparator } from './version-comparator';
 
 export type { ShareOption };
 
+interface VersionedModule {
+  version: string;
+  module: any;
+}
+
+interface Candidate extends VersionedModule {
+  source: 'loaded' | 'available';
+}
+
+const DEFAULT_STRATEGY = 'version-first';
+
 /**
- * 注册共享模块配置
- * @param options - 共享模块选项的键值对
+ * 注册共享模块配置。
+ *
+ * - `singleton: true`：同一作用域下同名只允许一个版本，首个注册者胜出，后续注册忽略。
+ * - 非单例：允许注册多个版本，追加保存。
  */
 function registerShare(options: Record<string, ShareOption>) {
+  const instance = getInstance();
   for (const name in options) {
     const option = options[name];
-    const { scope = 'global' } = option;
-    const instance = getInstance();
-    const shareds = instance.shares;
-    if (!shareds.has(scope)) {
-      shareds.set(scope, new Map());
+    const scope = option.scope || 'global';
+    let scopeMap = instance.shares.get(scope);
+    if (!scopeMap) {
+      scopeMap = new Map();
+      instance.shares.set(scope, scopeMap);
     }
-    const scopeMap = shareds.get(scope);
-    if (scopeMap.has(name)) {
-      const shareInfo = scopeMap.get(name);
-      if (shareInfo.singleton) {
-        continue;
-      } else {
-        shareInfo.push(option);
-      }
+
+    const existing: ShareOption[] = scopeMap.get(name) || [];
+    const hasSingleton = existing.some((info) => info.singleton);
+    if (existing.length > 0 && hasSingleton) {
+      // 已注册单例，忽略后续注册
+      continue;
     }
-    scopeMap.set(name, [option]);
+    scopeMap.set(name, [...existing, option]);
   }
 }
 
-async function loadModule(shareInfo: any): Promise<Module> {
-  let libModule: Module = shareInfo.lib;
+async function loadModule(shareInfo: ShareOption): Promise<Module> {
+  let libModule: Module = shareInfo.lib as Module;
   if (typeof shareInfo.lib === 'function') {
-    const libload = await shareInfo.lib();
-    if (libload instanceof Promise) {
-      libModule = await libload;
-    } else {
-      libModule = libload;
-    }
+    const libload = await (shareInfo.lib as () => any)();
+    libModule = libload instanceof Promise ? await libload : libload;
   }
   return libModule;
 }
 
-async function loadAndCacheModule(name: string, shareInfo: any, loadedModules: Map<string, Module>): Promise<Module> {
-  const libModule = await loadModule(shareInfo);
-  const versionKey = `${name}@${shareInfo.version || '0.0.0'}`;
-  loadedModules.set(versionKey, libModule);
-  return libModule;
-}
-
-async function loadShareVersionFirst(
-  name: string,
-  version: string | undefined,
-  shareInfos: any[],
-  loadedModules: Map<string, Module>,
-  loadedVersions: Array<{ version: string; module: any }>,
-): Promise<Module | null> {
-  if (!version) {
-    if (loadedVersions.length > 0) {
-      const latestLoaded = VersionComparator.findLatestVersion(loadedVersions);
-      return Promise.resolve(latestLoaded?.module || null);
-    }
-
-    const latestShare = VersionComparator.findLatestVersion(
-      shareInfos.map((info: any) => ({ version: info.version || '0.0.0', module: info })),
-    );
-
-    if (latestShare) {
-      const shareInfo = latestShare.module;
-      return loadAndCacheModule(name, shareInfo, loadedModules);
-    }
-
-    return Promise.resolve(null);
+function getInflightMap(instance: any): Map<string, Promise<Module>> {
+  if (!instance.shareInflight) {
+    instance.shareInflight = new Map<string, Promise<Module>>();
   }
-
-  const loadedMatch = VersionComparator.findBestMatch(version, loadedVersions, []);
-
-  if (loadedMatch) {
-    return Promise.resolve(loadedMatch.module);
-  }
-
-  const availableVersions = shareInfos.map((info: any) => ({
-    version: info.version || '0.0.0',
-    module: info,
-  }));
-
-  const bestMatch = VersionComparator.findBestMatch(version, [], availableVersions);
-
-  if (bestMatch) {
-    const shareInfo = bestMatch.module;
-    return loadAndCacheModule(name, shareInfo, loadedModules);
-  }
-
-  return Promise.resolve(null);
-}
-
-async function loadShareLoadedFirst(
-  name: string,
-  version: string | undefined,
-  shareInfos: any[],
-  loadedModules: Map<string, Module>,
-  loadedVersions: Array<{ version: string; module: any }>,
-): Promise<Module | null> {
-  if (!version) {
-    if (loadedVersions.length > 0) {
-      const latestLoaded = VersionComparator.findLatestVersion(loadedVersions);
-      return Promise.resolve(latestLoaded?.module || null);
-    }
-
-    const latestShare = VersionComparator.findLatestVersion(
-      shareInfos.map((info: any) => ({ version: info.version || '0.0.0', module: info })),
-    );
-
-    if (latestShare) {
-      const shareInfo = latestShare.module;
-      return loadAndCacheModule(name, shareInfo, loadedModules);
-    }
-
-    return Promise.resolve(null);
-  }
-
-  const loadedMatch = VersionComparator.findBestMatch(version, loadedVersions, []);
-
-  if (loadedMatch) {
-    return Promise.resolve(loadedMatch.module);
-  }
-
-  const availableVersions = shareInfos.map((info: any) => ({
-    version: info.version || '0.0.0',
-    module: info,
-  }));
-
-  const bestMatch = VersionComparator.findBestMatch(version, [], availableVersions);
-
-  if (bestMatch) {
-    const shareInfo = bestMatch.module;
-    return loadAndCacheModule(name, shareInfo, loadedModules);
-  }
-
-  return Promise.resolve(null);
+  return instance.shareInflight;
 }
 
 /**
- * 加载共享模块
- * 规则：
- * 1. 当未指定版本时，默认取已加载的Module，如果未加载则加载已共享的最新版本
- * 2. 当指定了版本时，优先返回已加载的匹配版本
- * 3. 当指定了版本但已加载版本不匹配时，加载匹配的版本
- * 4. 当指定了版本但不存在匹配版本时，返回null
- * @param name - 模块名称
- * @param options - 选项，包含版本和作用域
- * @returns Promise<Module | null>
+ * 加载并缓存共享模块，并合并同一 name@version 的并发加载。
+ */
+function loadAndCacheModule(
+  instance: any,
+  scope: string,
+  name: string,
+  shareInfo: ShareOption,
+  loadedModules: Map<string, Module>,
+): Promise<Module> {
+  const version = shareInfo.version || '0.0.0';
+  const versionKey = `${name}@${version}`;
+
+  const cached = loadedModules.get(versionKey);
+  if (cached) {
+    return Promise.resolve(cached);
+  }
+
+  const inflightKey = `${scope}::${versionKey}`;
+  const inflight = getInflightMap(instance);
+  const running = inflight.get(inflightKey);
+  if (running) {
+    return running;
+  }
+
+  const promise = loadModule(shareInfo)
+    .then((mod) => {
+      loadedModules.set(versionKey, mod);
+      return mod;
+    })
+    .finally(() => {
+      inflight.delete(inflightKey);
+    });
+
+  inflight.set(inflightKey, promise);
+  return promise;
+}
+
+function collectLoaded(sharedMap: Map<string, Module>, name: string): VersionedModule[] {
+  const loaded: VersionedModule[] = [];
+  sharedMap.forEach((module, key) => {
+    if (key.startsWith(`${name}@`)) {
+      loaded.push({ version: key.slice(name.length + 1), module });
+    }
+  });
+  return loaded;
+}
+
+function toCandidates(loaded: VersionedModule[], available: ShareOption[]): Candidate[] {
+  return [
+    ...loaded.map((item) => ({ ...item, source: 'loaded' as const })),
+    ...available.map((info) => ({ version: info.version || '0.0.0', module: info, source: 'available' as const })),
+  ];
+}
+
+/**
+ * 版本优先：在「已加载 + 可用」候选中选满足条件的最高版本；若该版本未加载则加载。
+ * 未指定版本时选取所有候选中的最高版本。
+ */
+async function resolveVersionFirst(
+  instance: any,
+  scope: string,
+  name: string,
+  version: string | undefined,
+  available: ShareOption[],
+  loadedModules: Map<string, Module>,
+  loaded: VersionedModule[],
+): Promise<Module | null> {
+  const candidates = toCandidates(loaded, available);
+  const best = version
+    ? VersionComparator.findBestMatch(version, candidates, [])
+    : VersionComparator.findLatestVersion(candidates);
+
+  if (!best) {
+    return null;
+  }
+  const candidate = best as Candidate;
+  if (candidate.source === 'loaded') {
+    return candidate.module as Module;
+  }
+  return loadAndCacheModule(instance, scope, name, candidate.module as ShareOption, loadedModules);
+}
+
+/**
+ * 已加载优先：优先复用已加载的（满足条件的）实例；没有时才从可用版本中加载。
+ */
+async function resolveLoadedFirst(
+  instance: any,
+  scope: string,
+  name: string,
+  version: string | undefined,
+  available: ShareOption[],
+  loadedModules: Map<string, Module>,
+  loaded: VersionedModule[],
+): Promise<Module | null> {
+  if (loaded.length > 0) {
+    const bestLoaded = version
+      ? VersionComparator.findBestMatch(version, loaded, [])
+      : VersionComparator.findLatestVersion(loaded);
+    if (bestLoaded) {
+      return bestLoaded.module as Module;
+    }
+  }
+
+  const availableCandidates: VersionedModule[] = available.map((info) => ({
+    version: info.version || '0.0.0',
+    module: info,
+  }));
+  const bestAvailable = version
+    ? VersionComparator.findBestMatch(version, availableCandidates, [])
+    : VersionComparator.findLatestVersion(availableCandidates);
+
+  if (!bestAvailable) {
+    return null;
+  }
+  return loadAndCacheModule(instance, scope, name, bestAvailable.module as ShareOption, loadedModules);
+}
+
+/**
+ * 加载共享模块。
+ *
+ * 规则（version-first）：
+ * 1. 指定版本：所有候选中满足范围的最高版本，必要时加载；
+ * 2. 未指定版本：所有候选中的最高版本，必要时加载。
+ *
+ * 规则（loaded-first）：
+ * 1. 已有满足条件的已加载实例：直接复用；
+ * 2. 否则从可用版本中选择（指定版本取满足范围的最高版本，否则取最高版本）并加载。
+ *
+ * 两者都不存在匹配时返回 null。
  */
 async function loadShare(
   name: string,
@@ -160,90 +196,43 @@ async function loadShare(
     version?: string;
     scope?: string;
   },
-) {
+): Promise<Module | null> {
   const instance = getInstance();
   const { scope = 'global', version } = options || {};
 
   const shares = instance.shares.get(scope);
-  if (!shares || !shares.has(name)) {
-    return Promise.resolve(null);
-  }
-
-  const shareInfos = shares.get(name);
-  if (!shareInfos || shareInfos.length === 0) {
-    return Promise.resolve(null);
-  }
-
-  const sharedMap = instance.sharedMap;
-  if (!sharedMap.has(scope)) {
-    sharedMap.set(scope, new Map());
-  }
-  const loadedModules = sharedMap.get(scope);
-
-  const loadedVersions: Array<{ version: string; module: any }> = [];
-  loadedModules.forEach((module: any, key: string) => {
-    if (key.startsWith(`${name}@`)) {
-      loadedVersions.push({
-        version: key.split('@')[1],
-        module,
-      });
-    }
-  });
-
-  const strategy = instance.shareStrategy || 'loaded-first';
-
-  if (strategy === 'version-first') {
-    return loadShareVersionFirst(name, version, shareInfos, loadedModules, loadedVersions);
-  } else {
-    return loadShareLoadedFirst(name, version, shareInfos, loadedModules, loadedVersions);
-  }
-}
-
-function getShareVersionFirst(version: string | undefined, loadedVersions: Array<{ version: string; module: any }>): Module | null {
-  if (!version) {
-    if (loadedVersions.length > 0) {
-      const latestLoaded = VersionComparator.findLatestVersion(loadedVersions);
-      return latestLoaded?.module || null;
-    }
+  const available: ShareOption[] = shares?.get(name) || [];
+  if (available.length === 0) {
     return null;
   }
 
-  const bestMatch = VersionComparator.findBestMatch(version, loadedVersions, []);
-
-  return bestMatch?.module || null;
-}
-
-function getShareLoadedFirst(version: string | undefined, loadedVersions: Array<{ version: string; module: any }>): Module | null {
-  if (!version) {
-    if (loadedVersions.length > 0) {
-      const latestLoaded = VersionComparator.findLatestVersion(loadedVersions);
-      return latestLoaded?.module || null;
-    }
-    return null;
+  let loadedModules = instance.sharedMap.get(scope);
+  if (!loadedModules) {
+    loadedModules = new Map<string, Module>();
+    instance.sharedMap.set(scope, loadedModules);
   }
+  const loaded = collectLoaded(loadedModules, name);
 
-  const bestMatch = VersionComparator.findBestMatch(version, loadedVersions, []);
-
-  return bestMatch?.module || null;
+  const strategy = instance.shareStrategy || DEFAULT_STRATEGY;
+  if (strategy === 'loaded-first') {
+    return resolveLoadedFirst(instance, scope, name, version, available, loadedModules, loaded);
+  }
+  return resolveVersionFirst(instance, scope, name, version, available, loadedModules, loaded);
 }
 
 /**
- * 获取已加载的共享模块
- * 规则：
- * 1. 当未指定版本时，默认取已加载的Module，如果未加载则返回null
- * 2. 当指定了版本时，返回满足版本要求的已加载的最新版本
- * 3. 当指定了版本但不匹配任何已加载版本时，返回null
- * @param name - 模块名称
- * @param options - 选项，包含版本和作用域
- * @returns Module | null
+ * 获取已加载的共享模块（两种策略一致，只看已加载）。
+ *
+ * 1. 指定版本：返回满足范围的已加载最高版本，否则 null；
+ * 2. 未指定版本：返回已加载的最高版本，否则 null。
  */
 function getShare(
   name: string,
-  options: {
+  options?: {
     version?: string;
     scope?: string;
   },
-) {
+): Module | null {
   const instance = getInstance();
   const { scope = 'global', version } = options || {};
 
@@ -252,23 +241,12 @@ function getShare(
     return null;
   }
 
-  const loadedVersions: Array<{ version: string; module: any }> = [];
-  sharedMap.forEach((module: any, key: string) => {
-    if (key.startsWith(`${name}@`)) {
-      loadedVersions.push({
-        version: key.split('@')[1],
-        module,
-      });
-    }
-  });
+  const loaded = collectLoaded(sharedMap, name);
+  const best = version
+    ? VersionComparator.findBestMatch(version, loaded, [])
+    : VersionComparator.findLatestVersion(loaded);
 
-  const strategy = instance.shareStrategy || 'loaded-first';
-
-  if (strategy === 'version-first') {
-    return getShareVersionFirst(version, loadedVersions);
-  } else {
-    return getShareLoadedFirst(version, loadedVersions);
-  }
+  return (best?.module as Module) || null;
 }
 
 export { registerShare, loadShare, getShare };

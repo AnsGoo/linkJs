@@ -4,6 +4,19 @@
 
 开发一个版本比较工具，用于linkjs的可以正确获取到共享的版本号，可以使用semver包辅助对比NPM包的版本，当调用getShare和LoadShare时，根据如下原则获取版本最新的Module
 
+## 实现语义（以代码为准）
+
+> 下面「版本优先 / 已加载优先」的原始规则有重叠，实际实现以下述语义为准（`packages/linkjs/src/share/index.ts`）。
+
+- **loaded-first（默认倾向复用）**：`loadShare` 先在已加载实例里找（指定版本时取满足范围的最高已加载版本，否则取已加载最高版本）；只有不存在满足条件的已加载实例时，才从可用版本中选（指定版本取满足范围最高，否则取最高）并加载。`getShare` 只看已加载。
+- **version-first（版本优先，允许升级）**：`loadShare` 在「已加载 + 可用」的**全部候选**中，指定版本时取满足范围的最高版本、未指定时取最高版本；若该版本尚未加载则加载它。`getShare` 只看已加载（与 loaded-first 相同）。
+
+两者差异体现在：当**已加载一个较低版本、同时存在更高的可用版本**时，`loaded-first` 复用已加载版本，`version-first` 升级到更高版本。
+
+并发：同一 `scope::name@version` 的并发 `loadShare` 会复用同一个 in-flight Promise，只加载一次。
+
+单例：`registerShare` 中若已有 `singleton: true` 的同名注册，后续注册被忽略（首个胜出）。
+
 ## 版本优先策略（version-first）
 
 ### getShare 行为规则

@@ -1,10 +1,10 @@
 import { linkInstance } from './state';
 import { __LINKJS_INSTANCE__, __LINKJS_OVERRIDES__ } from './constant';
-import { clearRemoteCache, getRemote, loadApp, loadLib, registerRemote } from './loader';
+import { clearRemoteCache, getRemote, loadApp, loadLib, loadRemote, registerRemote, unloadRemote } from './loader';
 
 import { loadOverride, overrideRemote } from './override';
-import { expose } from './expose';
-import { loadShare, registerShare } from './share';
+import { expose, shared } from './expose';
+import { loadShare, registerShare, getShare } from './share';
 import type { ShareOption } from './share';
 import type { RmoteConfig } from './loader';
 import { registerPlugin, type RuntimePlugin } from './plugins';
@@ -38,10 +38,14 @@ export {
   createInstance,
   loadApp,
   expose,
+  shared,
   getRemote,
   clearRemoteCache,
+  unloadRemote,
   loadLib,
+  loadRemote,
   registerShare,
+  getShare,
   loadShare,
   loadOverride,
   overrideRemote,

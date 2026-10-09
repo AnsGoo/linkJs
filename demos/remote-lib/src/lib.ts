@@ -1,5 +1,7 @@
-export { default as HelloWorld } from './VerySimpleComponent.vue'
+import HelloWorld from './VerySimpleComponent.vue';
 import { expose, shared } from 'linkjs';
+
+export { HelloWorld };
 
 // 使用全局的 linkjs 实例
 
