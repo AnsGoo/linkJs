@@ -68,6 +68,8 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
 
       const magicString = new MagicString(code);
       let hasModifications = false;
+      // 是否在入口里调用了 expose（用于注入自接受边界，避免入口变更整页刷新）
+      let hasExposeCall = false;
 
       // 转换导入声明
       const transformImportDeclaration = (node: ImportDeclaration) => {
@@ -183,6 +185,10 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
 
         // 检查是否是调用表达式
         if (node.type === 'CallExpression') {
+          // 入口调用 expose：标记，后续注入自接受边界
+          if (node.callee.type === 'Identifier' && node.callee.name === 'expose') {
+            hasExposeCall = true;
+          }
           // 检查是否是 shared 函数调用
           if (node.callee.type === 'Identifier' && node.callee.name === 'shared') {
             // 检查参数数量
@@ -262,6 +268,13 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
       analyzeSharedCall(ast as any);
       // 遍历AST处理导入
       walk(ast as any);
+
+      // 入口自接受：入口变更时重跑顶层 expose()（→ 广播 REMOTE_UPDATE），
+      // 而不是冒泡成整页刷新。宿主据此重挂载/重解析。
+      if (mode === 'dev' && hasExposeCall) {
+        magicString.prepend(`if (import.meta.hot) { import.meta.hot.accept(); }\n`);
+        hasModifications = true;
+      }
 
       if (!hasModifications) {
         return null;

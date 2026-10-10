@@ -41,7 +41,19 @@ const REMOTE_UPDATE = 'remoteUpdate';
 
 `unloadRemote(appName)` 额外调用 `clearAppHmr(appName)` 清理索引。
 
-### 2.3 hmrId 索引
+### 2.3 入口自接受（入口 / expose 形状变化免刷新）
+
+`unplugin-linkjs` dev transform 检测到模块里调用了 `expose(` 时，会在模块顶部注入：
+
+```js
+if (import.meta.hot) { import.meta.hot.accept(); }
+```
+
+这样入口（如 `index.ts`）变更时**自接受**：Vite 重新求值入口 → 顶层 `expose()` 重跑 → 持久监听刷新缓存并广播 `REMOTE_UPDATE` → 宿主的 `createRemoteApp`（重挂载）/`useRemoteModule`（重解析）就地更新，而不是冒泡成整页刷新。
+
+实测：改入口 `index.ts` → `nav` 不变、无整页刷新，控制台出现 `[vite] hot updated: /src/index.ts` 与 `re-exposed, broadcasting update`。
+
+### 2.4 hmrId 索引
 
 `packages/linkjs/src/hmr/index.ts`：
 
