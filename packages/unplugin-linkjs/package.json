@@ -2,6 +2,7 @@
   "name": "unplugin-linkjs",
   "version": "1.0.0",
   "description": "A plugin for automatically generating manifest.json files when building JS packages with tsdown, rollup, etc.",
+  "type": "module",
   "license": "ISC",
   "author": "",
   "exports": {

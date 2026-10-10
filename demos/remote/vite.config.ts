@@ -2,7 +2,9 @@ import { fileURLToPath, URL } from 'node:url';
 
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
-import { unpluginLinkjs, unpluginLinkjsRollowPlugin, createCssScopePlugin } from 'unplugin-linkjs';
+// 注意：这里直接引用源码（而非包名），以便 Vite 监听 unplugin 源码变更并自动重启，
+// 避免"改了 unplugin 源码但 dist 未重建 → 不生效"的开发体验问题。
+import { unpluginLinkjs, unpluginLinkjsRollowPlugin, createCssScopePlugin } from '../../packages/unplugin-linkjs/src/index.ts';
 
 const shared = {
   vue: {

@@ -2,7 +2,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { resolve, dirname } from 'path';
 import { createRequire } from 'module';
 import { isRegExp } from 'util/types';
-import { ManifestJson } from './types';
+import { ManifestJson } from './types.js';
 
 const require = createRequire(import.meta.url);
 

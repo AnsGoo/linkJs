@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import { extractPkgName } from './dependency-graph';
+import { extractPkgName } from './dependency-graph.js';
 
 export interface SharedEntryOptions {
   outDir: string;

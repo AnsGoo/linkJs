@@ -2,10 +2,10 @@ import { createUnplugin } from 'unplugin';
 import type { Node, ImportDeclaration } from 'oxc-parser';
 import MagicString from 'magic-string';
 
-import type { ManifestJson, UnpluginLinkjsOptions } from './types';
-import { generateManifestFile, updateManifestFile } from './build-manifest';
-import { generateDependencyGraph, analyzeDependencies, extractPkgName, buildSharedPackageMap } from './dependency-graph';
-import { generateSharedEntryFile } from './build-shared';
+import type { ManifestJson, UnpluginLinkjsOptions } from './types.js';
+import { generateManifestFile, updateManifestFile } from './build-manifest.js';
+import { generateDependencyGraph, analyzeDependencies, extractPkgName, buildSharedPackageMap } from './dependency-graph.js';
+import { generateSharedEntryFile } from './build-shared.js';
 import path from 'path';
 
 export type { ManifestJson, UnpluginLinkjsOptions };
@@ -377,5 +377,5 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
 
 const unpluginLinkjsRollowPlugin = unpluginLinkjs.rolldown;
 export { unpluginLinkjsRollowPlugin };
-export { createCssScopePlugin, scopeSelector, LINKJS_SCOPE_ATTR } from './css-scope';
+export { createCssScopePlugin, scopeSelector, LINKJS_SCOPE_ATTR } from './css-scope.js';
 export default unpluginLinkjs;

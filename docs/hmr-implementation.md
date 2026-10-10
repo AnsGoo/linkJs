@@ -267,6 +267,23 @@ const Comp = useRemoteModule('remote/HelloWorld');
 // <component :is="Comp" msg="..." />
 ```
 
+### 6.3 开发提示：改了 unplugin 源码如何生效
+
+默认情况 vite.config 通过包名解析 `unplugin-linkjs` 会命中 `dist`，因此**改源码不生效**（需重建 dist + 重启 dev server）。
+
+demo 采用**直接引用源码**规避：
+
+```ts
+// demos/remote/vite.config.ts
+import { unpluginLinkjs, unpluginLinkjsRollowPlugin, createCssScopePlugin } from '../../packages/unplugin-linkjs/src/index.ts';
+```
+
+这样 Vite 会监听 unplugin 源码，改动即自动重启 dev server（日志：`... changed, restarting server...`）。
+
+配套：`packages/unplugin-linkjs` 加 `"type": "module"`，源码内相对导入统一带 `.js` 扩展名（同时消除 Vite 未来 `configLoader: native` 的前向兼容告警）。
+
+> 也可不改相对路径，改为 `tsdown --watch` 重建 dist + 手动重启；但不会像上面那样自动重启。
+
 ---
 
 ## 7. 数据流
