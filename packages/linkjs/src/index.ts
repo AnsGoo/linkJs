@@ -30,7 +30,9 @@ function detectMode(explicit?: InstanceMode): InstanceMode {
   if (explicit) {
     return explicit;
   }
-  const env = (import.meta as any)?.env;
+  // 注意：这里必须直接写 `import.meta.env`（不要用可选链 `?.env`），
+  // 否则 Vite/esbuild 的 define 不会替换该 token，运行时拿不到值。
+  const env = (import.meta as any).env;
   if (env && typeof env.DEV === 'boolean') {
     return env.DEV ? 'development' : 'production';
   }

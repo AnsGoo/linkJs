@@ -4,6 +4,8 @@ import registryOptions from 'runtime-registry';
 import { createInstance, loadApp, overrideRemote } from 'linkjs';
 
 const instances = createInstance({
+  // 显式指定宿主模式：DEV 下子应用复用共享 runtime，PROD 下用子应用自带 runtime。
+  mode: import.meta.env.PROD ? 'production' : 'development',
   shares: {
     vue: {
       name: 'vue',
