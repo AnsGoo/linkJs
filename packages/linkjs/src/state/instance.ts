@@ -3,6 +3,7 @@ import { __LINKJS_INSTANCE__, __LINKJS_OVERRIDES__ } from '../constant';
 import { LIB_EXPOSE, SHARED_EXPOSE, LOAD_STATUS } from '../event-bus/constant';
 import type { RuntimePlugin } from '../plugins';
 import { getShare, loadShare } from '../share';
+import { loadRuntime } from '../runtime';
 import type { Module } from 'module';
 
 // 检查 window 对象上是否已经存在 linkjs 实例
@@ -70,6 +71,8 @@ if (!linkInstance) {
     remotes: new Map<string, RemoteInfo>(),
     plugin: {} as RuntimePlugin,
     shareStrategy: 'version-first',
+    // 宿主构建模式：决定子应用框架 runtime 走共享还是本地（路线 B）。
+    mode: 'production' as 'development' | 'production',
 
     loadRegistry(registryOptions: RegistryOption[]): void {
       registryOptions.forEach((option) => {
@@ -100,6 +103,7 @@ if (!linkInstance) {
     },
     getShare: getShare,
     loadShare: loadShare,
+    loadRuntime: loadRuntime,
   };
   // @ts-ignore
   globalThis[__LINKJS_INSTANCE__] = linkInstance;
@@ -117,6 +121,7 @@ globalThis['$linkjs'] = {
   shared: linkInstance.shared,
   getShare: linkInstance.getShare,
   loadShare: linkInstance.loadShare,
+  loadRuntime: linkInstance.loadRuntime,
   getShared: linkInstance.getShare,
   loadShared: linkInstance.loadShare,
 };

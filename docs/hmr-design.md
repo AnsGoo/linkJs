@@ -436,8 +436,31 @@ pnpm build && pnpm --dir demos/runtime-registry exec tsdown && pnpm --dir demos/
 pnpm --dir demos/host exec vite preview --port 8090   # 主 PROD
 ```
 
-### 13.4 遗留
+### 13.4 路线 B 实现记录
 
-- 路线 B（自挂载 + 自适应 runtime）尚未实现，见第 7 节；其核心价值是主 PROD 下也能获得**就地** HMR（当前 shim 为**重挂载**）。
-- shim 依赖 plugin-vue 生成的裸全局 `__VUE_HMR_RUNTIME__` 出口；plugin-vue 大版本变化时需回归测试。
+已实现（第 7 节）：
+
+- `linkjs`：`src/runtime/index.ts` 的 `loadRuntime(name, localLoader)`（按 name 缓存本地 runtime）；`createInstance({ mode })` 记录宿主模式（默认按 `import.meta.env` / `process.env.NODE_ENV` 探测）；全局 `$linkjs.loadRuntime`。
+- `linkjs/vue`：`createRemoteApp(entry, options)` 容器组件（`onMounted/onUnmounted` 调 `mount/unmount`，`REMOTE_UPDATE` 时重挂载）。
+- `unplugin-linkjs`：新增 `adaptiveRuntime` 选项，命中依赖改写为 `$linkjs.loadRuntime(name, () => import(name))`。
+- demo：remote `index.ts` `expose { mount, unmount }`；remote `vite.config.ts` 配 `adaptiveRuntime: ['vue','vue-router','pinia']`；host `App.vue` 用 `createRemoteApp`。
+
+**关键实现要点（踩坑）**：入口必须**先解析 runtime、再动态导入组件**：
+
+```ts
+async function mount(el, props) {
+  const { createApp } = await loadRuntime('vue', () => import('vue'));
+  const { default: HelloWorld } = await import('./components/HelloWorld.vue');
+  createApp(HelloWorld, props).mount(el);
+}
+```
+
+原因：若组件是入口的**静态导入**，它会在入口模块体（含 `loadRuntime` 的顶层 await）之前求值。宿主 PROD 下此时真实 `__VUE_HMR_RUNTIME__` 尚未建立，plugin-vue 的 `createRecord` 落在空全局/ shim 上，随后真实 runtime 里的 record 为空，HMR 静默失效。（在 `main.ts` 顶层 await 同样会破坏 DEV 的既有顺序，故必须在 `mount` 内做。）
+
+实测：主 DEV / 主 PROD + 子 DEV **均**为原生就地 HMR、无整页刷新（`hmrLog: rerender:4686eca4`，文本更新）。
+
+### 13.5 遗留
+
+- shim（路线 A）依赖 plugin-vue 生成的裸全局 `__VUE_HMR_RUNTIME__` 出口；plugin-vue 大版本变化时需回归测试。
+- 路线 B 的 `loadRuntime` 目前由入口手动保证加载顺序；可考虑由 unplugin 自动注入"runtime 先于组件"的虚拟入口，减少样板代码。
 - demo 共享注册缺失导致的"双 Vue"问题已修复，但应作为通用约定（宿主要注册全部框架级共享依赖）写入文档/脚手架。

@@ -13,7 +13,12 @@ export type { ManifestJson, UnpluginLinkjsOptions };
 type TransformMode = 'build' | 'dev';
 
 export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {}) => {
-  const { extensions = ['.js', '.jsx', '.ts', '.tsx', '.vue', '.d.ts', '.mjs', '.cjs'], shared = {}, isReplaceLinkjs = true } = options;
+  const {
+    extensions = ['.js', '.jsx', '.ts', '.tsx', '.vue', '.d.ts', '.mjs', '.cjs'],
+    shared = {},
+    isReplaceLinkjs = true,
+    adaptiveRuntime = [],
+  } = options;
   const sharedPkgs = Object.keys(shared);
   // 真实包名 -> 共享依赖名称（例如 @vue/runtime-dom -> vue）
   const sharedPkgMap = buildSharedPackageMap(sharedPkgs);
@@ -84,7 +89,8 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
         // dev 下保留 linkjs import，确保运行时（含 $linkjs 全局）被正确初始化；
         // build 下替换为全局 $linkjs，避免把运行时代码打进产物。
         const isLinkjs = source === 'linkjs' && isReplaceLinkjs && mode === 'build';
-        const isSharedPkg = sharedPkgs.includes(source);
+        const isAdaptive = adaptiveRuntime.includes(source);
+        const isSharedPkg = sharedPkgs.includes(source) || isAdaptive;
 
         if (!isLinkjs && !isSharedPkg) {
           return;
@@ -122,8 +128,12 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
         const sourceShared = sharedPkgMap.get(source);
         const insideSharedDep = ownerShared !== undefined && ownerShared !== sourceShared;
         const useLoadShare = insideSharedDep || mode === 'dev';
-        const accessor = `$linkjs.${useLoadShare ? 'loadShare' : 'getShare'}(${JSON.stringify(source)})`;
-        const awaitPrefix = useLoadShare ? 'await ' : '';
+        const useAwait = isAdaptive || useLoadShare;
+        // 路线 B：框架级依赖走自适应 runtime（宿主 DEV 复用共享，宿主 PROD 用本地）。
+        const accessor = isAdaptive
+          ? `$linkjs.loadRuntime(${JSON.stringify(source)}, () => import(${JSON.stringify(source)}))`
+          : `$linkjs.${useLoadShare ? 'loadShare' : 'getShare'}(${JSON.stringify(source)})`;
+        const awaitPrefix = useAwait ? 'await ' : '';
 
         const named: string[] = [];
         let namespaceVar: string | null = null;
@@ -147,7 +157,7 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
           lines.push(`const ${defaultVar} = (${awaitPrefix}${accessor}).default;`);
         } else {
           const bindings = [...(defaultVar ? [`default: ${defaultVar}`] : []), ...named];
-          if (useLoadShare) {
+          if (useAwait) {
             const tmp = `__linkjs_share_${shareVarIndex++}`;
             lines.push(`const ${tmp} = await ${accessor};`);
             lines.push(`const { ${bindings.join(', ')} } = ${tmp};`);

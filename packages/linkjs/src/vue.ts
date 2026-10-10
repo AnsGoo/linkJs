@@ -1,4 +1,15 @@
-import { getCurrentScope, onScopeDispose, shallowRef, type Component, type ShallowRef } from 'vue';
+import {
+  defineComponent,
+  getCurrentScope,
+  h,
+  onMounted,
+  onScopeDispose,
+  onUnmounted,
+  ref,
+  shallowRef,
+  type Component,
+  type ShallowRef,
+} from 'vue';
 import { getRemote, loadApp, subscribeRemoteUpdate, type LoadAppOptions } from './index';
 
 /**
@@ -27,4 +38,59 @@ function useRemoteModule<C = Component>(entry: string, options?: LoadAppOptions)
   return ref;
 }
 
-export { useRemoteModule };
+interface MountableModule {
+  mount?: (el: HTMLElement, props?: Record<string, any>) => void;
+  update?: (props?: Record<string, any>) => void;
+  unmount?: () => void;
+}
+
+/**
+ * 宿主容器组件（路线 B）：提供一个 DOM 节点，让子应用用**自己的 runtime**
+ * 挂载/卸载。子应用入口需 expose `{ mount, unmount }`。
+ *
+ * 子应用入口/expose 变化时（`REMOTE_UPDATE`）自动卸载旧实例并重新挂载，
+ * 宿主其余状态不受影响。
+ */
+function createRemoteApp(entry: string, options?: LoadAppOptions) {
+  const appName = entry.split('/')[0];
+  return defineComponent({
+    name: 'LinkjsRemoteApp',
+    inheritAttrs: false,
+    setup(_props, { attrs }) {
+      const el = ref<HTMLElement>();
+      let mod: MountableModule | null = null;
+      let mounted = false;
+
+      const doMount = async () => {
+        if (!el.value) {
+          return;
+        }
+        mod = ((await loadApp(appName, options)) as unknown as MountableModule) || null;
+        mod?.mount?.(el.value, { ...attrs });
+        mounted = true;
+      };
+      const doUnmount = () => {
+        if (mounted) {
+          mod?.unmount?.();
+        }
+        mounted = false;
+      };
+
+      onMounted(() => {
+        void doMount();
+      });
+      const off = subscribeRemoteUpdate(entry, async () => {
+        doUnmount();
+        await doMount();
+      });
+      onUnmounted(() => {
+        off();
+        doUnmount();
+      });
+
+      return () => h('div', { ref: el });
+    },
+  });
+}
+
+export { useRemoteModule, createRemoteApp };

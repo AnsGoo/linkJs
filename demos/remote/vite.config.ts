@@ -25,7 +25,11 @@ const shared = {
   },
 };
 
-const linkjsVitePlugin = unpluginLinkjs.vite({ shared });
+const linkjsVitePlugin = unpluginLinkjs.vite({
+  shared,
+  // 路线 B：框架生态走自适应 runtime（宿主 DEV 复用共享，宿主 PROD 用子应用自带）
+  adaptiveRuntime: ['vue', 'vue-router', 'pinia'],
+});
 const linkjsDevPlugins = (Array.isArray(linkjsVitePlugin) ? linkjsVitePlugin : [linkjsVitePlugin]).map(
   (plugin) => ({ ...plugin, apply: 'serve' as const }),
 );

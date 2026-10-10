@@ -94,8 +94,10 @@
   - 关键前提：**全页只能有一份 Vue runtime**。宿主必须把 `vue` 生态（`pinia`/`vue-router`）也注册为共享，否则子应用 `register-shares` 的本地回退会从子应用 origin 拉入第二份 Vue，覆盖全局 `__VUE_HMR_RUNTIME__` 导致 HMR 静默失效（demo 已修复）。
 - [x] **主 PROD + 子 DEV 无刷新 HMR（linkjs shim）**：共享 Vue 为 prod build 缺少真实 HMR runtime，linkjs 安装最小 `__VUE_HMR_RUNTIME__` shim，接管 plugin-vue accept 回调，替换暴露槽位并广播 `REMOTE_UPDATE`；宿主经 `useRemoteModule` + `<component :is>` 响应式重解析。
 - [x] 新增 API：`subscribeRemoteUpdate`、`linkjs/vue` 的 `useRemoteModule`；`unloadRemote` 清理 HMR 索引。
+- [x] **路线 B：子应用自挂载 + 自适应 runtime**：子应用 `expose { mount, unmount }` 自带 runtime 自我挂载；unplugin `adaptiveRuntime` 把框架依赖改写为 `$linkjs.loadRuntime(name, () => import(name))`——宿主 DEV 复用共享 dev runtime，宿主 PROD 回退子应用自带 dev runtime。宿主用 `linkjs/vue` 的 `createRemoteApp` 提供容器。
+  - 关键：入口须**先解析 runtime、再动态导入组件**（`mount` 内 `await loadRuntime` 后 `await import(...)`），否则组件求值时真实 `__VUE_HMR_RUNTIME__` 未就绪，record 丢失导致 HMR 静默失效。
+  - 实测：主 DEV / 主 PROD + 子 DEV 均为**原生就地 HMR**、无整页刷新。
 - 分析与设计详见 `docs/hmr-design.md`。
-- [ ] 远期（路线 B）：子应用自挂载 + 自适应 runtime（`vue` 生态同源），详见 `docs/hmr-design.md` 第 7 节。
 
 ---
 
