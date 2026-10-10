@@ -1,6 +1,7 @@
 import { getInstance, loadShare } from '..';
 import { LIB_EXPOSE } from '../event-bus/constant';
 import { activateSandbox } from '../sandbox';
+import { installVueHmrRuntimeShim } from '../hmr';
 import { loadCss, loadScript, preloadModule, useGetRemote, useHandleExpose, type ExtOption } from './utils';
 
 export interface LoadAppOptions {
@@ -92,6 +93,12 @@ async function loadApp<Module>(
       }
       reject(error);
     };
+
+    // 远端为 dev（HTML 含 @vite/client）但宿主共享 Vue 为 prod（无真实 HMR runtime）时，
+    // 安装 shim，让子应用的 SFC HMR 通过 linkjs 更新暴露槽位并通知宿主重渲染。
+    if (html.includes('@vite/client')) {
+      installVueHmrRuntimeShim();
+    }
 
     // 解析 HTML，提取资源
     const parser = new DOMParser();

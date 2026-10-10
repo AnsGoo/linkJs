@@ -1,15 +1,46 @@
 import type Module from 'module';
 import { getInstance } from '..';
-import { LOAD_STATUS } from '../event-bus/constant';
+import { LIB_EXPOSE, LOAD_STATUS, REMOTE_UPDATE } from '../event-bus/constant';
 import { getRemoteInfo, useGetRemote } from './utils';
 import { useLoadRemoteLib } from './lib';
 import { useLoadApp, type LoadAppOptions } from './app';
 import { deactivateAllSandboxes, deactivateSandbox } from '../sandbox';
+import { clearAppHmr, setupHmrIndexing } from '../hmr';
 
 // 缓存已加载的远程模块
 const remoteCache = new Map<string, Record<string, Module> | Module>();
 
+let remoteUpdatesReady = false;
+
+/**
+ * 惰性初始化远程更新监听：
+ * - 建立 hmrId -> 暴露槽位索引；
+ * - 持久监听 LIB_EXPOSE：首次由 loadApp/loadLib 的 promise 解析处理；已在缓存中的
+ *   appName 再次 expose（HMR 入口变化）则更新缓存并广播 REMOTE_UPDATE。
+ *
+ * 延迟到首次加载时执行，避免模块初始化期访问尚未就绪的 linkInstance（循环依赖）。
+ */
+function ensureRemoteUpdates(): void {
+  if (remoteUpdatesReady) {
+    return;
+  }
+  remoteUpdatesReady = true;
+  setupHmrIndexing();
+  getInstance().eventBus.on(LIB_EXPOSE, (data: { libName?: string; lib?: any } | undefined) => {
+    if (!data || !data.libName || !data.lib) {
+      return;
+    }
+    const isUpdate = remoteCache.has(data.libName);
+    remoteCache.set(data.libName, data.lib);
+    if (isUpdate) {
+      console.log(`Remote module ${data.libName} re-exposed, broadcasting update`);
+      getInstance().eventBus.emit(REMOTE_UPDATE, { appName: data.libName });
+    }
+  });
+}
+
 function loadApp(entry: string, options?: LoadAppOptions): Promise<Module | null> {
+  ensureRemoteUpdates();
   return useLoadApp(remoteCache)(entry, options) as Promise<Module | null>;
 }
 
@@ -38,6 +69,7 @@ function clearRemoteCache(appName?: string): void {
  */
 function unloadRemote(appName?: string): void {
   clearRemoteCache(appName);
+  clearAppHmr(appName);
   if (appName) {
     deactivateSandbox(appName);
   } else {
@@ -51,6 +83,7 @@ function unloadRemote(appName?: string): void {
 }
 
 function loadLib(entry: string, options?: { host?: string; entryName?: string }): Promise<Module | null> {
+  ensureRemoteUpdates();
   return useLoadRemoteLib(remoteCache)(entry, options);
 }
 

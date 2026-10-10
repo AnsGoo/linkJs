@@ -8,6 +8,7 @@ import { loadShare, registerShare, getShare } from './share';
 import type { ShareOption } from './share';
 import type { RmoteConfig } from './loader';
 import { registerPlugin, type RuntimePlugin } from './plugins';
+import { subscribeRemoteUpdate } from './hmr';
 
 function getInstance() {
   return linkInstance;
@@ -49,9 +50,13 @@ export {
   loadShare,
   loadOverride,
   overrideRemote,
+  subscribeRemoteUpdate,
 };
 
 export type { RegistryOption } from './state';
+export type { RemoteUpdatePayload } from './hmr';
+export type { LoadAppOptions } from './loader/app';
+export type { LoadLibOptions } from './loader/lib';
 
 export {
   captureSnapshot,

@@ -7,15 +7,10 @@ const isHosted = new URL(import.meta.url).origin !== location.origin;
 
 if (isHosted) {
   console.log('[remote] loaded by host, exposing components');
-  // 被宿主动态加载时，子应用的模块不在宿主 Vite 的模块图内，
-  // SFC 的原地 HMR 无法作用到宿主已解析的组件实例上。
-  // 因此子应用有更新时直接刷新宿主页面，保证开发模式下能立即看到最新代码。
-  if (import.meta.hot) {
-    import.meta.hot.on('vite:beforeUpdate', () => {
-      console.log('[remote] updated, reloading host');
-      location.reload();
-    });
-  }
+  // 被宿主加载时，宿主与子应用共享同一个 Vue 单例（unplugin 在 dev 下把
+  // `from 'vue'` 改写为 `$linkjs.loadShare('vue')`），Vite 的原生 SFC HMR
+  // 会通过全局 __VUE_HMR_RUNTIME__ 就地重渲染宿主已挂载的实例，无需整页刷新。
+  // `vite:full-reload`（配置/依赖图变化）仍由 Vite client 默认整页刷新兜底。
   import('./index.ts');
 } else {
   console.log('[remote] standalone, mounting app');

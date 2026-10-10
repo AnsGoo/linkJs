@@ -16,19 +16,22 @@
     "dist"
   ],
   "type": "module",
-  "main": "./dist/index.mjs",
-  "module": "./dist/index.mjs",
   "types": "./dist/index.d.mts",
   "exports": {
     ".": {
       "development": "./src/index.ts",
       "default": "./dist/index.mjs"
     },
+    "./vue": {
+      "development": "./src/vue.ts",
+      "default": "./dist/vue.mjs"
+    },
     "./package.json": "./package.json"
   },
   "publishConfig": {
     "exports": {
       ".": "./dist/index.mjs",
+      "./vue": "./dist/vue.mjs",
       "./package.json": "./package.json"
     }
   },
@@ -42,11 +45,20 @@
   "dependencies": {
     "semver": "^7.8.5"
   },
+  "peerDependencies": {
+    "vue": ">=3.3.0"
+  },
+  "peerDependenciesMeta": {
+    "vue": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@types/node": "^25.9.9",
     "@types/semver": "^7.8.0",
     "tsdown": "^0.21.10",
     "typescript": "^5.9.3",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.11",
+    "vue": "^3.5.43"
   }
 }

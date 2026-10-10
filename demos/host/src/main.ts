@@ -9,6 +9,16 @@ const instances = createInstance({
       name: 'vue',
       lib: () => import('vue'),
     },
+    // 必须把 Vue 生态一并注册为共享，否则子应用 register-shares 的本地回退会被触发，
+    // 从子应用 origin 拉入第二份 Vue runtime，覆盖全局 __VUE_HMR_RUNTIME__ 导致 HMR 失效。
+    pinia: {
+      name: 'pinia',
+      lib: () => import('pinia'),
+    },
+    'vue-router': {
+      name: 'vue-router',
+      lib: () => import('vue-router'),
+    },
   },
 });
 instances.loadRegistry(registryOptions);

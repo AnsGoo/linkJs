@@ -90,8 +90,12 @@
 ## P6 开发体验（中）✅
 
 - [x] dev 下子应用共享依赖被重写为 `$linkjs.loadShare`（unplugin `vite` hook）。
-- [x] 子应用 HMR 更新触发宿主刷新（dev 可用方案）。
-- [ ] 远期：无刷新 HMR（宿主响应式重解析 expose）。
+- [x] **主 DEV + 子 DEV 无刷新 HMR（原生）**：移除子应用的 `vite:beforeUpdate → location.reload`；共享 Vue 单例下 plugin-vue 的原生 SFC HMR 就地重渲染宿主实例。
+  - 关键前提：**全页只能有一份 Vue runtime**。宿主必须把 `vue` 生态（`pinia`/`vue-router`）也注册为共享，否则子应用 `register-shares` 的本地回退会从子应用 origin 拉入第二份 Vue，覆盖全局 `__VUE_HMR_RUNTIME__` 导致 HMR 静默失效（demo 已修复）。
+- [x] **主 PROD + 子 DEV 无刷新 HMR（linkjs shim）**：共享 Vue 为 prod build 缺少真实 HMR runtime，linkjs 安装最小 `__VUE_HMR_RUNTIME__` shim，接管 plugin-vue accept 回调，替换暴露槽位并广播 `REMOTE_UPDATE`；宿主经 `useRemoteModule` + `<component :is>` 响应式重解析。
+- [x] 新增 API：`subscribeRemoteUpdate`、`linkjs/vue` 的 `useRemoteModule`；`unloadRemote` 清理 HMR 索引。
+- 分析与设计详见 `docs/hmr-design.md`。
+- [ ] 远期（路线 B）：子应用自挂载 + 自适应 runtime（`vue` 生态同源），详见 `docs/hmr-design.md` 第 7 节。
 
 ---
 

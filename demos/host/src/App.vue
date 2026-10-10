@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import HelloWorld from './components/HelloWorld.vue';
 import { defineAsyncComponent } from 'vue';
-import { getRemote, loadLib } from 'linkjs';
+import { loadLib } from 'linkjs';
+import { useRemoteModule } from 'linkjs/vue';
 
-const RemoteComponent = defineAsyncComponent(async () => {
-  const remote = await getRemote('remote/HelloWorld');
-  return remote;
-});
+const RemoteComponent = useRemoteModule('remote/HelloWorld');
 const RemoteLibComponent = defineAsyncComponent(async () => {
   const remoteLib = await loadLib('remote-lib/HelloWorld', {
     host: 'http://localhost:4001',
@@ -22,7 +20,7 @@ const RemoteLibComponent = defineAsyncComponent(async () => {
     <div class="wrapper">
       <HelloWorld msg="I am host app!" />
       <div data-linkjs-scope="remote">
-        <RemoteComponent msg="I am remote app" />
+        <component :is="RemoteComponent" msg="I am remote app" />
       </div>
       <div data-linkjs-scope="remote-lib">
         <RemoteLibComponent msg="I am remote lib" />
