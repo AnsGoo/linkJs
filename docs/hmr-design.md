@@ -445,22 +445,15 @@ pnpm --dir demos/host exec vite preview --port 8090   # 主 PROD
 - `unplugin-linkjs`：新增 `adaptiveRuntime` 选项，命中依赖改写为 `$linkjs.loadRuntime(name, () => import(name))`。
 - demo：remote `index.ts` `expose { mount, unmount }`；remote `vite.config.ts` 配 `adaptiveRuntime: ['vue','vue-router','pinia']`；host `App.vue` 用 `createRemoteApp`。
 
-**关键实现要点（踩坑）**：入口必须**先解析 runtime、再动态导入组件**：
+**组件加载顺序（更正）**：入口**静态导入组件即可**，无需手动"先 `loadRuntime` 再动态导入"。
 
-```ts
-async function mount(el, props) {
-  const { createApp } = await loadRuntime('vue', () => import('vue'));
-  const { default: HelloWorld } = await import('./components/HelloWorld.vue');
-  createApp(HelloWorld, props).mount(el);
-}
-```
+SFC 被改写后，模块体顶部就有 `await $linkjs.loadRuntime('vue', () => import('vue'))`，而 plugin-vue 的 `createRecord` 在该 await **之后**执行，故求值时真实 `__VUE_HMR_RUNTIME__` 已就绪。
 
-原因：若组件是入口的**静态导入**，它会在入口模块体（含 `loadRuntime` 的顶层 await）之前求值。宿主 PROD 下此时真实 `__VUE_HMR_RUNTIME__` 尚未建立，plugin-vue 的 `createRecord` 落在空全局/ shim 上，随后真实 runtime 里的 record 为空，HMR 静默失效。（在 `main.ts` 顶层 await 同样会破坏 DEV 的既有顺序，故必须在 `mount` 内做。）
+> 早期观察到"静态导入导致 HMR 静默失效"，实为 **mode 探测 bug**（`detectMode` 用了可选链 `import.meta?.env`，被 Vite define 忽略 → 误判 `production` → `loadRuntime` 返回宿主 prod vue）。修复后 DEV/PROD 静态导入均正常（已实测）。
 
-实测：主 DEV / 主 PROD + 子 DEV **均**为原生就地 HMR、无整页刷新（`hmrLog: rerender:4686eca4`，文本更新）。
+实测：主 DEV / 主 PROD + 子 DEV **均**为原生就地 HMR、无整页刷新（`hmrLog: rerender:4686eca4`，文本更新），静态导入下 scoped CSS 也正确。
 
 ### 13.5 遗留
 
 - shim（路线 A）依赖 plugin-vue 生成的裸全局 `__VUE_HMR_RUNTIME__` 出口；plugin-vue 大版本变化时需回归测试。
-- 路线 B 的 `loadRuntime` 目前由入口手动保证加载顺序；可考虑由 unplugin 自动注入"runtime 先于组件"的虚拟入口，减少样板代码。
 - demo 共享注册缺失导致的"双 Vue"问题已修复，但应作为通用约定（宿主要注册全部框架级共享依赖）写入文档/脚手架。

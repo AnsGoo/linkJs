@@ -200,11 +200,15 @@ async function loadRuntime(name, localLoader) {
 - `onUnmounted` → 退订 + `unmount`；
 - 渲染 `<div ref="el">`，宿主用 `data-linkjs-scope` 包裹容器做 CSS 隔离。
 
-### 5.5 关键约束：runtime 先于组件加载
+### 5.5 组件加载顺序（无需特殊处理）
 
-组件若是入口的**静态导入**，会在入口模块体（含 `loadRuntime` 的 `await`）之前求值；此时真实 `__VUE_HMR_RUNTIME__` 尚未建立，plugin-vue 的 `createRecord` 落在空全局/shim 上，随后真实 runtime 的 record 为空 → HMR 静默失效。
+**结论：入口静态导入组件即可，无需手动"先 loadRuntime 再动态导入"。**
 
-因此**必须在 `mount` 内先 `await loadRuntime` 再动态 `import` 组件**。（在 `main.ts` 顶层 await 修复 PROD 会破坏 DEV 既有顺序，不可取。）
+原因：`unplugin` 会把 SFC 里 `from 'vue'` 改写为模块体顶部的 `await $linkjs.loadRuntime('vue', () => import('vue'))`，而 plugin-vue 生成的 `createRecord` 在该 await **之后**才执行。因此组件求值时真实 `__VUE_HMR_RUNTIME__` 已就绪，record 正常建立。
+
+> 早期观察到"静态导入导致 HMR 静默失效"，实为 **mode 探测 bug**（见 §3.1）：`loadRuntime` 误判为 `production` 返回了宿主 prod vue，与入口使用本地 dev vue 不一致。mode 修复后，DEV/PROD 静态导入均正常（已实测）。
+
+入口仍可选用动态 `import()`，但纯属风格，非必需。
 
 ---
 
@@ -347,7 +351,7 @@ pnpm --dir demos/host exec vite preview --port 8090
 
 - 路线 A 与 B 可并存；`useRemoteModule` 与 `createRemoteApp` 独立。
 - 从 A 迁移到 B：
-  1. 子应用入口由 `expose({ Component })` 改为 `expose({ mount, unmount })`（`mount` 内先 `loadRuntime` 再动态导入组件）；
+  1. 子应用入口由 `expose({ Component })` 改为 `expose({ mount, unmount })`（直接静态导入组件即可，见 §5.5）；
   2. 子应用 `vite.config.ts` 加 `adaptiveRuntime`；
   3. 宿主由 `<component :is>` 改为 `<RemoteApp />`。
 - 非 Vue 子应用不受 `linkjs/vue` 影响；`subscribeRemoteUpdate`/`loadRuntime` 为框架无关能力。
@@ -357,7 +361,6 @@ pnpm --dir demos/host exec vite preview --port 8090
 ## 11. 已知限制
 
 - shim（路线 A 主 PROD）依赖 plugin-vue 生成的裸全局 `__VUE_HMR_RUNTIME__` 出口，plugin-vue 主版本升级需回归。
-- 路线 B 目前由入口手动保证"runtime 先于组件加载"。可考虑由 unplugin 自动生成虚拟入口来消除样板代码。
 - 跨 runtime（路线 B 主 PROD）props 为快照传入，动态双向更新需 `update()` 或事件总线。
 - `loadRuntime` 本地缓存按 `name`，当前不做卸载清理（runtime 为应用级）。
 

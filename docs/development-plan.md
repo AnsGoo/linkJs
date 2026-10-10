@@ -96,7 +96,7 @@
 - [x] 新增 API：`subscribeRemoteUpdate`、`linkjs/vue` 的 `useRemoteModule`；`unloadRemote` 清理 HMR 索引。
 - [x] **入口/expose 形状变化免刷新**：unplugin dev 为调用 `expose()` 的模块注入 `import.meta.hot.accept()`，入口变更时重跑顶层 `expose()`（不再冒泡成整页刷新）→ 广播 `REMOTE_UPDATE` → 宿主重挂载/重解析。实测改入口 `index.ts` 无整页刷新。
 - [x] **路线 B：子应用自挂载 + 自适应 runtime**：子应用 `expose { mount, unmount }` 自带 runtime 自我挂载；unplugin `adaptiveRuntime` 把框架依赖改写为 `$linkjs.loadRuntime(name, () => import(name))`——宿主 DEV 复用共享 dev runtime，宿主 PROD 回退子应用自带 dev runtime。宿主用 `linkjs/vue` 的 `createRemoteApp` 提供容器。
-  - 关键：入口须**先解析 runtime、再动态导入组件**（`mount` 内 `await loadRuntime` 后 `await import(...)`），否则组件求值时真实 `__VUE_HMR_RUNTIME__` 未就绪，record 丢失导致 HMR 静默失效。
+  - 入口**静态导入组件即可**：SFC 被改写后模块体顶部即 `await $linkjs.loadRuntime('vue', ...)`，先于 plugin-vue 的 `createRecord`，runtime 已就绪。（早期"需动态导入"的结论实为 `mode` 探测 bug 所致，已修复。）
   - 实测：主 DEV / 主 PROD + 子 DEV 均为**原生就地 HMR**、无整页刷新。
 - 分析与设计详见 `docs/hmr-design.md`。
 
