@@ -55,3 +55,32 @@ test('local loader result is cached per name', async () => {
   expect(calls).toBe(1);
   expect(a).toBe(b);
 });
+
+test('production shares the first local runtime across callers (multi-remote)', async () => {
+  linkInstance.mode = 'production';
+  const a = { tag: 'A' };
+  const b = { tag: 'B' };
+
+  const r1 = await loadRuntime('vue', async () => a);
+  const r2 = await loadRuntime('vue', async () => b);
+
+  expect(r1).toBe(a);
+  // 第二个子应用复用第一份 dev runtime，避免多份 __VUE_HMR_RUNTIME__
+  expect(r2).toBe(a);
+});
+
+test('concurrent local loads are deduped', async () => {
+  linkInstance.mode = 'production';
+  let calls = 0;
+  const loader = () =>
+    new Promise((resolve) =>
+      setTimeout(() => {
+        calls++;
+        resolve({ n: calls });
+      }, 10),
+    );
+
+  const [x, y] = await Promise.all([loadRuntime('pinia', loader as any), loadRuntime('pinia', loader as any)]);
+  expect(calls).toBe(1);
+  expect(x).toBe(y);
+});

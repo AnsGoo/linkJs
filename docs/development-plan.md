@@ -98,6 +98,7 @@
 - [x] **路线 B：子应用自挂载 + 自适应 runtime**：子应用 `expose { mount, unmount }` 自带 runtime 自我挂载；unplugin `adaptiveRuntime` 把框架依赖改写为 `$linkjs.loadRuntime(name, () => import(name))`——宿主 DEV 复用共享 dev runtime，宿主 PROD 回退子应用自带 dev runtime。宿主用 `linkjs/vue` 的 `createRemoteApp` 提供容器。
   - 入口**静态导入组件即可**：SFC 被改写后模块体顶部即 `await $linkjs.loadRuntime('vue', ...)`，先于 plugin-vue 的 `createRecord`，runtime 已就绪。（早期"需动态导入"的结论实为 `mode` 探测 bug 所致，已修复。）
   - 实测：主 DEV / 主 PROD + 子 DEV 均为**原生就地 HMR**、无整页刷新。
+  - **多 dev 子应用共享同一份 dev runtime**：主 PROD 下 `loadRuntime` 把本地 dev runtime 登记到全局 `linkInstance`，后续子应用复用（不再各加载一份），避免多份 `__VUE_HMR_RUNTIME__` 全局互相覆盖导致 HMR 静默失效。
 - 分析与设计详见 `docs/hmr-design.md`。
 
 ---

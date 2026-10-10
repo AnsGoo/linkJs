@@ -147,14 +147,13 @@ await $linkjs.loadRuntime('vue', () => import('vue'))
 子应用入口 `expose({ mount, unmount })`，自带 runtime 自我挂载：
 
 ```ts
-// demos/remote/src/index.ts
-import { expose, loadRuntime } from 'linkjs';
+// demos/remote/src/index.ts（静态导入组件即可，见 §5.5）
+import { createApp } from 'vue';
+import HelloWorld from './components/HelloWorld.vue';
+import { expose } from 'linkjs';
 
 let app: any = null;
-
-async function mount(el: HTMLElement, props: Record<string, any> = {}) {
-  const { createApp } = await loadRuntime('vue', () => import('vue'));
-  const { default: HelloWorld } = await import('./components/HelloWorld.vue');
+function mount(el: HTMLElement, props: Record<string, any> = {}) {
   app = createApp(HelloWorld, props);
   app.mount(el);
 }
@@ -165,24 +164,29 @@ function unmount() {
 expose('remote', { mount, unmount }, { version: '1.0.0' });
 ```
 
-### 5.2 自适应 runtime `loadRuntime`
+### 5.2 自适应 runtime `loadRuntime`（含多子应用共享）
 
 `packages/linkjs/src/runtime/index.ts`：
 
 ```ts
 async function loadRuntime(name, localLoader) {
-  const mode = getInstance().mode || 'production';
+  const instance = getInstance();
+  const mode = instance.mode || 'production';
   if (mode !== 'production') {
     const shared = await loadShare(name);
     if (shared) return shared;
   }
-  // 本地 loader 结果按 name 缓存
-  ...
+  // PROD 宿主：本地 dev runtime 登记到全局实例，跨子应用共享；并发去重
+  const cached = instance.runtimeModules?.get(name);
+  if (cached) return cached;
+  ...loadAndRegister...
 }
 ```
 
 - 主 DEV → `loadShare` 返回共享 dev runtime（单实例，原生 HMR）。
-- 主 PROD / 独立运行 → `localLoader()` 返回子应用自带 dev runtime（有 HMR runtime）。
+- 主 PROD / 独立运行 → 加载子应用自带 dev runtime，并**登记到全局 `linkInstance`**。
+- **多子应用共享**：同页第二个及之后的 dev 子应用调用 `loadRuntime('vue')` 时，复用已登记的那份（不再加载自己的第二份），从而全页只有一份 dev runtime，避免多份 `__VUE_HMR_RUNTIME__` 全局互相覆盖（详见 §11）。
+  - 前提：各 dev 子应用框架版本一致（否则复用的运行时可能与期望不符）。
 
 ### 5.3 unplugin 改写
 
@@ -379,7 +383,9 @@ pnpm --dir demos/host exec vite preview --port 8090
 
 - shim（路线 A 主 PROD）依赖 plugin-vue 生成的裸全局 `__VUE_HMR_RUNTIME__` 出口，plugin-vue 主版本升级需回归。
 - 跨 runtime（路线 B 主 PROD）props 为快照传入，动态双向更新需 `update()` 或事件总线。
-- `loadRuntime` 本地缓存按 `name`，当前不做卸载清理（runtime 为应用级）。
+- `loadRuntime` 的共享 dev runtime 登记在全局 `linkInstance`、按 `name` 缓存，**不做卸载清理**（runtime 为页面级）。
+- 多 dev 子应用共享同一份 dev runtime 时要求**框架版本一致**；本机制默认信任首个登记者。
+  - 实测：主 PROD + 单 dev 远端加载后，后续 `loadRuntime('vue')` 复用已登记 runtime、不再触发本地加载（`localLoaderCalled=false`）。
 
 ---
 
