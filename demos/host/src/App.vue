@@ -14,7 +14,8 @@ const RemoteLibComponent = defineAsyncComponent(async () => {
 });
 
 // A1 类型转发示例：`consumeTypes` 生成类型后，`getRemote` 按 entry 推导远程组件类型。
-// 远程 HelloWorld 的 props 为 `{ msg: string }`，写错类型（如 `:msg="23"`）编辑器会报错。
+// 远程 HelloWorld 的 props 由远程 d.ts 决定（msg/age/name/sex/tst …），
+// 删/改必填 prop 或传错类型，编辑器会立即报错。
 const RemoteHelloWorld = getRemote('remoteApp/HelloWorld')!;
 </script>
 
