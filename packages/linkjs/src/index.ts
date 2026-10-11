@@ -11,7 +11,16 @@ import { registerPlugin, runInitHooks, type RuntimePlugin } from './plugins';
 import { subscribeRemoteUpdate } from './hmr';
 import { loadRuntime } from './runtime';
 import { preloadRemote } from './preload';
-import { buildSnapshot, clearDiagnostics, getDiagnostics, installDevtools, onDiagnostic } from './devtools';
+import {
+  buildSnapshot,
+  clearDiagnostics,
+  getDiagnostics,
+  installDevtools,
+  maybeInstallDevtoolsUI,
+  onDiagnostic,
+  uninstallDevtoolsUI,
+  type DevtoolsOptions,
+} from './devtools';
 
 function getInstance() {
   return linkInstance;
@@ -34,6 +43,8 @@ interface UserOption {
   plugin?: RuntimePlugin | RuntimePlugin[];
   /** 宿主构建模式，决定子应用框架 runtime 走共享（dev）还是本地（prod）。默认自动探测。 */
   mode?: InstanceMode;
+  /** 页内 DevTools 面板：`false` 关闭；缺省时开发模式自动开启。 */
+  devtools?: boolean | DevtoolsOptions;
 }
 
 function detectMode(explicit?: InstanceMode): InstanceMode {
@@ -54,7 +65,7 @@ function detectMode(explicit?: InstanceMode): InstanceMode {
 }
 
 function createInstance(options: UserOption) {
-  const { shareStrategy = 'version-first', remotes = [], shares = {}, plugin, mode } = options;
+  const { shareStrategy = 'version-first', remotes = [], shares = {}, plugin, mode, devtools } = options;
   remotes.forEach((remote) => {
     registerRemote(remote);
   });
@@ -65,7 +76,14 @@ function createInstance(options: UserOption) {
   linkInstance.shareStrategy = shareStrategy;
   linkInstance.mode = detectMode(mode);
   runInitHooks(options, linkInstance);
+  // 开发模式下自动挂载页内 DevTools 面板。
+  maybeInstallDevtoolsUI(linkInstance, devtools);
   return linkInstance;
+}
+
+/** 手动挂载页内 DevTools 面板。 */
+function installDevtoolsUI(options?: DevtoolsOptions) {
+  maybeInstallDevtoolsUI(linkInstance, options ?? { enabled: true });
 }
 
 export {
@@ -92,6 +110,8 @@ export {
   getDiagnostics,
   clearDiagnostics,
   onDiagnostic,
+  installDevtoolsUI,
+  uninstallDevtoolsUI,
 };
 
 export type { RegistryOption } from './state';
@@ -102,7 +122,7 @@ export { registerPlugin, getPlugins } from './plugins';
 export type { RuntimePlugin } from './plugins';
 export type { EventBus, EventHandler, LinkjsEvents } from './event-bus';
 export type { PreloadRemoteOptions, RemoteManifest, ManifestAsset } from './preload';
-export type { Diagnostic, LinkjsSnapshot, RemoteSnapshot, ShareSnapshot, ShareVersionSnapshot } from './devtools';
+export type { Diagnostic, LinkjsSnapshot, RemoteSnapshot, ShareSnapshot, ShareVersionSnapshot, DevtoolsOptions } from './devtools';
 
 export {
   captureSnapshot,

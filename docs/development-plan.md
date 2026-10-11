@@ -190,6 +190,16 @@
 
 ---
 
+## P14 页内 DevTools 面板（借鉴 Vue DevTools）
+
+- [x] 开发模式**自动挂载**右下角小图标（Shadow DOM 隔离样式），点击展开可观测面板。
+- [x] 面板展示 remotes / shares / plugins / diagnostics；展开时每秒刷新，出现 error 诊断时图标显示红点。
+- [x] `createInstance({ devtools })` 可控（`false` 关闭、可配位置）；亦可 `installDevtoolsUI()` / `uninstallDevtoolsUI()`。
+- [x] 面板实现通过动态 `import()` 懒加载（独立 chunk），生产构建不加载。
+- 实测：host(dev) 挂载成功，面板显示 remotes `remote/remote-lib=loaded`、shares `vue/pinia/vue-router`。
+
+---
+
 ## 执行记录（本轮）
 
 | 阶段 | 状态 | 说明 |

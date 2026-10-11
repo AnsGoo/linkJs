@@ -163,4 +163,53 @@ function installDevtools(instance: any): void {
   }
 }
 
-export { recordDiagnostic, getDiagnostics, clearDiagnostics, onDiagnostic, buildSnapshot, installDevtools };
+export interface DevtoolsOptions {
+  /** 是否启用页内面板；缺省时开发模式自动启用。 */
+  enabled?: boolean;
+  /** 面板位置，默认右下角。 */
+  position?: 'bottom-right' | 'bottom-left';
+}
+
+/**
+ * 按需挂载**页内 DevTools 面板**（开发模式默认启用）。
+ * 动态 `import()` 面板实现，生产构建不会加载这部分代码。
+ */
+function maybeInstallDevtoolsUI(instance: any, option?: boolean | DevtoolsOptions): void {
+  if (typeof document === 'undefined') {
+    return;
+  }
+  const enabled = typeof option === 'boolean' ? option : option?.enabled;
+  const shouldEnable = enabled ?? instance?.mode === 'development';
+  if (!shouldEnable) {
+    return;
+  }
+  const uiOptions = typeof option === 'object' ? option : undefined;
+  void import('./ui')
+    .then((mod) => mod.mountDevtoolsUI(instance, uiOptions))
+    .catch(() => {
+      /* 面板加载失败不影响主流程 */
+    });
+}
+
+/** 卸载页内 DevTools 面板。 */
+function uninstallDevtoolsUI(): void {
+  if (typeof document === 'undefined') {
+    return;
+  }
+  void import('./ui')
+    .then((mod) => mod.unmountDevtoolsUI())
+    .catch(() => {
+      /* ignore */
+    });
+}
+
+export {
+  recordDiagnostic,
+  getDiagnostics,
+  clearDiagnostics,
+  onDiagnostic,
+  buildSnapshot,
+  installDevtools,
+  maybeInstallDevtoolsUI,
+  uninstallDevtoolsUI,
+};
