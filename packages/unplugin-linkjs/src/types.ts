@@ -63,6 +63,45 @@ export interface ManifestJson {
   [key: string]: any;
 }
 
+/** 宿主消费类型时的单个远程目标（`consumeTypes`）。 */
+export interface RemoteTypeTarget {
+  /** 模块名前缀，宿主用 `<name>/<Expose>` 访问。 */
+  name: string;
+  /** 显式 manifest 地址；与 `host` 二选一。 */
+  manifestUrl?: string;
+  /** 由 host 推导 `manifestUrl = host + '/manifest.json'`。 */
+  host?: string;
+  /** 模式覆盖：`auto`（默认，读 manifest.mode）| `development` | `production`。 */
+  mode?: 'auto' | 'development' | 'production';
+}
+
+/** 类型拉取的鉴权配置（与运行时一致）。 */
+export interface ConsumeTypesAuth {
+  token?: string | (() => string | Promise<string>);
+  /** 鉴权 query 参数名，默认 `token`。 */
+  queryParam?: string;
+}
+
+/** 宿主侧消费远程类型（dts 转发）的配置。 */
+export interface ConsumeTypesOptions {
+  remotes: RemoteTypeTarget[];
+  /** 类型缓存根，默认 `node_modules/.linkjs`。 */
+  outDir?: string;
+  /** 聚合声明文件名，默认 `linkjs-remotes.d.ts`。 */
+  dtsFile?: string;
+  auth?: ConsumeTypesAuth;
+  /** 拉取超时（ms），默认 5000。 */
+  timeout?: number;
+  /** SSE 重连退避。 */
+  reconnect?: { minDelay?: number; maxDelay?: number; factor?: number };
+  /** 是否在 dev 订阅远端事件流（默认 true）。 */
+  watch?: boolean;
+  /** 是否检测宿主 tsconfig 是否纳入了聚合声明（默认 true，仅 warn）。 */
+  checkTsconfig?: boolean;
+  /** 注入的 fetch（测试用）。 */
+  fetch?: typeof fetch;
+}
+
 export interface UnpluginLinkjsOptions {
   extensions?: string[];
   shared?: Record<
@@ -83,6 +122,8 @@ export interface UnpluginLinkjsOptions {
   publicPath?: string;
   /** 写入 manifest 的 `mode`；缺省 `production`（dev server 侧单列 `development`）。 */
   mode?: 'development' | 'production';
+  /** 消费远程类型（生成 `declare module '<remote>/<Expose>'` 与 linkjs 类型注册表）。 */
+  consumeTypes?: ConsumeTypesOptions;
   /**
    * 路线 B：需要自适应 runtime 的框架级依赖（如 `['vue', 'vue-router', 'pinia']`）。
    * dev 下这些依赖改写为 `$linkjs.loadRuntime(name, () => import(name))`：

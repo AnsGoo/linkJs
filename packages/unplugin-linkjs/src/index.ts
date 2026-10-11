@@ -4,12 +4,23 @@ import MagicString from 'magic-string';
 import { createHash } from 'crypto';
 
 import type { ManifestAsset, ManifestJson, UnpluginLinkjsOptions } from './types.js';
+import { consumeRemoteTypes, type ConsumeTypesResult } from './consume-types.js';
+import { watchRemoteTypes, type TypeWatcher } from './type-watcher.js';
 import { generateManifestFile, updateManifestFile } from './build-manifest.js';
 import { generateDependencyGraph, analyzeDependencies, extractPkgName, buildSharedPackageMap } from './dependency-graph.js';
 import { generateSharedEntryFile } from './build-shared.js';
 import path from 'path';
 
-export type { ManifestJson, UnpluginLinkjsOptions };
+export type {
+  ManifestJson,
+  UnpluginLinkjsOptions,
+  RemoteTypeTarget,
+  ConsumeTypesOptions,
+  ConsumeTypesAuth,
+} from './types.js';
+export { consumeRemoteTypes, renderRemoteTypeDeclarations } from './consume-types.js';
+export type { RemoteTypeInfo, ConsumeTypesResult } from './consume-types.js';
+export { watchRemoteTypes, parseSseChunk } from './type-watcher.js';
 
 type TransformMode = 'build' | 'dev';
 
@@ -22,7 +33,43 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
     shareScope,
     publicPath,
     mode = 'production',
+    consumeTypes,
   } = options;
+
+  // ---- consumeTypes（宿主类型转发）运行时状态 ----
+  let isServe = false;
+  let typeWatcher: TypeWatcher | undefined;
+  let typeRefreshTimer: ReturnType<typeof setTimeout> | undefined;
+
+  async function runConsumeTypes(): Promise<ConsumeTypesResult | undefined> {
+    if (!consumeTypes?.remotes?.length) {
+      return undefined;
+    }
+    try {
+      return await consumeRemoteTypes(consumeTypes);
+    } catch (error) {
+      console.warn(`[linkjs] consumeTypes failed: ${String((error as { message?: string })?.message ?? error)}`);
+      return undefined;
+    }
+  }
+
+  function startTypeWatchers(result: ConsumeTypesResult): void {
+    if (consumeTypes?.watch === false) {
+      return;
+    }
+    const devRemotes = result.remotes.filter((info) => info.mode === 'development');
+    if (devRemotes.length === 0) {
+      return;
+    }
+    typeWatcher?.close();
+    typeWatcher = watchRemoteTypes(devRemotes, consumeTypes!, () => {
+      // 去抖合并：连续事件只刷新一次
+      if (typeRefreshTimer) {
+        clearTimeout(typeRefreshTimer);
+      }
+      typeRefreshTimer = setTimeout(() => void runConsumeTypes(), 150);
+    });
+  }
   const sharedPkgs = Object.keys(shared);
   // 真实包名 -> 共享依赖名称（例如 @vue/runtime-dom -> vue）
   const sharedPkgMap = buildSharedPackageMap(sharedPkgs);
@@ -296,9 +343,33 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
 
     vite: {
       transform: createTransform('dev'),
+      configResolved(config: { command?: string }) {
+        isServe = config.command === 'serve';
+      },
+      // dev 由 configureServer 处理（初始对齐 + 订阅）；build 在此一次性对齐。
+      async buildStart() {
+        if (!isServe) {
+          await runConsumeTypes();
+        }
+      },
+      async configureServer(server: any) {
+        const result = await runConsumeTypes();
+        if (result) {
+          startTypeWatchers(result);
+        }
+        server.httpServer?.on?.('close', () => {
+          typeWatcher?.close();
+          if (typeRefreshTimer) {
+            clearTimeout(typeRefreshTimer);
+          }
+        });
+      },
     },
 
     rolldown: {
+      buildStart() {
+        void runConsumeTypes();
+      },
       buildEnd() {},
       async writeBundle(options, bundle) {
         const moduleIds = this.getModuleIds();
