@@ -1,0 +1,8 @@
+{
+  "manifest_version": 3,
+  "name": "LinkJS DevTools",
+  "version": "0.1.0",
+  "description": "Inspect LinkJS remotes / shares / conflicts / plugins / metrics / diagnostics in the inspected page.",
+  "devtools_page": "devtools.html",
+  "permissions": []
+}
