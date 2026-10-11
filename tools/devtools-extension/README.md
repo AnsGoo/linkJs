@@ -1,9 +1,12 @@
 # LinkJS DevTools Extension
 
-一个最小可用的 Chrome DevTools 扩展，用于查看被检查页面里 linkjs 的运行时状态：
+Chrome DevTools 扩展，用于查看并操作被检查页面里 linkjs 的运行时状态：
 
 - 在 **Chrome DevTools** 中新增 “LinkJS” 面板；
-- 面板通过 `chrome.devtools.inspectedWindow.eval` 读取页面里的 `window.__LINKJS__.getSnapshot()` 并展示（每 1s 刷新）；
+- 面板通过 `chrome.devtools.inspectedWindow.eval` 读取页面里的 `window.__LINKJS__.getSnapshot()`（每 1s 刷新）；
+- **分区展示**：远程应用 / 共享依赖 / 共享冲突 / 插件 / 加载指标 / 性能 / **事件** / 诊断；
+- **文本过滤**、**复制 JSON**、标题显示 `instance.id`（多实例区分）；
+- **操作**：每个远程行提供「预取」（`preload`）与「卸载」（`unload` / `unloadLib`）；
 - 依赖页面已加载 linkjs（开发模式下会暴露全局 `__LINKJS__`）。
 
 ## 使用
@@ -21,5 +24,5 @@
 
 ## 备注
 
-- 本扩展只做「读取展示」；页内已内置的可视化侧边栏（`src/devtools/ui.tsx`）功能更完整（过滤 / 复制 / 调整宽度 / 指标 / 性能 / 冲突）。
-- 扩展使用 `inspectedWindow.eval`，无需额外 `permissions`。
+- 扩展已对齐页内面板的**分区 / 过滤 / 操作**；页内面板（`src/devtools/ui.tsx`）额外支持拖拽调宽、快捷键与实时（非 1s 轮询）刷新。
+- 扩展使用 `inspectedWindow.eval`，无需额外 `permissions`；操作按钮即调用页面里的 `__LINKJS__.preload / unload / unloadLib`。

@@ -97,7 +97,7 @@ interface LoadMetric { entry: string; kind: 'app' | 'lib' | 'remote'; host?: str
 
 ## 9. Chrome DevTools 扩展
 
-`tools/devtools-extension/`：MV3 扩展，在 DevTools 新增 “LinkJS” 面板，经 `inspectedWindow.eval` 读取页面 `__LINKJS__.getSnapshot()` 展示。加载方式见其 README。
+`tools/devtools-extension/`：MV3 扩展，在 DevTools 新增 “LinkJS” 面板，经 `inspectedWindow.eval` 读取页面 `__LINKJS__.getSnapshot()`。已对齐页内面板：**分区**（远程应用 / 共享依赖 / 冲突 / 插件 / 指标 / 性能 / 事件 / 诊断）、**过滤**、**复制 JSON**、显示 `instance.id`，并对每个远程提供「预取 / 卸载」操作（调用 `__LINKJS__.preload / unload / unloadLib`）。加载方式见其 README。
 
 ## 10. 存储说明（重要）
 

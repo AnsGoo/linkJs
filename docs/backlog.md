@@ -54,7 +54,7 @@
   - [x] 基础操作（`load` / `preload` / `clearCache` / `unload`）+ 页内面板
   - [x] Chrome 扩展（只读快照，`tools/devtools-extension/`）
   - [ ] 补齐 share/remote 操作（`loadLib` / `unloadLib` / `getRemote` / `getShare` / `loadShare`）+ 面板操作按钮
-  - [ ] 扩展对齐页内面板（分区 / 过滤 / 操作）
+  - [x] 扩展对齐页内面板（分区 / 过滤 / 复制 JSON / 多实例 / 操作按钮）
 - [x] **C5 性能标记**：`performance.mark/measure` 记录各阶段耗时。`[低 / 小]`（`src/perf` + 面板「性能」区）
 - [ ] **C6 事件总线实时面板**：`LIB_EXPOSE` / `SHARED_EXPOSE` / `REMOTE_UPDATE` 事件流。`[中 / 小]`
 - [ ] **C7 指标聚合**：成功率 / 耗时 p50·p95 / 按 remote 分组。`[低 / 小]`
