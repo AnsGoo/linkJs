@@ -72,10 +72,10 @@ __LINKJS__.clearCache('remote');
 
 | 阶段名 | 含义 |
 | --- | --- |
-| `linkjs:remote:<name>` | 远程应用整体加载 |
-| `linkjs:remote:<name>:fetch` | 入口 HTML fetch |
-| `linkjs:remote:<name>:scripts` | 脚本加载 |
-| `linkjs:lib:<name>` | 远程库整体加载 |
+| `linkjs:load:app:<name>` | 远程应用整体加载 |
+| `linkjs:load:app:<name>:fetch` | 入口 HTML fetch |
+| `linkjs:load:app:<name>:scripts` | 脚本加载 |
+| `linkjs:load:lib:<name>` | 远程库整体加载 |
 | `linkjs:share:<name>` | **共享依赖加载**（缓存命中/并发复用不计） |
 
 ## 7. 加载指标（logger 插件）
