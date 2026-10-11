@@ -1,3 +1,15 @@
+/** 一个入口/expose 的静态与异步资源清单（相对 outDir 的路径）。 */
+export interface ManifestAsset {
+  js?: {
+    sync?: string[];
+    async?: string[];
+  };
+  css?: {
+    sync?: string[];
+    async?: string[];
+  };
+}
+
 export interface ManifestJson {
   name: string;
   version: string;
@@ -10,8 +22,16 @@ export interface ManifestJson {
     shared?: string;
     expose?: string;
     types?: string;
+    /** 主入口的资源清单，供宿主 `preloadRemote` 预加载。 */
+    assets?: ManifestAsset;
   };
   expose?: string[];
+  /** 各入口/暴露模块的资源清单（Module Federation manifest 风格的 `exposes`）。 */
+  exposes?: Array<{
+    name: string;
+    path: string;
+    assets: ManifestAsset;
+  }>;
   shared?: Record<
     string,
     {

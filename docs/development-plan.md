@@ -158,6 +158,29 @@
 
 ---
 
+## P11 清单资源与预加载（借鉴 Module Federation）
+
+- [x] **manifest 增加资源清单**：`entry.assets`（`js`/`css` 的 `sync`/`async`）与 `exposes: [{ name, path, assets }]`；unplugin 从 bundle 计算——Vite 走 `viteMetadata.importedCss`，缺失时回退把产出的 CSS 归到主入口。
+- [x] **运行时 `preloadRemote`**：`preloadRemote({ name?, host?, manifestUrl?, prefetch? })` 拉取 manifest，用 `<link rel="modulepreload|preload|prefetch">` 预热 entry（可选 exposes）的 JS/CSS；附带 `beforePreloadRemote`/`afterPreloadRemote` 插件钩子。
+- [x] 导出类型：`ManifestAsset` / `RemoteManifest` / `PreloadRemoteOptions`。
+- 测试：`packages/linkjs/tests/preload.test.ts`（3 用例）；demo 宿主启动预取 remote-lib（实测 modulepreload=1、prefetch=3）。
+
+---
+
+## P12 插件生命周期扩展 & 共享选项（借鉴 Module Federation）
+
+### 12.1 Runtime 插件（container / module 级）
+- [x] 新增 `apply(instance)`（注册时装填）、`afterResolve`（remoteInfo 解析后）、`beforeLoadContainer`/`afterLoadContainer`（容器加载边界）、`onLoad`（暴露模块就绪，容器级）。
+- [x] 在 `loadApp`/`loadLib` 全流程触发；`apply` 在 `registerPlugin` 时调用。
+- 测试：`tests/plugins.test.ts`（apply）、`tests/loader.test.ts`（钩子触发顺序）。
+
+### 12.2 共享依赖选项与多作用域
+- [x] `ShareOption` 新增 `eager`（注册即加载）、`requiredVersion`（版本要求）、`strictVersion`（不满足则抛错，否则告警）。
+- [x] `RemoteBase.shareScope?: string[]`：远程可关联多个共享作用域；`loadApp`/`loadLib` 预加载时按作用域逐个加载。
+- 测试：`tests/share-strategy.test.ts`（eager / requiredVersion / strictVersion）。
+
+---
+
 ## 执行记录（本轮）
 
 | 阶段 | 状态 | 说明 |

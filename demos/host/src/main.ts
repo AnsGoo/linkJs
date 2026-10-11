@@ -1,7 +1,7 @@
 import './assets/main.css';
 
 import registryOptions from 'runtime-registry';
-import { createInstance, loadApp, overrideRemote } from 'linkjs';
+import { createInstance, loadApp, overrideRemote, preloadRemote } from 'linkjs';
 
 const instances = createInstance({
   // 显式指定宿主模式：DEV 下子应用复用共享 runtime，PROD 下用子应用自带 runtime。
@@ -24,6 +24,16 @@ const instances = createInstance({
   },
 });
 instances.loadRegistry(registryOptions);
+
+// 按远程库 manifest 的 assets 预取资源（JS/CSS 预热），失败不影响主流程。
+preloadRemote({
+  name: 'remote-lib',
+  host: 'http://localhost:4001',
+  manifestUrl: 'http://localhost:4001/mf/manifest.json',
+  prefetch: true,
+}).catch(() => {
+  /* remote-lib 未启动时忽略 */
+});
 
 // 加载远程模块的函数
 function loadRemoteModule() {

@@ -2,7 +2,7 @@ import { createUnplugin } from 'unplugin';
 import type { Node, ImportDeclaration } from 'oxc-parser';
 import MagicString from 'magic-string';
 
-import type { ManifestJson, UnpluginLinkjsOptions } from './types.js';
+import type { ManifestAsset, ManifestJson, UnpluginLinkjsOptions } from './types.js';
 import { generateManifestFile, updateManifestFile } from './build-manifest.js';
 import { generateDependencyGraph, analyzeDependencies, extractPkgName, buildSharedPackageMap } from './dependency-graph.js';
 import { generateSharedEntryFile } from './build-shared.js';
@@ -22,7 +22,7 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
   const sharedPkgs = Object.keys(shared);
   // 真实包名 -> 共享依赖名称（例如 @vue/runtime-dom -> vue）
   const sharedPkgMap = buildSharedPackageMap(sharedPkgs);
-  const entry: Record<string, string> = {};
+  const entry: Record<string, any> = {};
   let shareVarIndex = 0;
 
   // 依赖图
@@ -315,13 +315,38 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
         generateManifestFile(outDir, exposes, shared, analyzedSharedDeps);
 
         const isDeclarationFile = (key: string) => /\.d\.(ts|mts|cts)$/.test(key);
+        const toManifestPath = (fileName: string) => path.join(baseDir, fileName);
+        // 收集某个入口 chunk 的资源清单（js/css 的同步与异步部分）。
+        const collectAssets = (item: any): ManifestAsset => {
+          const viteMeta = item?.viteMetadata ?? {};
+          const filterDts = (list: string[]) => list.filter((f) => f && !isDeclarationFile(f));
+          const jsSync = filterDts([item?.fileName, ...(item?.imports ?? [])]);
+          const jsAsync = filterDts([...(item?.dynamicImports ?? [])]);
+          const cssSync = [...(viteMeta.importedCss ?? [])];
+          const cssAsync = [...(viteMeta.importedAsyncCss ?? [])];
+          return {
+            js: { sync: jsSync.map(toManifestPath), async: jsAsync.map(toManifestPath) },
+            css: { sync: cssSync.map(toManifestPath), async: cssAsync.map(toManifestPath) },
+          };
+        };
+
+        const exposeAssets: NonNullable<ManifestJson['exposes']> = [];
+        // 构建产物里的 CSS 资源（Vite 下 cssCodeSplit:false 通常只有一个）。
+        const allCssAssets = bundleKeys.filter((key) => key.endsWith('.css') && !key.endsWith('.map'));
         bundleKeys.forEach((key) => {
           const bundleItem = bundle[key];
           if (bundleItem.type === 'chunk' && bundleItem.isEntry) {
             if (isDeclarationFile(key)) {
               if (!entry.types) entry.types = path.join(baseDir, key);
-            } else if (!entry.js) {
-              entry.js = path.join(baseDir, key);
+            } else {
+              if (!entry.js) entry.js = path.join(baseDir, key);
+              const assets = collectAssets(bundleItem);
+              if (!entry.assets) entry.assets = assets;
+              exposeAssets.push({
+                name: (bundleItem as any).name || key,
+                path: path.join(baseDir, key),
+                assets,
+              });
             }
           } else if (bundleItem.type === 'asset') {
             if (key.endsWith('.map')) {
@@ -335,6 +360,18 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
           }
         });
 
+        // 回退：rolldown-vite 未在 chunk 上暴露 importedCss 时，把构建产出的 CSS 归到主入口，
+        // 保证 `entry.assets.css.sync` 完整（供 preloadRemote 预加载样式）。
+        if (entry.assets && (entry.assets.css?.sync ?? []).length === 0 && allCssAssets.length > 0) {
+          const cssAsset = entry.assets.css ?? {};
+          entry.assets.css = { ...cssAsset, sync: allCssAssets.map(toManifestPath) };
+          const mainExpose = exposeAssets.find((item) => item.path === entry.js);
+          if (mainExpose) {
+            const exposeCss = mainExpose.assets.css ?? {};
+            mainExpose.assets.css = { ...exposeCss, sync: entry.assets.css.sync };
+          }
+        }
+
         // 生成共享依赖入口文件（shared.js），供宿主在加载主入口前预加载远程提供的共享依赖
         const sharedEntry = generateSharedEntryFile({ outDir, baseDir, shared, bundle, sharedPkgMap });
         if (sharedEntry) {
@@ -344,7 +381,7 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
         // 入口声明的共享依赖（来自 shared() 调用）
         const dependencies = Array.from(entrySharedDeps).filter((dep) => dep in analyzedSharedDeps);
 
-        updateManifestFile(outDir, { entry, dependencies }, analyzedSharedDeps);
+        updateManifestFile(outDir, { entry, dependencies, exposes: exposeAssets }, analyzedSharedDeps);
 
         // 生成依赖拓扑图（含共享依赖的子共享依赖）
         generateDependencyGraph(outDir, dependencyGraph, bundle, analyzedSharedDeps, dependencies);

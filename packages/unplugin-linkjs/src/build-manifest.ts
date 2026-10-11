@@ -117,7 +117,7 @@ function generateManifestFile(outDir: string, exposes: string[], shared: Record<
   }
 }
 
-function updateManifestFile(outDir: string, content?: Partial<Pick<ManifestJson, 'expose' | 'entry' | 'dependencies'>>, sharedDeps: Record<string, string[]> = {}) {
+function updateManifestFile(outDir: string, content?: Partial<Pick<ManifestJson, 'expose' | 'entry' | 'dependencies' | 'exposes'>>, sharedDeps: Record<string, string[]> = {}) {
   const manifestJsonPath = resolve(outDir, 'manifest.json');
 
   if (!existsSync(manifestJsonPath)) {
@@ -129,10 +129,14 @@ function updateManifestFile(outDir: string, content?: Partial<Pick<ManifestJson,
     const manifestJsonContent = readFileSync(manifestJsonPath, 'utf-8');
     const manifestJson = JSON.parse(manifestJsonContent);
 
-    const { expose = [], entry = {}, dependencies = [] } = content || {};
+    const { expose = [], entry = {}, dependencies = [], exposes } = content || {};
     manifestJson.expose = Array.from(new Set([...expose, ...(manifestJson.expose || [])]));
     manifestJson.entry = { ...(manifestJson.entry || {}), ...entry };
     manifestJson.dependencies = dependencies;
+
+    if (exposes) {
+      manifestJson.exposes = exposes;
+    }
 
     // 更新 shared 依赖的 dependencies 字段
     if (Object.keys(sharedDeps).length > 0) {

@@ -10,6 +10,7 @@ import type { RmoteConfig } from './loader';
 import { registerPlugin, runInitHooks, type RuntimePlugin } from './plugins';
 import { subscribeRemoteUpdate } from './hmr';
 import { loadRuntime } from './runtime';
+import { preloadRemote } from './preload';
 
 function getInstance() {
   return linkInstance;
@@ -77,6 +78,7 @@ export {
   overrideRemote,
   subscribeRemoteUpdate,
   loadRuntime,
+  preloadRemote,
 };
 
 export type { RegistryOption } from './state';
@@ -86,6 +88,7 @@ export type { LoadLibOptions } from './loader/lib';
 export { registerPlugin, getPlugins } from './plugins';
 export type { RuntimePlugin } from './plugins';
 export type { EventBus, EventHandler, LinkjsEvents } from './event-bus';
+export type { PreloadRemoteOptions, RemoteManifest, ManifestAsset } from './preload';
 
 export {
   captureSnapshot,
