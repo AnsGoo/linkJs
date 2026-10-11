@@ -83,9 +83,9 @@ function renderSnapshot(snapshot: LinkjsSnapshot, onClose: () => void): VNode[] 
     ]),
   ];
 
-  nodes.push(h('h3', {}, 'Remotes'));
+  nodes.push(h('h3', {}, '远程应用'));
   if (snapshot.remotes.length === 0) {
-    nodes.push(h('div', { class: 'muted' }, '(none)'));
+    nodes.push(h('div', { class: 'muted' }, '（无）'));
   }
   for (const remote of snapshot.remotes) {
     nodes.push(
@@ -97,9 +97,9 @@ function renderSnapshot(snapshot: LinkjsSnapshot, onClose: () => void): VNode[] 
     );
   }
 
-  nodes.push(h('h3', {}, 'Shared'));
+  nodes.push(h('h3', {}, '共享依赖'));
   if (snapshot.shares.length === 0) {
-    nodes.push(h('div', { class: 'muted' }, '(none)'));
+    nodes.push(h('div', { class: 'muted' }, '（无）'));
   }
   for (const share of snapshot.shares) {
     for (const version of share.versions) {
@@ -113,12 +113,12 @@ function renderSnapshot(snapshot: LinkjsSnapshot, onClose: () => void): VNode[] 
     }
   }
 
-  nodes.push(h('h3', {}, `Plugins (${snapshot.plugins.length})`));
-  nodes.push(h('div', { class: 'muted' }, snapshot.plugins.length ? snapshot.plugins.join(', ') : '(none)'));
+  nodes.push(h('h3', {}, `插件 (${snapshot.plugins.length})`));
+  nodes.push(h('div', { class: 'muted' }, snapshot.plugins.length ? snapshot.plugins.join(', ') : '（无）'));
 
-  nodes.push(h('h3', {}, `Diagnostics (${snapshot.diagnostics.length})`));
+  nodes.push(h('h3', {}, `诊断 (${snapshot.diagnostics.length})`));
   if (snapshot.diagnostics.length === 0) {
-    nodes.push(h('div', { class: 'muted' }, '(none)'));
+    nodes.push(h('div', { class: 'muted' }, '（无）'));
   }
   for (const diagnostic of snapshot.diagnostics.slice(-20).reverse()) {
     nodes.push(
