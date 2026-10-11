@@ -6,7 +6,7 @@ import { beginStyleCapture, endStyleCapture, ensureShadowTarget } from '../sandb
 import { runBeforeLoadRemote, runHook } from '../plugins';
 import { recordDiagnostic } from '../devtools';
 import { startPhase } from '../perf';
-import { loadCss, loadScript, preloadModule, resolveEntryConfig, rewriteRequestUrl, useGetRemote, useHandleExpose, type ExtOption, type LoadScriptOptions, type RemoteCache } from './utils';
+import { loadCss, loadScript, preloadModule, resolveEntryConfig, resolveShareScopes, rewriteRequestUrl, useGetRemote, useHandleExpose, type ExtOption, type LoadScriptOptions, type RemoteCache } from './utils';
 import type { LoadAppOptions } from './options';
 
 export type { LoadAppOptions } from './options';
@@ -81,7 +81,7 @@ async function loadApp<M = unknown>(
   }
 
   // 预加载共享依赖（等待完成，避免与子应用加载竞态）；支持远程声明多个共享作用域。
-  const shareScopes: (string | undefined)[] = remoteInfo?.shareScope?.length ? remoteInfo.shareScope : [undefined];
+  const shareScopes = resolveShareScopes(remoteInfo);
   await Promise.all(
     Object.keys(preload).flatMap((libName) =>
       shareScopes.map(async (shareScope) => {

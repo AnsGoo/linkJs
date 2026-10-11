@@ -1,5 +1,6 @@
 import { beforeEach, expect, test, vi } from 'vitest';
 import { preloadRemote } from '../src/preload';
+import { linkInstance } from '../src/state/instance';
 
 interface FakeLink {
   tagName: string;
@@ -14,6 +15,7 @@ let created: FakeLink[];
 
 beforeEach(() => {
   created = [];
+  linkInstance.remotes.clear();
   (globalThis as any).location = { href: 'http://localhost:5173/', origin: 'http://localhost:5173' };
   (globalThis as any).document = {
     head: { appendChild: (el: FakeLink) => created.push(el) },
@@ -65,6 +67,20 @@ test('prefetch=true includes async assets and exposes', async () => {
   expect(hrefs).toContain('http://localhost:4001/b.js');
   expect(hrefs).toContain('http://localhost:4001/x.js');
   expect(created.find((l) => l.href === 'http://localhost:4001/b.js')?.rel).toBe('prefetch');
+});
+
+test('applies declared shareScope from the manifest onto the registered remote', async () => {
+  linkInstance.remotes.set('remoteApp', { name: 'remoteApp', entry: '/', status: 'unloaded' });
+  (globalThis as any).fetch = vi.fn(async () => ({
+    ok: true,
+    json: async () => ({ name: 'RemoteApp', shareScope: ['ui', 'global'] }),
+  }));
+
+  await preloadRemote({ manifestUrl: 'http://localhost:8080/manifest.json', name: 'remoteApp' });
+
+  const remote = linkInstance.remotes.get('remoteApp');
+  expect(remote?.displayName).toBe('RemoteApp');
+  expect(remote?.shareScope).toEqual(['ui', 'global']);
 });
 
 test('throws when manifest fetch fails', async () => {

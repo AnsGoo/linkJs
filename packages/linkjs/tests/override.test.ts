@@ -43,6 +43,29 @@ test('skips invalid hosts and only loads the valid override', async () => {
   expect(remote.entry).toEqual({ js: '/lib.js' });
 });
 
+test('applies declared shareScope from the manifest', async () => {
+  linkInstance.remotes.set('remote', { name: 'remote', entry: 'x', status: 'unloaded' } as any);
+
+  const store: Record<string, string> = {
+    [__LINKJS_OVERRIDES__]: JSON.stringify({ remote: 'https://cdn.example.com' }),
+  };
+  globalThis.localStorage = {
+    getItem: (key: string) => store[key] ?? null,
+    setItem: () => {},
+    removeItem: () => {},
+  } as any;
+
+  globalThis.fetch = vi.fn(async () => ({
+    ok: true,
+    statusText: 'OK',
+    json: async () => ({ version: '1.0.0', shareScope: ['shared-ui'], entry: { js: '/lib.js' } }),
+  })) as any;
+
+  await overrideRemote();
+
+  expect((linkInstance.remotes.get('remote') as any).shareScope).toEqual(['shared-ui']);
+});
+
 test('does nothing when storage is empty', async () => {
   globalThis.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} } as any;
   const fetchMock = vi.fn();

@@ -44,7 +44,28 @@ function isExternal(finalExternal: any[], dependenceName: string): boolean {
   return false;
 }
 
-function generateManifestFile(outDir: string, exposes: string[], shared: Record<string, any>, sharedDeps: Record<string, string[]> = {}) {
+/**
+ * 解析远程参与的共享作用域：显式 `declared` 优先，否则由 `shared` 各项的 `scope`
+ * 推导（未声明 scope 的依赖计入默认 `global`）。始终返回至少一个作用域。
+ */
+function resolveShareScopes(shared: Record<string, any>, declared?: string[]): string[] {
+  if (declared?.length) {
+    return [...new Set(declared)];
+  }
+  const scopes = new Set<string>();
+  for (const dep of Object.values(shared)) {
+    scopes.add(dep?.scope || 'global');
+  }
+  return scopes.size ? [...scopes] : ['global'];
+}
+
+function generateManifestFile(
+  outDir: string,
+  exposes: string[],
+  shared: Record<string, any>,
+  sharedDeps: Record<string, string[]> = {},
+  shareScope?: string[],
+) {
   const packageJsonPath = resolve(process.cwd(), 'package.json');
 
   if (!existsSync(packageJsonPath)) {
@@ -98,6 +119,7 @@ function generateManifestFile(outDir: string, exposes: string[], shared: Record<
       description: packageJson.description || '',
       entry: {},
       expose: [...new Set(exposes)],
+      shareScope: resolveShareScopes(shared, shareScope),
       shared: {},
     };
 
@@ -157,4 +179,4 @@ function updateManifestFile(outDir: string, content?: Partial<Pick<ManifestJson,
     throw error;
   }
 }
-export { generateManifestFile, updateManifestFile };
+export { generateManifestFile, updateManifestFile, resolveShareScopes };

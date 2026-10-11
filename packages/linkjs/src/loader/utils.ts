@@ -1,7 +1,7 @@
 import { getInstance } from '..';
 import { LIB_EXPOSE } from '../event-bus/constant';
 import { getShadowRoot } from '../sandbox/shadow';
-import type { RemoteEntry, RemoteInfo } from '../state/instance';
+import type { RegistryOption, RemoteEntry, RemoteInfo } from '../state/instance';
 import type { RemoteModule } from '../types';
 
 /** 已加载远程模块的运行时缓存（`appName -> 暴露对象`）。 */
@@ -13,6 +13,25 @@ function resolveEntryConfig(entry: string | RemoteEntry | undefined): RemoteEntr
     return {};
   }
   return typeof entry === 'string' ? { html: entry, js: entry } : entry;
+}
+
+/**
+ * 解析远程参与的共享作用域。
+ *
+ * 优先级：显式 `shareScope`（注册表 / manifest 声明）> 由 `shared` 各项的 `scope`
+ * 推导 > `[undefined]`（交由 `loadShare` 使用默认作用域）。
+ */
+function resolveShareScopes(remoteInfo: RegistryOption): (string | undefined)[] {
+  if (remoteInfo.shareScope?.length) {
+    return remoteInfo.shareScope;
+  }
+  const scopes = new Set<string>();
+  for (const dep of Object.values(remoteInfo.shared ?? {})) {
+    if (dep.scope) {
+      scopes.add(dep.scope);
+    }
+  }
+  return scopes.size ? [...scopes] : [undefined];
 }
 
 /** 请求 URL 重写器（插件通过 `instance.requestRewriters` 注册）。 */
@@ -198,5 +217,5 @@ function useHandleExpose<M = unknown>(
   return handler;
 }
 
-export { loadCss, preloadModule, loadScript, rewriteRequestUrl, getRemoteInfo, resolveEntryConfig, useGetRemote, useHandleExpose };
+export { loadCss, preloadModule, loadScript, rewriteRequestUrl, getRemoteInfo, resolveEntryConfig, resolveShareScopes, useGetRemote, useHandleExpose };
 export type { LoadScriptOptions, ResourceSecurityOptions, RemoteCache };

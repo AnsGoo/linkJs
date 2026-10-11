@@ -177,7 +177,8 @@
 ### 12.2 共享依赖选项与多作用域
 - [x] `ShareOption` 新增 `eager`（注册即加载）、`requiredVersion`（版本要求）、`strictVersion`（不满足则抛错，否则告警）。
 - [x] `RemoteBase.shareScope?: string[]`：远程可关联多个共享作用域；`loadApp`/`loadLib` 预加载时按作用域逐个加载。
-- 测试：`tests/share-strategy.test.ts`（eager / requiredVersion / strictVersion）。
+- [x] **A9 多 shareScope 声明式配置**：unplugin 生成 `manifest.shareScope`（显式 `shareScope` 选项，缺省由 `shared[*].scope` 推导，默认 `["global"]`）；运行时 `preloadRemote` / `loadOverride` 读取 manifest 并写回远程注册表；`loadApp`/`loadLib` 在缺省时由 `shared` 各依赖的 `scope` 推导。
+- 测试：`tests/share-strategy.test.ts`（eager / requiredVersion / strictVersion）、`tests/share-scope.test.ts`（作用域解析）、`tests/preload.test.ts` 与 `tests/override.test.ts`（manifest → 注册表）、`unplugin-linkjs/tests/build-manifest.test.ts`（构建期生成/推导）。
 
 ---
 

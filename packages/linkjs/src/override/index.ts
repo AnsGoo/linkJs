@@ -97,6 +97,9 @@ async function loadOverride(option: OverrideEntry) {
   if (remoteInfo.entry) {
     remote.entry = remoteInfo.entry;
   }
+  if (Array.isArray(remoteInfo.shareScope) && remoteInfo.shareScope.length) {
+    remote.shareScope = remoteInfo.shareScope;
+  }
   remote.status = LOAD_STATUS.LOADED;
   console.log(`[linkjs] Loaded override: [${name}] in ${host}`);
   return remoteInfo;

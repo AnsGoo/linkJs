@@ -4,7 +4,7 @@ import { beginStyleCapture, endStyleCapture, ensureShadowTarget } from '../sandb
 import { runBeforeLoadRemote, runHook } from '../plugins';
 import { recordDiagnostic } from '../devtools';
 import { startPhase } from '../perf';
-import { getRemoteInfo, resolveEntryConfig, rewriteRequestUrl, useGetRemote, useHandleExpose, type ExtOption, type RemoteCache } from './utils';
+import { getRemoteInfo, resolveEntryConfig, resolveShareScopes, rewriteRequestUrl, useGetRemote, useHandleExpose, type ExtOption, type RemoteCache } from './utils';
 import type { LoadLibOptions } from './options';
 
 export type { LoadLibOptions } from './options';
@@ -47,7 +47,7 @@ async function loadRemoteLib<M = unknown>(
 
   // 预加载该远程声明的共享依赖（支持多个共享作用域）
   const shared = remoteInfo.shared || {};
-  const shareScopes: (string | undefined)[] = remoteInfo.shareScope?.length ? remoteInfo.shareScope : [undefined];
+  const shareScopes = resolveShareScopes(remoteInfo);
   await Promise.all(
     Object.keys(shared).flatMap((dep) =>
       shareScopes.map(async (shareScope) => {

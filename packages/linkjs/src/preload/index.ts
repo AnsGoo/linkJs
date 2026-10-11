@@ -26,6 +26,8 @@ export interface RemoteManifest {
     assets?: ManifestAsset;
   };
   exposes?: Array<{ name: string; path: string; assets?: ManifestAsset }>;
+  /** 该远程参与的共享作用域（多作用域声明）。 */
+  shareScope?: string[];
   shared?: Record<string, unknown>;
   /** 产物 SRI 完整性（manifest path -> `sha384-...`）。 */
   integrity?: Record<string, string>;
@@ -104,11 +106,16 @@ async function preloadRemote(options: PreloadRemoteOptions): Promise<RemoteManif
   }
   const manifest = (await response.json()) as RemoteManifest;
 
-  // 记录 manifest 里的包名作为展示名。
-  if (options.name && typeof manifest.name === 'string' && manifest.name) {
-    const info = getRemoteInfo(options.name) as { displayName?: string } | undefined;
+  // 记录 manifest 里的包名（展示名）与共享作用域声明。
+  if (options.name) {
+    const info = getRemoteInfo(options.name);
     if (info) {
-      info.displayName = manifest.name;
+      if (typeof manifest.name === 'string' && manifest.name) {
+        info.displayName = manifest.name;
+      }
+      if (Array.isArray(manifest.shareScope) && manifest.shareScope.length) {
+        info.shareScope = manifest.shareScope;
+      }
     }
   }
 

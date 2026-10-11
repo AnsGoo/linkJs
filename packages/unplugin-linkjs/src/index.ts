@@ -19,6 +19,7 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
     shared = {},
     isReplaceLinkjs = true,
     adaptiveRuntime = [],
+    shareScope,
   } = options;
   const sharedPkgs = Object.keys(shared);
   // 真实包名 -> 共享依赖名称（例如 @vue/runtime-dom -> vue）
@@ -313,7 +314,7 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
 
         // 自动分析共享依赖之间的子依赖关系（基于 package.json 依赖闭包）
         const analyzedSharedDeps = analyzeDependencies(shared);
-        generateManifestFile(outDir, exposes, shared, analyzedSharedDeps);
+        generateManifestFile(outDir, exposes, shared, analyzedSharedDeps, shareScope);
 
         const isDeclarationFile = (key: string) => /\.d\.(ts|mts|cts)$/.test(key);
         const toManifestPath = (fileName: string) => path.join(baseDir, fileName);

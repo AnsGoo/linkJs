@@ -34,6 +34,8 @@ export interface ManifestJson {
   }>;
   /** 产物 SRI 完整性（path -> `sha384-...`），供宿主预加载/校验。 */
   integrity?: Record<string, string>;
+  /** 该远程参与的共享作用域（多作用域声明，供宿主解析）。 */
+  shareScope?: string[];
   shared?: Record<
     string,
     {
@@ -57,6 +59,11 @@ export interface UnpluginLinkjsOptions {
     }
   >;
   isReplaceLinkjs?: boolean;
+  /**
+   * 该远程参与的共享作用域（写入 manifest `shareScope`，供宿主多作用域解析）。
+   * 缺省时由 `shared` 各项的 `scope` 推导（默认 `global`）。
+   */
+  shareScope?: string[];
   /**
    * 路线 B：需要自适应 runtime 的框架级依赖（如 `['vue', 'vue-router', 'pinia']`）。
    * dev 下这些依赖改写为 `$linkjs.loadRuntime(name, () => import(name))`：
