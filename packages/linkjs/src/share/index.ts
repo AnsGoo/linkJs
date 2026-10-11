@@ -25,8 +25,13 @@ const DEFAULT_STRATEGY = 'version-first';
  */
 function registerShare(options: Record<string, ShareOption>) {
   const instance = getInstance();
+  // 构建插件注入的共享依赖版本（见 unplugin-linkjs 的 linkjsSharedVersions）。
+  const injected = (globalThis as { __LINKJS_SHARED_VERSIONS__?: Record<string, string> })
+    .__LINKJS_SHARED_VERSIONS__;
   for (const name in options) {
-    const option = options[name];
+    const raw = options[name];
+    // 未声明 version 时用构建期注入的版本补齐（DevTools / 版本诊断使用）。
+    const option: ShareOption = raw.version || !injected?.[name] ? raw : { ...raw, version: injected[name] };
     const scope = option.scope || 'global';
     let scopeMap = instance.shares.get(scope);
     if (!scopeMap) {

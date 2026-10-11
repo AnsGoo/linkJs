@@ -6,6 +6,7 @@ import { createInstance, getSnapshot, loadApp, overrideRemote, preloadRemote } f
 const instances = createInstance({
   // 显式指定宿主模式：DEV 下子应用复用共享 runtime，PROD 下用子应用自带 runtime。
   mode: import.meta.env.PROD ? 'production' : 'development',
+  // 共享依赖版本由构建期的 linkjsSharedVersions 插件注入，运行时自动补齐。
   shares: {
     vue: {
       name: 'vue',

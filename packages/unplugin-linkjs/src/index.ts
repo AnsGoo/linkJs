@@ -414,4 +414,6 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
 
 const unpluginLinkjsRollowPlugin = unpluginLinkjs.rolldown;
 export { unpluginLinkjsRollowPlugin };
+export { linkjsSharedVersions, LINKJS_SHARED_VIRTUAL_ID } from './shared-versions.js';
+export type { SharedVersionsOptions } from './shared-versions.js';
 export default unpluginLinkjs;

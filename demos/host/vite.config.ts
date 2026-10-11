@@ -4,6 +4,7 @@ import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import vueJsx from '@vitejs/plugin-vue-jsx';
 import vueDevTools from 'vite-plugin-vue-devtools';
+import { linkjsSharedVersions } from 'unplugin-linkjs';
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
@@ -17,6 +18,8 @@ export default defineConfig({
     }),
     vueJsx(),
     vueDevTools(),
+    // 注入已安装的共享依赖版本（globalThis.__LINKJS_SHARED_VERSIONS__），运行时自动补齐
+    linkjsSharedVersions(),
   ],
   resolve: {
     alias: {

@@ -200,6 +200,14 @@
 
 ---
 
+## P15 构建期注入共享依赖版本（自动补齐）
+
+- [x] `unplugin-linkjs` 新增 `linkjsSharedVersions()`：构建期从 `node_modules` 读取已安装版本，经 `transformIndexHtml` 注入 `globalThis.__LINKJS_SHARED_VERSIONS__`，并提供虚拟模块 `virtual:linkjs-shared`。
+- [x] 运行时 `registerShare` 对未声明 `version` 的共享依赖**自动补齐**（DevTools 面板 / 版本诊断使用），无需手写。
+- 实测：宿主未手写任何版本，DevTools 显示 `vue=3.5.43 / pinia=3.0.4 / vue-router=5.4.0`。
+
+---
+
 ## 执行记录（本轮）
 
 | 阶段 | 状态 | 说明 |
