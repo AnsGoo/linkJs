@@ -11,6 +11,20 @@ import opener from 'opener';
 
 let server: Server | null = null;
 
+// ---- linkjs 类型变更通知（SSE）----
+const sseClients = new Set<ServerResponse>();
+
+function broadcast(event: string, data: unknown): void {
+  const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+  for (const client of sseClients) {
+    try {
+      client.write(payload);
+    } catch {
+      sseClients.delete(client);
+    }
+  }
+}
+
 interface TsdownServeOptions {
   contentBase?: string | string[];
   port: number;
@@ -66,6 +80,17 @@ function serve(options: TsdownServeOptions | string | string[] = { contentBase: 
     });
     response.setHeader('Access-Control-Allow-Origin', '*');
 
+    // linkjs 类型变更事件流（host `consumeTypes` 订阅）。
+    if (urlPath === '/__linkjs/events') {
+      handleSse(request, response);
+      return;
+    }
+    // manifest 指针：dev 模式下覆写 `mode`（供 host 建立长连接）。
+    if (urlPath === '/manifest.json' || urlPath === '/__linkjs/manifest.json') {
+      handleManifest(contentBase, response);
+      return;
+    }
+
     readFileFromContentBase(contentBase, urlPath, function (error, content, filePath) {
       if (!error && content) {
         return found(response, mime.getType(filePath), content);
@@ -109,6 +134,24 @@ function serve(options: TsdownServeOptions | string | string[] = { contentBase: 
         : createServer(requestListener);
   server.listen(port, host, () => onListening(server!));
 
+  // SSE 心跳保活（探活 / 触发断线重连）。
+  const heartbeat = setInterval(() => {
+    for (const client of sseClients) {
+      try {
+        client.write(': ping\n\n');
+      } catch {
+        sseClients.delete(client);
+      }
+    }
+  }, 15000);
+  if (typeof heartbeat.unref === 'function') {
+    heartbeat.unref();
+  }
+  server.on('close', () => {
+    clearInterval(heartbeat);
+    sseClients.clear();
+  });
+
   // Assemble url for error and info messages
   const url = (typeof https === 'boolean' ? https : typeof https === 'object')
     ? 'https'
@@ -148,8 +191,67 @@ function serve(options: TsdownServeOptions | string | string[] = { contentBase: 
           }
         }
       }
+
+      // 每次构建完成广播类型变更（延迟到 unplugin writeBundle 写完 manifest 之后）。
+      setTimeout(() => broadcastManifestChange(contentBase), 50);
     },
   };
+}
+
+/** SSE：注册客户端并保持连接。 */
+function handleSse(request: IncomingMessage, response: ServerResponse) {
+  response.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    Connection: 'keep-alive',
+    'Access-Control-Allow-Origin': '*',
+  });
+  response.write(': connected\n\n');
+  sseClients.add(response);
+  request.on('close', () => {
+    sseClients.delete(response);
+  });
+}
+
+/** 覆写 manifest 的 `mode` 为 development，供 host 建立类型变更长连接。 */
+function handleManifest(contentBase: string[], response: ServerResponse) {
+  readFileFromContentBase(contentBase, '/manifest.json', (error, content, filePath) => {
+    if (error || !content) {
+      notFound(response, filePath);
+      return;
+    }
+    try {
+      const manifest = JSON.parse(content.toString());
+      manifest.mode = 'development';
+      if (!manifest.metaData?.types && manifest.entry?.types) {
+        manifest.metaData = { types: manifest.entry.types, ...(manifest.metaData || {}) };
+      }
+      response.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+      response.end(JSON.stringify(manifest, null, 2), 'utf-8');
+    } catch {
+      found(response, 'application/json', content);
+    }
+  });
+}
+
+/** 读取当前 manifest，广播 `types-changed`（含 name/version/typesHash 供 host 去重）。 */
+function broadcastManifestChange(contentBase: string[]) {
+  readFileFromContentBase(contentBase, '/manifest.json', (error, content) => {
+    if (error || !content) {
+      broadcast('types-changed', {});
+      return;
+    }
+    try {
+      const manifest = JSON.parse(content.toString());
+      broadcast('types-changed', {
+        name: manifest.name,
+        version: manifest.version,
+        typesHash: manifest.metaData?.typesHash,
+      });
+    } catch {
+      broadcast('types-changed', {});
+    }
+  });
 }
 
 function readFileFromContentBase(
