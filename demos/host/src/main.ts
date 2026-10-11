@@ -17,6 +17,8 @@ import {
 const instances = createInstance({
   // 显式指定宿主模式：DEV 下子应用复用共享 runtime，PROD 下用子应用自带 runtime。
   mode: import.meta.env.PROD ? 'production' : 'development',
+  // 关闭页内 DevTools 侧边栏：面板改由 Chrome DevTools 扩展（LinkJS 标签）展示，不在页面上占位。
+  devtools: false,
   // 运行时插件：日志 + 多源重试 + 失败降级 + 鉴权注入 + 超时（DevTools 会列出）。
   plugin: [
     loggerPlugin(),
