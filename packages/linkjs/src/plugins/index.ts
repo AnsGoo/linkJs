@@ -45,18 +45,13 @@ export interface RuntimePlugin {
   afterPreloadRemote?(manifest: unknown, assets: string[]): void | Promise<void>;
 }
 
-type PluginHost = { plugins?: RuntimePlugin[] };
-
 function getPlugins(): RuntimePlugin[] {
-  return (getInstance() as PluginHost).plugins ?? [];
+  return getInstance().plugins;
 }
 
 /** 注册一个或多个插件（同名插件只保留首个），并对新插件调用 `apply(instance)`。 */
 function registerPlugin(plugin: RuntimePlugin | RuntimePlugin[]): void {
-  const instance = getInstance() as PluginHost;
-  if (!instance.plugins) {
-    instance.plugins = [];
-  }
+  const instance = getInstance();
   const list = Array.isArray(plugin) ? plugin : [plugin];
   for (const item of list) {
     if (!item || typeof item.name !== 'string') {

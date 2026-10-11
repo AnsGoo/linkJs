@@ -77,15 +77,15 @@ function ensureRuntimeMethods(): void {
 /** 远程加载（经实例方法分发，可被插件包装）。 */
 function loadApp<M = unknown>(entry: string, options?: LoadAppOptions): Promise<M | null> {
   ensureRuntimeMethods();
-  return getInstance().loadApp(entry, options) as Promise<M | null>;
+  return getInstance().loadApp!(entry, options) as Promise<M | null>;
 }
 function loadLib<M = unknown>(entry: string, options?: LoadLibOptions): Promise<M | null> {
   ensureRuntimeMethods();
-  return getInstance().loadLib(entry, options) as Promise<M | null>;
+  return getInstance().loadLib!(entry, options) as Promise<M | null>;
 }
 function loadRemote<M = unknown>(entry: string, options?: LoadAppOptions & LoadLibOptions): Promise<M | null> {
   ensureRuntimeMethods();
-  return getInstance().loadRemote(entry, options) as Promise<M | null>;
+  return getInstance().loadRemote!(entry, options) as Promise<M | null>;
 }
 
 type InstanceMode = 'development' | 'production';

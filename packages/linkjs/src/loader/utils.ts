@@ -20,7 +20,7 @@ export type RequestRewriter = (url: string, ctx: { remoteName?: string }) => str
 
 /** 允许插件改写远程资源的请求 URL（鉴权 token、CDN 网关、路径映射等）。 */
 function rewriteRequestUrl(url: string, remoteName?: string): string {
-  const rewriters = (getInstance() as { requestRewriters?: RequestRewriter[] }).requestRewriters;
+  const rewriters = getInstance().requestRewriters;
   if (!rewriters?.length) {
     return url;
   }
@@ -178,21 +178,12 @@ function useHandleExpose<M = unknown>(
   appName: string,
   options: ExtOption,
 ) {
-  return (data: { libName: string; lib: RemoteModule }) => {
-    return handleLibExpose<M>(data, resolve, remoteCache, appName, options);
-  };
-}
-
-function handleLibExpose<M = unknown>(
-  data: { libName: string; lib: RemoteModule },
-  resolve: (value: M | null) => void,
-  remoteCache: RemoteCache,
-  appName: string,
-  options: ExtOption,
-) {
-  const linkInstance = getInstance();
-  if (data.libName === appName && data.lib) {
-    linkInstance.eventBus.off(LIB_EXPOSE, handleLibExpose);
+  const handler = (data: { libName: string; lib: RemoteModule }) => {
+    if (data.libName !== appName || !data.lib) {
+      return;
+    }
+    const linkInstance = getInstance();
+    linkInstance.eventBus.off(LIB_EXPOSE, handler);
     const { modelName } = options;
     if (options.timeoutId) {
       clearTimeout(options.timeoutId);
@@ -203,7 +194,8 @@ function handleLibExpose<M = unknown>(
       return resolve((data.lib[modelName] as M) || null);
     }
     return resolve((data.lib['default'] as M) || (data.lib as unknown as M) || null);
-  }
+  };
+  return handler;
 }
 
 export { loadCss, preloadModule, loadScript, rewriteRequestUrl, getRemoteInfo, resolveEntryConfig, useGetRemote, useHandleExpose };

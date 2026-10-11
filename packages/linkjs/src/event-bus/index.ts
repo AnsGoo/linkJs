@@ -15,20 +15,23 @@ export type EventMap = Record<string, any[]>;
 
 export type EventHandler<TArgs extends any[] = any[]> = (...args: TArgs) => void;
 
-export interface EventBus<Events extends EventMap = EventMap> {
+/** 事件名对应的事件参数元组（非数组退化为 `never`）。 */
+type EventArgs<Events, K extends keyof Events> = Events[K] extends any[] ? Events[K] : never;
+
+export interface EventBus<Events extends object = EventMap> {
   /** 订阅事件。 */
-  on<K extends keyof Events & string>(eventName: K, cb: EventHandler<Events[K]>): void;
+  on<K extends keyof Events & string>(eventName: K, cb: EventHandler<EventArgs<Events, K>>): void;
   /** 订阅一次，触发后自动取消。 */
-  once<K extends keyof Events & string>(eventName: K, cb: EventHandler<Events[K]>): void;
+  once<K extends keyof Events & string>(eventName: K, cb: EventHandler<EventArgs<Events, K>>): void;
   /** 取消订阅；省略 `cb` 时清空该事件的**所有**监听。 */
-  off<K extends keyof Events & string>(eventName: K, cb?: EventHandler<Events[K]>): void;
+  off<K extends keyof Events & string>(eventName: K, cb?: EventHandler<EventArgs<Events, K>>): void;
   /** 触发事件。 */
-  emit<K extends keyof Events & string>(eventName: K, ...args: Events[K]): void;
+  emit<K extends keyof Events & string>(eventName: K, ...args: EventArgs<Events, K>): void;
   /** 清空所有事件的所有监听。 */
   clear(): void;
 }
 
-export function makeEventBus<Events extends EventMap = EventMap>(): EventBus<Events> {
+export function makeEventBus<Events extends object = EventMap>(): EventBus<Events> {
   type Listener = (...args: any[]) => void;
   const name2listeners: Record<string, Listener[]> = {};
 

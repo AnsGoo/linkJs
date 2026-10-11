@@ -11,6 +11,7 @@ import { availablePlugins } from '../plugins/catalog';
 import { getLoadMetrics, type LoadMetric } from '../plugins/logger';
 import { getPerfEntries, type PerfEntry } from '../perf';
 import { VersionComparator } from '../share/version-comparator';
+import type { LinkjsInstance, ShareOption } from '../state/instance';
 
 export interface Diagnostic {
   level: 'warn' | 'error';
@@ -138,9 +139,9 @@ function onDiagnostic(listener: (diagnostic: Diagnostic) => void): () => void {
 }
 
 /** 汇总当前 linkjs 实例的可观测状态。 */
-function buildSnapshot(instance: any): LinkjsSnapshot {
+function buildSnapshot(instance: LinkjsInstance): LinkjsSnapshot {
   const remotes: RemoteSnapshot[] = [];
-  instance.remotes?.forEach((remote: any) => {
+  instance.remotes.forEach((remote) => {
     remotes.push({
       name: remote.name,
       displayName: remote.displayName,
@@ -154,9 +155,9 @@ function buildSnapshot(instance: any): LinkjsSnapshot {
   });
 
   const shares: ShareSnapshot[] = [];
-  instance.shares?.forEach((scopeMap: Map<string, any[]>, scope: string) => {
-    const loadedScope: Map<string, any> | undefined = instance.sharedMap?.get(scope);
-    scopeMap.forEach((options: any[], name: string) => {
+  instance.shares.forEach((scopeMap, scope: string) => {
+    const loadedScope = instance.sharedMap.get(scope);
+    scopeMap.forEach((options: ShareOption[], name: string) => {
       shares.push({
         scope,
         name,
@@ -182,7 +183,7 @@ function buildSnapshot(instance: any): LinkjsSnapshot {
     });
   });
 
-  const registered: string[] = (instance.plugins ?? []).map((plugin: { name: string }) => plugin.name);
+  const registered: string[] = instance.plugins.map((plugin) => plugin.name);
   const available: PluginSnapshot[] = [
     ...availablePlugins.map((plugin) => ({ ...plugin, enabled: registered.includes(plugin.name) })),
     ...registered
@@ -240,7 +241,7 @@ export interface DevtoolsOps {
 }
 
 /** 暴露 DevTools 接口：全局 `__LINKJS__` 与 `$linkjs.debug`。 */
-function installDevtools(instance: any, ops: DevtoolsOps = {}): void {
+function installDevtools(instance: LinkjsInstance, ops: DevtoolsOps = {}): void {
   const api = {
     // 只读
     getSnapshot: () => buildSnapshot(instance),
@@ -277,12 +278,12 @@ export interface DevtoolsOptions {
  * 按需挂载**页内 DevTools 面板**（开发模式默认启用）。
  * 动态 `import()` 面板实现，生产构建不会加载这部分代码。
  */
-function maybeInstallDevtoolsUI(instance: any, option?: boolean | DevtoolsOptions): void {
+function maybeInstallDevtoolsUI(instance: LinkjsInstance, option?: boolean | DevtoolsOptions): void {
   if (typeof document === 'undefined') {
     return;
   }
   const enabled = typeof option === 'boolean' ? option : option?.enabled;
-  const shouldEnable = enabled ?? instance?.mode === 'development';
+  const shouldEnable = enabled ?? instance.mode === 'development';
   if (!shouldEnable) {
     return;
   }

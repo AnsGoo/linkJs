@@ -1,12 +1,6 @@
 import { getInstance } from '..';
 import { loadShare } from '../share';
-
-interface RuntimeCarrier {
-  /** 全局共享的 dev runtime（跨子应用可见，保证全页只有一份） */
-  runtimeModules?: Map<string, any>;
-  /** 并发加载去重 */
-  runtimePending?: Map<string, Promise<any>>;
-}
+import type { RemoteModule } from '../types';
 
 /**
  * 自适应加载框架级 runtime（路线 B）。
@@ -19,8 +13,8 @@ interface RuntimeCarrier {
  * 关键在于：无论哪种模式，子应用 dev 时都能拿到一份**带 HMR 的** runtime，
  * 且整页共享同一份。
  */
-async function loadRuntime(name: string, localLoader: () => Promise<any>): Promise<any> {
-  const instance = getInstance() as RuntimeCarrier & { mode?: 'development' | 'production' };
+async function loadRuntime(name: string, localLoader: () => Promise<RemoteModule>): Promise<RemoteModule> {
+  const instance = getInstance();
   const mode = instance.mode || 'production';
 
   if (mode !== 'production') {
@@ -61,7 +55,7 @@ async function loadRuntime(name: string, localLoader: () => Promise<any>): Promi
 
 /** 清空共享 dev runtime 缓存（测试/卸载用）。 */
 function resetRuntimeCache(): void {
-  const instance = getInstance() as RuntimeCarrier;
+  const instance = getInstance();
   instance.runtimeModules?.clear();
   instance.runtimePending?.clear();
 }

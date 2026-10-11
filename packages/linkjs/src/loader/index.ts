@@ -41,7 +41,7 @@ function ensureRemoteUpdates(): void {
 
 /** 更新远程应用的加载状态（若已注册）。 */
 function setRemoteStatus(appName: string, status: (typeof LOAD_STATUS)[keyof typeof LOAD_STATUS]): void {
-  const remote = getInstance().remotes.get(appName) as { status?: string } | undefined;
+  const remote = getInstance().remotes.get(appName);
   if (remote) {
     remote.status = status;
   }

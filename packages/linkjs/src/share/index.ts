@@ -1,5 +1,5 @@
 import { getInstance } from '..';
-import type { ShareOption } from '../state/instance';
+import type { LinkjsInstance, ShareOption } from '../state/instance';
 import type { RemoteModule } from '../types';
 import { recordDiagnostic } from '../devtools';
 import { startPhase } from '../perf';
@@ -96,7 +96,7 @@ async function loadModule(shareInfo: ShareOption): Promise<RemoteModule> {
   return libModule;
 }
 
-function getInflightMap(instance: any): Map<string, Promise<RemoteModule>> {
+function getInflightMap(instance: LinkjsInstance): Map<string, Promise<RemoteModule>> {
   if (!instance.shareInflight) {
     instance.shareInflight = new Map<string, Promise<RemoteModule>>();
   }
@@ -107,7 +107,7 @@ function getInflightMap(instance: any): Map<string, Promise<RemoteModule>> {
  * 加载并缓存共享模块，并合并同一 name@version 的并发加载。
  */
 function loadAndCacheModule(
-  instance: any,
+  instance: LinkjsInstance,
   scope: string,
   name: string,
   shareInfo: ShareOption,
@@ -166,7 +166,7 @@ function toCandidates(loaded: VersionedModule[], available: ShareOption[]): Cand
  * 未指定版本时选取所有候选中的最高版本。
  */
 async function resolveVersionFirst(
-  instance: any,
+  instance: LinkjsInstance,
   scope: string,
   name: string,
   version: string | undefined,
@@ -196,7 +196,7 @@ async function resolveVersionFirst(
  * 已加载优先：优先复用已加载的（满足条件的）实例；没有时才从可用版本中加载。
  */
 async function resolveLoadedFirst(
-  instance: any,
+  instance: LinkjsInstance,
   scope: string,
   name: string,
   version: string | undefined,
