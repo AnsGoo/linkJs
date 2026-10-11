@@ -179,6 +179,8 @@ export { loggerPlugin, getLoadMetrics, clearLoadMetrics } from './plugins/logger
 export type { LoggerPluginOptions, LoadMetric, LogEvent } from './plugins/logger';
 export { authPlugin } from './plugins/auth';
 export type { AuthPluginOptions } from './plugins/auth';
+export { timeoutPlugin, TimeoutError } from './plugins/timeout';
+export type { TimeoutPluginOptions } from './plugins/timeout';
 export { availablePlugins } from './plugins/catalog';
 export type { AvailablePlugin } from './plugins/catalog';
 export type { EventBus, EventHandler, LinkjsEvents } from './event-bus';

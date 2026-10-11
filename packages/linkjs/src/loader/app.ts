@@ -24,13 +24,15 @@ export interface LoadAppOptions {
   sandbox?: boolean;
   /** 是否启用 Shadow DOM 样式隔离（仅 `createRemoteApp` 消费）。 */
   shadow?: boolean;
+  /** 中止信号：用于取消入口 HTML 的 fetch（超时/手动中止）。 */
+  signal?: AbortSignal;
 }
 
-async function fetchHtml(url: string, retries: number): Promise<string> {
+async function fetchHtml(url: string, retries: number, signal?: AbortSignal): Promise<string> {
   let lastError: unknown;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      const response = await fetch(url);
+      const response = await fetch(url, signal ? { signal } : undefined);
       if (!response.ok) {
         throw new Error(`Failed to load remote: ${response.status} ${response.statusText}`);
       }
@@ -104,7 +106,7 @@ async function loadApp<Module>(
     ),
   );
 
-  const html = await fetchHtml(rewriteRequestUrl(htmlUrl, appName), retries);
+  const html = await fetchHtml(rewriteRequestUrl(htmlUrl, appName), retries, options?.signal);
 
   await runHook('beforeLoadEntry', remoteInfo);
 

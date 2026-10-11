@@ -244,6 +244,15 @@
 
 ---
 
+## P20 Timeout / Abort 插件
+
+- [x] 加载器支持 `AbortSignal`（`LoadAppOptions.signal`）；`fetchHtml` 以 `fetch(url, { signal })` 加载入口 HTML。
+- [x] `timeoutPlugin({ timeout, timeouts, onTimeout })`：包装加载方法做超时竞速；超时通过 `AbortController` 中止入口 fetch，并以 `TimeoutError` 拒绝（`timeout: 0` 关闭）。
+- [x] 导出 `TimeoutError`；内置目录加入 `linkjs-timeout`；demo 注册 5 个插件，DevTools 显示 `插件 (5/5)`。
+- 测试：`packages/linkjs/tests/timeout.test.ts`（4 用例）。
+
+---
+
 ## 执行记录（本轮）
 
 | 阶段 | 状态 | 说明 |

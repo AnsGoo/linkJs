@@ -11,6 +11,8 @@ export interface LoadLibOptions {
   timeout?: number;
   /** 是否启用 Shadow DOM 样式隔离（配合 `linkjs/vue` 的 `LinkjsShadowRoot` 使用）。 */
   shadow?: boolean;
+  /** 中止信号（库以动态 import 加载，无法真正取消，仅由插件用于超时竞速）。 */
+  signal?: AbortSignal;
 }
 
 export function useLoadRemoteLib<Module>(remoteCache: Map<string, Record<string, Module> | Module>) {

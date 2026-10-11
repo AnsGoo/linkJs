@@ -16,4 +16,5 @@ export const availablePlugins: AvailablePlugin[] = [
   { name: 'linkjs-fallback', description: '远程加载失败时使用兜底模块 / 占位，优雅降级' },
   { name: 'linkjs-logger', description: '记录远程加载耗时/结果、共享与预加载事件并收集指标' },
   { name: 'linkjs-auth', description: '为远程资源请求统一注入鉴权 token（query 参数）' },
+  { name: 'linkjs-timeout', description: '为远程加载设定超时，超时中止入口 fetch 并以 TimeoutError 拒绝' },
 ];
