@@ -1,14 +1,17 @@
 /**
  * 页内 DevTools 侧边栏（Vue 实现，仅开发模式挂载）。
  *
- * 用 Vue 构建侧边栏组件并挂载进 ShadowRoot（样式隔离）：收起时只露出竖排 "LinkJS" 标签
- * （有错误诊断时显示红点），点击展开可观测面板 remotes / shares / plugins / diagnostics。
+ * 默认**完全隐藏**：
+ * - 鼠标移到屏幕右缘（或左缘）的感应区时，竖排 "LinkJS" 标签滑出；
+ * - 点击标签展开完整面板（remotes / shares / plugins / diagnostics）；
+ * - 收起后回到隐藏；亦可用快捷键 `Alt/Option + Shift + L` 切换。
+ * - 有 error 诊断时标签显示红点。
  *
- * 本模块被核心运行时**动态 `import()`**，且 `vue` 为其外部依赖；非 Vue 宿主加载失败时
- * 静默降级，不影响主流程，生产构建也不会加载这段代码。
+ * 样式通过 Shadow DOM 隔离；核心运行时只在开发模式动态 `import()` 本模块，且 `vue` 为
+ * 外部依赖，非 Vue 宿主加载失败会静默降级，生产构建不加载。
  */
 
-import { computed, createApp, defineComponent, h, onUnmounted, ref, type App, type PropType, type VNode } from 'vue';
+import { computed, createApp, defineComponent, h, onMounted, onUnmounted, ref, type App, type PropType, type VNode } from 'vue';
 import { buildSnapshot, getDiagnostics, onDiagnostic, type LinkjsSnapshot } from './index';
 
 export type DevtoolsPosition = 'right' | 'left';
@@ -19,17 +22,27 @@ export interface DevtoolsUIOptions {
 
 const STORAGE_KEY = '__linkjs_devtools_open__';
 const HOST_ID = '__linkjs_devtools__';
+const EDGE = 12;
 
 const CSS = `
 :host { all: initial; }
 .host { position: fixed; inset: 0; pointer-events: none; z-index: 2147483000;
   font: 12px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
 .host, .host * { box-sizing: border-box; }
+/* 屏幕边缘的感应区，默认不可见，仅用于触发滑出 */
+.edge { position: absolute; top: 0; bottom: 0; width: ${EDGE}px; pointer-events: auto; z-index: 1; }
+.edge.right { right: 0; } .edge.left { left: 0; }
 .sidebar { position: absolute; top: 0; bottom: 0; width: 384px; display: flex;
-  pointer-events: auto; transition: transform .25s ease; box-shadow: 0 0 0 1px rgba(255,255,255,.06), 0 8px 40px rgba(0,0,0,.35); }
-.sidebar.right { right: 0; transform: translateX(calc(100% - 34px)); }
-.sidebar.left { left: 0; transform: translateX(calc(-100% + 34px)); }
-.sidebar.open { transform: translateX(0); }
+  pointer-events: auto; transition: transform .25s ease; z-index: 2;
+  box-shadow: 0 0 0 1px rgba(255,255,255,.06), 0 8px 40px rgba(0,0,0,.35); }
+.sidebar.right { right: 0; transform: translateX(100%); }
+.sidebar.left { left: 0; transform: translateX(-100%); }
+/* 感应区悬浮，或鼠标已在侧边栏上：仅探出标签（收起态） */
+.edge.right:hover ~ .sidebar.right, .sidebar.right:hover { transform: translateX(calc(100% - 34px)); }
+.edge.left:hover ~ .sidebar.left, .sidebar.left:hover { transform: translateX(calc(-100% + 34px)); }
+/* 展开态优先 */
+.sidebar.right.open { transform: translateX(0); }
+.sidebar.left.open { transform: translateX(0); }
 .tab { width: 34px; height: 100%; flex: 0 0 34px; cursor: pointer; position: relative;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
   background: linear-gradient(180deg, #42d392, #647eff); color: #fff; border: none; padding: 0; }
@@ -166,12 +179,21 @@ const DevtoolsPanel = defineComponent({
       syncTimer();
     };
 
+    const onKeydown = (event: KeyboardEvent) => {
+      if (event.altKey && event.shiftKey && (event.key === 'L' || event.key === 'l')) {
+        event.preventDefault();
+        toggle();
+      }
+    };
+
     const off = onDiagnostic(() => {
       if (open.value) {
         refresh();
       }
     });
+    onMounted(() => window.addEventListener('keydown', onKeydown));
     onUnmounted(() => {
+      window.removeEventListener('keydown', onKeydown);
       off();
       if (timer) {
         clearInterval(timer);
@@ -183,17 +205,14 @@ const DevtoolsPanel = defineComponent({
 
     return () =>
       h('div', { class: 'host' }, [
-        h(
-          'aside',
-          { class: ['sidebar', props.position, open.value ? 'open' : ''] },
-          [
-            h('button', { class: ['tab', hasError.value ? 'has-error' : ''], onClick: toggle }, [
-              h('span', { class: 'dot' }),
-              h('span', { class: 'logo' }, 'LinkJS'),
-            ]),
-            h('div', { class: 'content' }, renderSnapshot(snapshot.value, close)),
-          ],
-        ),
+        h('div', { class: ['edge', props.position] }),
+        h('aside', { class: ['sidebar', props.position, open.value ? 'open' : ''] }, [
+          h('button', { class: ['tab', hasError.value ? 'has-error' : ''], onClick: toggle }, [
+            h('span', { class: 'dot' }),
+            h('span', { class: 'logo' }, 'LinkJS'),
+          ]),
+          h('div', { class: 'content' }, renderSnapshot(snapshot.value, close)),
+        ]),
       ]);
   },
 });
