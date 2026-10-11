@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>LinkJS mock</title>
+  </head>
+  <body>
+    <h1>LinkJS mock page</h1>
+    <p>此页面设置了 <code>window.__LINKJS__</code>，用于单独验证扩展（无需真实应用）。</p>
+    <script>
+      // 假的 linkjs 运行时，仅用于验证扩展的探测 / 面板渲染。
+      const now = Date.now();
+      window.__LINKJS__ = {
+        getSnapshot: () => ({
+          instance: { id: 'mock-123', name: 'linkjs', version: '1.0.0', mode: 'development', shareStrategy: 'version-first' },
+          remotes: [
+            { name: 'remoteApp', displayName: 'RemoteApp', type: 'app', status: 'loaded', host: 'http://localhost:8080' },
+            { name: 'remote-lib', displayName: 'vue-components-starter', type: 'lib', status: 'unloaded', host: 'http://localhost:4001' },
+          ],
+          shares: [{ scope: 'global', name: 'vue', versions: [{ version: '3.5.0', loaded: true }] }],
+          conflicts: [{ scope: 'global', name: 'vue-router', requiredVersion: '^6.0.0', provided: ['5.4.0'] }],
+          plugins: ['linkjs-retry'],
+          availablePlugins: [
+            { name: 'linkjs-retry', description: '多源重试', enabled: true },
+            { name: 'linkjs-logger', description: '加载指标', enabled: true },
+          ],
+          metrics: [
+            { entry: 'remoteApp', kind: 'app', host: 'http://localhost:8080', durationMs: 358, status: 'loaded', time: now },
+            { entry: 'remote-lib/HelloWorld', kind: 'lib', host: 'http://localhost:4001', durationMs: 88, status: 'error', time: now },
+          ],
+          perf: [
+            { name: 'linkjs:load:app:remoteApp', durationMs: 512 },
+            { name: 'linkjs:load:app:remoteApp:fetch', durationMs: 40 },
+            { name: 'linkjs:share:vue', durationMs: 5 },
+          ],
+          events: [
+            { type: 'libExpose', summary: 'remoteApp: { mount, unmount }', time: now },
+            { type: 'remoteUpdate', summary: 'remoteApp/HelloWorld', time: now },
+          ],
+          diagnostics: [{ level: 'error', code: 'SHARE_VERSION_MISMATCH', message: 'vue-router resolved 5.4.0 does not satisfy ^6.0.0', time: now }],
+        }),
+      };
+      console.log('mock __LINKJS__ ready');
+    </script>
+  </body>
+</html>
