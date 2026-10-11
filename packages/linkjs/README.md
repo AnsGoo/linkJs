@@ -185,6 +185,18 @@ if (!vue) {
 
 解析顺序：已加载实例优先 → 候选的同步工厂（`() => Module`）同步求值并缓存 → 若只能异步加载（`() => Promise<Module>`）则抛错。无声明返回 `null`；版本范围 / `strictVersion` 与 `loadShare` 一致。
 
+### 远程类型推导（dts 转发）
+
+宿主通过 `unplugin-linkjs` 的 `consumeTypes` 拉取远程 `.d.ts` 并生成模块声明与
+`LinkjsRemoteTypes` 增强后，`getRemote / loadLib / loadRemote` 的字符串参数会自动推导类型：
+
+```ts
+const { HelloWorld } = (await loadRemote('remoteApp/HelloWorld'))!; // 类型来自远程 d.ts
+```
+
+未接入 `consumeTypes` 时 `LinkjsRemoteTypes` 为空，API 回落到通用泛型 `M`，完全向后兼容。
+详见 `unplugin-linkjs` README 与 `docs/dts-type-forwarding.md`。
+
 ## 工作原理
 
 1. **模块暴露**：子应用通过 `expose` 函数暴露模块，内部会触发 `LIB_EXPOSE` 事件。

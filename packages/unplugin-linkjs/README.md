@@ -99,6 +99,8 @@ await esbuild.build({
 | `shared`             | `Record<string, any>` | `{}`                                     | Shared dependencies configuration  |
 | `shareScope`         | `string[]`            | derived from `shared[*].scope`           | Share scopes this remote participates in (written to the manifest) |
 | `publicPath`         | `string`              | –                                        | Static CDN base URL for this remote's assets (written to the manifest) |
+| `mode`               | `'development' \| 'production'` | `'production'`                | Producer mode written to the manifest (dev server serves `development`) |
+| `consumeTypes`       | `ConsumeTypesOptions` | –                                        | Host side: fetch remote `.d.ts` and generate typed `loadRemote` declarations |
 | `isReplaceLinkjs`    | `boolean`             | `true`                                   | Whether to replace linkjs imports  |
 | `generateSharedFile` | `boolean`             | `true`                                   | Whether to generate shared.js file |
 | `extensions`         | `string[]`            | `['.js', '.jsx', '.ts', '.tsx', '.vue']` | File extensions to process         |
@@ -155,6 +157,47 @@ The plugin generates a `manifest.json` file in the build output directory (`outD
   - `version`: Dependency version (preserves semver range like `^3.5.27` from package.json, except for `workspace:*` which uses `1.0.0`)
   - `scope`: Dependency scope ('global' or 'local')
   - `singleton`: Whether the dependency is a singleton
+
+## Remote type forwarding (`consumeTypes`)
+
+On the **host**, point at one or more remote manifests; the plugin fetches each remote's bundled
+`.d.ts` (from `manifest.metaData.types`), caches it under `node_modules/.linkjs/`, and generates a
+declaration that types `loadRemote('remote/Expose')`:
+
+```ts
+// host vite config
+unpluginLinkjs.vite({
+  consumeTypes: {
+    remotes: [
+      { name: 'remoteApp', manifestUrl: 'http://localhost:8080/manifest.json' },
+    ],
+  },
+});
+```
+
+Generated (`node_modules/.linkjs/linkjs-remotes.d.ts`):
+
+```ts
+declare module 'remoteApp/HelloWorld' { export * from './remoteApp/<hash>-lib'; }
+declare module 'linkjs' {
+  interface LinkjsRemoteTypes {
+    'remoteApp/HelloWorld': typeof import('remoteApp')['HelloWorld'];
+  }
+}
+```
+
+Make sure the host `tsconfig` includes it (default `exclude` skips `node_modules`):
+
+```jsonc
+{ "files": ["node_modules/.linkjs/linkjs-remotes.d.ts"] }
+// or put a stub in src: /// <reference path="../node_modules/.linkjs/linkjs-remotes.d.ts" />
+```
+
+Behaviour:
+
+- **production producer** (`manifest.mode: 'production'`): fetched once at build/dev start (immutable URL).
+- **development producer** (`manifest.mode: 'development'`, e.g. served by `tsdown-plugin-server`):
+  the host subscribes to `/__linkjs/events` (SSE) and refreshes on `types-changed`.
 
 ## License
 

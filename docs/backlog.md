@@ -26,7 +26,7 @@
 
 ## A. 模块联邦能力（对标 Module Federation）
 
-- [ ] **A1 dts 类型转发**：产出各远程 `.d.ts` 并写入 manifest `metaData.types`，宿主生成 `declare module 'remote/Expose'`，让 `loadRemote` 有完整类型。`[高 / 中]`
+- [x] **A1 dts 类型转发**：产出各远程 `.d.ts` 并写入 manifest `metaData.types`，宿主生成 `declare module 'remote/Expose'`，让 `loadRemote` 有完整类型。`[高 / 中]`（设计见 `docs/dts-type-forwarding.md`）
 - [ ] **A2 标准 container `get/init` + `remoteType`(script/esm/module/manifest)**：打通离线 manifest 与跨宿主互通。`[高 / 大]`
 - [ ] **A3 数据预取**：在资源预取之上加数据层（vue-query / react-query 联动）。`[中 / 中]`
 - [x] **A4 `remoteSnapshot`/`globalSnapshot`**：预取前查询已加载，避免重复请求。`[中 / 中]`

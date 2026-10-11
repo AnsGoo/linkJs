@@ -1,6 +1,6 @@
 # A1 · 远程 dts 类型转发设计
 
-> 状态：提案（Draft）· 关联：`docs/backlog.md` A1、`docs/development-plan.md`
+> 状态：**已实现**（PR1–PR4，闭环端到端已验证）· 关联：`docs/backlog.md` A1、`docs/development-plan.md`
 > 目标读者：linkjs 维护者、宿主/远端集成方
 
 ---
