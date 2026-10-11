@@ -234,6 +234,16 @@
 
 ---
 
+## P19 Auth 插件（鉴权注入）
+
+- [x] **核心请求重写钩子**：`instance.requestRewriters` + `rewriteRequestUrl(url, remoteName)`，应用于入口 HTML / 脚本 / 样式 / modulepreload / 库入口（含 shared 入口）。
+- [x] `authPlugin({ token | tokens, queryParam, origins, applyTo })`：`beforeLoadRemote` 异步解析 token 并缓存，重写器统一追加鉴权参数。
+- [x] 内置目录加入 `linkjs-auth`；demo 注册 4 个插件，DevTools 显示 `插件 (4/4)`。
+- 测试：`packages/linkjs/tests/auth.test.ts`（4 用例）。
+- 局限：`<script>`/`<link>` 无法设置请求头，故用 query 参数；子模块的**嵌套动态 import** 由浏览器相对解析、不经重写器，通常需服务端在首个请求后下发会话 Cookie。
+
+---
+
 ## 执行记录（本轮）
 
 | 阶段 | 状态 | 说明 |

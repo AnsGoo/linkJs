@@ -3,7 +3,7 @@ import { LIB_EXPOSE } from '../event-bus/constant';
 import { beginStyleCapture, endStyleCapture, ensureShadowTarget } from '../sandbox/shadow';
 import { runBeforeLoadRemote, runHook } from '../plugins';
 import { recordDiagnostic } from '../devtools';
-import { getRemoteInfo, useGetRemote, useHandleExpose, type ExtOption } from './utils';
+import { getRemoteInfo, rewriteRequestUrl, useGetRemote, useHandleExpose, type ExtOption } from './utils';
 
 export interface LoadLibOptions {
   host?: string;
@@ -36,7 +36,7 @@ async function loadRemoteLib<Module>(
 
   const host = options?.host || remoteInfo?.host || `${location.protocol}//${location.host}`;
   const entryName = options?.entryName || remoteInfo?.entry?.js;
-  const jsUrl = `${host}${entryName}`;
+  const jsUrl = rewriteRequestUrl(`${host}${entryName}`, appName);
   const timeout = options?.timeout ?? 10000;
 
   // Shadow DOM 隔离：在加载库模块前建立游离影子目标并开启样式捕获，
@@ -63,7 +63,7 @@ async function loadRemoteLib<Module>(
   // 共享入口是可选产物，缺失或加载失败时不应阻塞主模块加载。
   const sharedEntry = remoteInfo?.entry?.shared;
   if (sharedEntry) {
-    const sharedUrl = `${host}${sharedEntry}`;
+    const sharedUrl = rewriteRequestUrl(`${host}${sharedEntry}`, appName);
     try {
       await import(/* @vite-ignore */ sharedUrl);
     } catch (error) {

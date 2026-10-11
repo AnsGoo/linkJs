@@ -5,7 +5,7 @@ import { installVueHmrRuntimeShim } from '../hmr';
 import { beginStyleCapture, endStyleCapture, ensureShadowTarget } from '../sandbox/shadow';
 import { runBeforeLoadRemote, runHook } from '../plugins';
 import { recordDiagnostic } from '../devtools';
-import { loadCss, loadScript, preloadModule, useGetRemote, useHandleExpose, type ExtOption, type LoadScriptOptions } from './utils';
+import { loadCss, loadScript, preloadModule, rewriteRequestUrl, useGetRemote, useHandleExpose, type ExtOption, type LoadScriptOptions } from './utils';
 
 export interface LoadAppOptions {
   /** 远程应用基地址，例如 http://localhost:8081 */
@@ -104,7 +104,7 @@ async function loadApp<Module>(
     ),
   );
 
-  const html = await fetchHtml(htmlUrl, retries);
+  const html = await fetchHtml(rewriteRequestUrl(htmlUrl, appName), retries);
 
   await runHook('beforeLoadEntry', remoteInfo);
 

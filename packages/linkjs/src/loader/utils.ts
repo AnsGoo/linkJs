@@ -2,6 +2,29 @@ import { getInstance } from '..';
 import { LIB_EXPOSE } from '../event-bus/constant';
 import { getShadowRoot } from '../sandbox/shadow';
 
+/** 请求 URL 重写器（插件通过 `instance.requestRewriters` 注册）。 */
+export type RequestRewriter = (url: string, ctx: { remoteName?: string }) => string | void;
+
+/** 允许插件改写远程资源的请求 URL（鉴权 token、CDN 网关、路径映射等）。 */
+function rewriteRequestUrl(url: string, remoteName?: string): string {
+  const rewriters = (getInstance() as { requestRewriters?: RequestRewriter[] }).requestRewriters;
+  if (!rewriters?.length) {
+    return url;
+  }
+  let result = url;
+  for (const rewriter of rewriters) {
+    try {
+      const next = rewriter(result, { remoteName });
+      if (typeof next === 'string' && next) {
+        result = next;
+      }
+    } catch {
+      /* 单个重写器异常不影响其它 */
+    }
+  }
+  return result;
+}
+
 /** 资源标签的安全属性（Subresource Integrity / CSP nonce）。 */
 interface ResourceSecurityOptions {
   integrity?: string;
@@ -21,7 +44,7 @@ function loadCss(url: string, remoteName?: string, security: ResourceSecurityOpt
     }
     const link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = url;
+    link.href = rewriteRequestUrl(url, remoteName);
     if (security.integrity) {
       link.integrity = security.integrity;
     }
@@ -53,7 +76,7 @@ function preloadModule(url: string, remoteName?: string): void {
   }
   const link = document.createElement('link');
   link.rel = 'modulepreload';
-  link.href = url;
+  link.href = rewriteRequestUrl(url, remoteName);
   if (remoteName) {
     link.dataset.linkjsRemote = remoteName;
   }
@@ -79,7 +102,7 @@ function loadScript(url: string, options?: LoadScriptOptions): Promise<void> {
       return;
     }
     const script = document.createElement('script');
-    script.src = url;
+    script.src = rewriteRequestUrl(url, options?.remoteName);
     script.type = 'module';
     if (options?.integrity) {
       script.integrity = options.integrity;
@@ -173,5 +196,5 @@ function handleLibExpose<Module>(
   }
 }
 
-export { loadCss, preloadModule, loadScript, getRemoteInfo, useGetRemote, useHandleExpose };
+export { loadCss, preloadModule, loadScript, rewriteRequestUrl, getRemoteInfo, useGetRemote, useHandleExpose };
 export type { LoadScriptOptions, ResourceSecurityOptions };

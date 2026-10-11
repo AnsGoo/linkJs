@@ -15,4 +15,5 @@ export const availablePlugins: AvailablePlugin[] = [
   { name: 'linkjs-retry', description: '远程加载失败时按候补 host 重试 / 降级域名' },
   { name: 'linkjs-fallback', description: '远程加载失败时使用兜底模块 / 占位，优雅降级' },
   { name: 'linkjs-logger', description: '记录远程加载耗时/结果、共享与预加载事件并收集指标' },
+  { name: 'linkjs-auth', description: '为远程资源请求统一注入鉴权 token（query 参数）' },
 ];
