@@ -26,9 +26,9 @@ interface Link {
   y2: number;
 }
 
-const COL_W = 190;
+const COL_W = 226;
 const ROW_H = 46;
-const NODE_W = 140;
+const NODE_W = 176;
 const NODE_H = 30;
 const PAD_X = 16;
 const PAD_Y = 14;
@@ -104,8 +104,8 @@ const layout = computed(() => {
         :d="`M ${l.x1} ${l.y1} C ${(l.x1 + l.x2) / 2} ${l.y1}, ${(l.x1 + l.x2) / 2} ${l.y2}, ${l.x2} ${l.y2}`"
       />
       <g v-for="n in layout.nodes" :key="n.name" :transform="`translate(${n.x}, ${n.y})`">
-        <rect class="topo-node" :class="{ root: n.root }" :width="140" :height="30" rx="7" />
-        <text class="topo-label" x="70" y="19" text-anchor="middle">{{ labelOf(n.name) }}</text>
+        <rect class="topo-node" :class="{ root: n.root }" width="176" height="30" rx="7" />
+        <text class="topo-label" x="88" y="19" text-anchor="middle">{{ labelOf(n.name) }}</text>
       </g>
     </svg>
   </div>

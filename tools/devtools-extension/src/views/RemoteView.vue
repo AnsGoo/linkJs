@@ -61,6 +61,20 @@ function addrOf(provider: string): string {
   return r?.host || provider;
 }
 
+/** 提供方完整标注：HOST「实例名」/ App「展示名」/ Lib「展示名」。 */
+function providerLabel(provider: string): string {
+  if (provider === 'host') return `HOST「${props.snapshot.instance?.name || 'host'}」`;
+  const r = (props.snapshot.remotes || []).find((x) => x.name === provider);
+  if (!r) return provider;
+  return `${r.type === 'lib' ? 'Lib' : 'App'}「${r.displayName || r.name}」`;
+}
+
+/** 提供方短名（用于拓扑节点）：实例名 / 远程名。 */
+function providerTag(provider: string): string {
+  if (provider === 'host') return props.snapshot.instance?.name || 'host';
+  return provider;
+}
+
 interface DepSource {
   provider: string;
   address: string;
@@ -69,7 +83,7 @@ function depSource(name: string): DepSource | null {
   const list = shareIndex.value.get(name);
   if (!list || !list.length) return null;
   const providers = [...new Set(list.map((x) => x.provider))];
-  return { provider: providers.map((p) => (p === 'host' ? 'HOST' : p)).join(' + '), address: providers.map(addrOf).join('  ') };
+  return { provider: providers.map(providerLabel).join(' + '), address: providers.map(addrOf).join('  ') };
 }
 
 const hostShares = computed(() =>
@@ -94,8 +108,9 @@ const hostTopoLabels = computed<Record<string, string>>(() => {
   for (const r of props.snapshot.remotes || []) {
     labels[r.name] = r.name;
     for (const dep of Object.keys(r.shared || {})) {
-      const s = depSource(dep);
-      labels[dep] = s ? `${dep} (${s.provider})` : dep;
+      const list = shareIndex.value.get(dep);
+      const provider = list?.[0]?.provider || 'host';
+      labels[dep] = `${dep} (${providerTag(provider)})`;
     }
   }
   return labels;
@@ -168,7 +183,9 @@ const topoLabels = computed<Record<string, string>>(() => {
   if (!r) return labels;
   labels[r.name] = r.name;
   for (const row of sharedRows.value) {
-    labels[row.name] = row.source ? `${row.name} (${row.source.provider})` : row.name;
+    const list = shareIndex.value.get(row.name);
+    const provider = list?.[0]?.provider || 'host';
+    labels[row.name] = `${row.name} (${providerTag(provider)})`;
   }
   return labels;
 });
