@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "LinkJS DevTools",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Inspect LinkJS remotes / shares / conflicts / plugins / metrics / events / diagnostics — DevTools panel + toolbar popup.",
   "icons": {
     "16": "icons/icon-16.png",
