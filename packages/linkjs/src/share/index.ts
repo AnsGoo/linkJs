@@ -129,7 +129,7 @@ function loadAndCacheModule(
   }
 
   // 统计共享依赖实际加载耗时（缓存命中/并发复用时不计）。
-  const endPhase = startPhase(`linkjs:share:${name}`);
+  const endPhase = startPhase(`linkjs:share:${name}`, `加载共享依赖「${name}」`);
   const promise = loadModule(shareInfo)
     .then((mod) => {
       loadedModules.set(versionKey, mod);

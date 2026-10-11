@@ -6,8 +6,10 @@
  */
 
 export interface PerfEntry {
-  /** 阶段名，如 `linkjs:remote:fetch`。 */
+  /** 技术名，如 `linkjs:load:app:remote:fetch`。 */
   name: string;
+  /** 人类可读标签，如 `拉取入口 HTML「remote」`。 */
+  label?: string;
   durationMs: number;
   startTime: number;
 }
@@ -31,8 +33,8 @@ function mark(name: string): void {
   }
 }
 
-/** 结束某个阶段并记录耗时（`name` 建议形如 `linkjs:remote:fetch`）。 */
-function measure(name: string, startMark: string, endMark: string): number {
+/** 结束某个阶段并记录耗时（`name` 建议形如 `linkjs:load:app:remote:fetch`）。 */
+function measure(name: string, startMark: string, endMark: string, label?: string): number {
   if (!hasPerf) {
     return 0;
   }
@@ -42,7 +44,7 @@ function measure(name: string, startMark: string, endMark: string): number {
     const entry = list[list.length - 1] as PerformanceMeasure | undefined;
     const durationMs = entry?.duration ?? 0;
     const entries = store();
-    entries.push({ name, durationMs, startTime: entry?.startTime ?? 0 });
+    entries.push({ name, label, durationMs, startTime: entry?.startTime ?? 0 });
     if (entries.length > MAX_ENTRIES) {
       entries.splice(0, entries.length - MAX_ENTRIES);
     }
@@ -52,14 +54,14 @@ function measure(name: string, startMark: string, endMark: string): number {
   }
 }
 
-/** 一个远程加载阶段计时的便捷封装：`const end = startPhase('fetch'); ...; end();` */
-function startPhase(name: string): () => number {
+/** 一个远程加载阶段计时的便捷封装：`const end = startPhase('fetch', '拉取入口 HTML「x」'); ...; end();` */
+function startPhase(name: string, label?: string): () => number {
   const start = `${name}:start`;
   const end = `${name}:end`;
   mark(start);
   return () => {
     mark(end);
-    return measure(name, start, end);
+    return measure(name, start, end, label);
   };
 }
 

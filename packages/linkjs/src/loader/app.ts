@@ -78,7 +78,7 @@ async function loadApp<Module>(
   const remoteInfo = (await runBeforeLoadRemote({ ...(linkInstance.remotes.get(appName) as any) })) as any;
   await runHook('afterResolve', remoteInfo);
   await runHook('beforeLoadContainer', remoteInfo);
-  const endTotal = startPhase(`linkjs:load:app:${appName}`);
+  const endTotal = startPhase(`linkjs:load:app:${appName}`, `加载应用「${appName}」`);
 
   const host = options?.host || remoteInfo?.host || `${location.protocol}//${location.host}`;
   const entryPath = options?.entry || remoteInfo?.entry?.html || '';
@@ -110,7 +110,7 @@ async function loadApp<Module>(
   );
 
   const html = await (async () => {
-    const endFetch = startPhase(`linkjs:load:app:${appName}:fetch`);
+    const endFetch = startPhase(`linkjs:load:app:${appName}:fetch`, `拉取入口 HTML「${appName}」`);
     try {
       return await fetchHtml(rewriteRequestUrl(htmlUrl, appName), retries, options?.signal);
     } finally {
@@ -120,7 +120,7 @@ async function loadApp<Module>(
 
   await runHook('beforeLoadEntry', remoteInfo);
 
-  const endScripts = startPhase(`linkjs:load:app:${appName}:scripts`);
+  const endScripts = startPhase(`linkjs:load:app:${appName}:scripts`, `加载远程脚本「${appName}」`);
 
   return new Promise<Module | null>((resolve, reject) => {
     const handleLibExpose = useHandleExpose(remoteCache, resolve, appName, extOption);

@@ -36,7 +36,7 @@ async function loadRemoteLib<Module>(
   const remoteInfo = (await runBeforeLoadRemote({ ...(getRemoteInfo(appName) as any) })) as any;
   await runHook('afterResolve', remoteInfo);
   await runHook('beforeLoadContainer', remoteInfo);
-  const endTotal = startPhase(`linkjs:load:lib:${appName}`);
+  const endTotal = startPhase(`linkjs:load:lib:${appName}`, `加载库「${appName}」`);
 
   const host = options?.host || remoteInfo?.host || `${location.protocol}//${location.host}`;
   const entryName = options?.entryName || remoteInfo?.entry?.js;

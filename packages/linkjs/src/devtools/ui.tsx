@@ -74,6 +74,10 @@ function ms(value: number): string {
   return value >= 1000 ? `${(value / 1000).toFixed(2)}s` : `${Math.round(value)}ms`;
 }
 
+function kindLabel(kind: string): string {
+  return kind === 'lib' ? '库' : kind === 'remote' ? '远程' : '应用';
+}
+
 function rowEl(key: string, value: string, pill?: string): VNode {
   return (
     <div class="row">
@@ -165,14 +169,16 @@ function renderSnapshot(snapshot: LinkjsSnapshot, filter: string, onCopy: () => 
         ))
       )}
 
-      <h3>指标</h3>
+      <h3>加载指标</h3>
       {metrics.length === 0 ? (
         <div class="muted">（启用 logger 插件后可见）</div>
       ) : (
         metrics.map((metric, index) => (
           <div key={`${metric.entry}:${metric.time}:${index}`} class="row">
-            <span class="k">{metric.entry}</span>
-            <span class={`pill ${metric.status === 'error' ? 'error' : 'loaded'}`}>{`${ms(metric.durationMs)}`}</span>
+            <span class="k" title={`${metric.entry}${metric.host ? ` @${metric.host}` : ''}`}>
+              {`加载${kindLabel(metric.kind)}「${metric.entry}」`}
+            </span>
+            <span class={`pill ${metric.status === 'error' ? 'error' : 'loaded'}`}>{ms(metric.durationMs)}</span>
           </div>
         ))
       )}
@@ -183,7 +189,9 @@ function renderSnapshot(snapshot: LinkjsSnapshot, filter: string, onCopy: () => 
       ) : (
         perf.map((entry, index) => (
           <div key={`${entry.name}:${index}`} class="row">
-            <span class="k">{entry.name}</span>
+            <span class="k" title={entry.name}>
+              {entry.label ?? entry.name}
+            </span>
             <span class="v">{ms(entry.durationMs)}</span>
           </div>
         ))
