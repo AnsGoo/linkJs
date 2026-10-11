@@ -15,6 +15,6 @@ function unmount() {
   app = null;
 }
 
-expose('remote', { mount, unmount }, { version: '1.0.0' });
+expose('remoteApp', { mount, unmount }, { version: '1.0.0' });
 
 export { mount, unmount, HelloWorld };

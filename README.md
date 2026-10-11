@@ -34,7 +34,7 @@ $linkjs.expose(
 
 ```typescript
 // 加载远程应用
-const remoteApp = await loadApp('remote', {
+const remoteApp = await loadApp('remoteApp', {
   host: 'http://localhost:3001'
 });
 
@@ -113,7 +113,7 @@ import { createInstance, loadApp, getRemote } from 'linkjs';
 const instance = createInstance({
   shareStrategy: 'version-first',
   remotes: [
-    { name: 'remote', entry: 'http://localhost:3001/manifest.json' }
+    { name: 'remoteApp', entry: 'http://localhost:3001/manifest.json' }
   ],
   shares: {
     vue: { singleton: true, lib: () => import('vue') }
@@ -122,8 +122,8 @@ const instance = createInstance({
 
 // 加载远程应用
 async function init() {
-  const app = await loadApp('remote');
-  const { Button } = await getRemote('remote/Button');
+  const app = await loadApp('remoteApp');
+  const { Button } = await getRemote('remoteApp/Button');
   // 使用远程组件...
 }
 

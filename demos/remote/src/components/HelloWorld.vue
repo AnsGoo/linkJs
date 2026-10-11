@@ -11,7 +11,7 @@ withDefaults(
 
 <template>
   <div class="greetings">
-    <h1 class="green">{{ msg }} hot update10</h1>
+    <h1 class="green">{{ msg }} hot update1232wew</h1>
     <h3>
       You’ve successfully created a project with
       <a href="https://vite.dev/" target="_blank" rel="noopener">Vite</a> +

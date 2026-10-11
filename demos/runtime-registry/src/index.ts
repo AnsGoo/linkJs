@@ -2,7 +2,7 @@ import type { RegistryOption } from 'linkjs';
 
 const registryOptions: RegistryOption[] = [
   {
-    name: 'remote',
+    name: 'remoteApp',
     entry: {
       // dev（vite）下入口是远程开发服务器根，而不是 dist 产物：
       // dist/index.html 内的资源是绝对路径 `/assets/...`，在 dev server 根下会 404。

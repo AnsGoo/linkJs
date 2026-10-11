@@ -4,7 +4,7 @@ import { defineAsyncComponent } from 'vue';
 import { loadLib } from 'linkjs';
 import { createRemoteApp, LinkjsShadowRoot } from 'linkjs/vue';
 
-const RemoteApp = createRemoteApp('remote', { shadow: true, host: 'http://localhost:8080' });
+const RemoteApp = createRemoteApp('remoteApp', { shadow: true, host: 'http://localhost:8080' });
 const RemoteLibComponent = defineAsyncComponent(async () => {
   const remoteLib = await loadLib('remote-lib/HelloWorld', {
     host: 'http://localhost:4001',
