@@ -8,6 +8,20 @@
 const DETECT = () =>
   Boolean(window.__LINKJS__ && typeof window.__LINKJS__.getSnapshot === 'function');
 
+// 两套图标：检测到 linkjs 用彩色，其他用灰色。
+const ICON_ON = {
+  16: 'icons/icon-16.png',
+  32: 'icons/icon-32.png',
+  48: 'icons/icon-48.png',
+  128: 'icons/icon-128.png',
+};
+const ICON_OFF = {
+  16: 'icons/icon-off-16.png',
+  32: 'icons/icon-off-32.png',
+  48: 'icons/icon-off-48.png',
+  128: 'icons/icon-off-128.png',
+};
+
 async function refreshActionState(tabId) {
   if (tabId == null || tabId < 0) {
     return;
@@ -26,14 +40,17 @@ async function refreshActionState(tabId) {
 
   try {
     if (known && has) {
+      await chrome.action.setIcon({ tabId, path: ICON_ON });
       await chrome.action.setBadgeBackgroundColor({ tabId, color: '#1f6f4a' });
       await chrome.action.setBadgeText({ tabId, text: '●' });
       await chrome.action.enable(tabId);
     } else if (known && !has) {
+      await chrome.action.setIcon({ tabId, path: ICON_OFF });
       await chrome.action.setBadgeText({ tabId, text: '' });
       await chrome.action.disable(tabId);
     } else {
       // fail-open：无法判断时保持可点（弹窗内会给出原因）。
+      await chrome.action.setIcon({ tabId, path: ICON_OFF });
       await chrome.action.setBadgeText({ tabId, text: '' });
       await chrome.action.enable(tabId);
     }
