@@ -2,6 +2,8 @@ import { beforeEach, expect, test, vi } from 'vitest';
 import { linkInstance } from '../src/state/instance';
 import { registerShare } from '../src/share';
 import { registerRemote } from '../src/loader';
+import { registerPlugin } from '../src/plugins';
+import { retryPlugin } from '../src/plugins/retry';
 import {
   buildSnapshot,
   clearDiagnostics,
@@ -33,6 +35,17 @@ test('buildSnapshot reports remotes / shares / plugins', () => {
     loaded: false,
     requiredVersion: '^3.0.0',
   });
+
+  // 内置插件目录：未注册时显示为「可用」
+  expect(snapshot.availablePlugins.find((p) => p.name === 'linkjs-retry')?.enabled).toBe(false);
+});
+
+test('buildSnapshot marks registered plugins as enabled', () => {
+  linkInstance.loadApp = (async () => null) as never;
+  registerPlugin(retryPlugin());
+  const snapshot = buildSnapshot(linkInstance);
+  expect(snapshot.plugins).toContain('linkjs-retry');
+  expect(snapshot.availablePlugins.find((p) => p.name === 'linkjs-retry')?.enabled).toBe(true);
 });
 
 test('recordDiagnostic stores, prints, and notifies subscribers', () => {

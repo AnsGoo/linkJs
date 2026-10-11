@@ -110,8 +110,19 @@ function renderSnapshot(snapshot: LinkjsSnapshot, onClose: () => void): VNode {
       <h3>共享依赖</h3>
       {shareRows.length === 0 ? <div class="muted">（无）</div> : shareRows}
 
-      <h3>{`插件 (${snapshot.plugins.length})`}</h3>
-      <div class="muted">{snapshot.plugins.length ? snapshot.plugins.join(', ') : '（无）'}</div>
+      <h3>{`插件 (${snapshot.availablePlugins.filter((plugin) => plugin.enabled).length}/${snapshot.availablePlugins.length})`}</h3>
+      {snapshot.availablePlugins.length === 0 ? (
+        <div class="muted">（无）</div>
+      ) : (
+        snapshot.availablePlugins.map((plugin) => (
+          <div key={plugin.name} class="row">
+            <span class="k" title={plugin.description}>
+              {plugin.name}
+            </span>
+            <span class={`pill ${plugin.enabled ? 'loaded' : ''}`}>{plugin.enabled ? '已启用' : '可用'}</span>
+          </div>
+        ))
+      )}
 
       <h3>{`诊断 (${snapshot.diagnostics.length})`}</h3>
       {snapshot.diagnostics.length === 0 ? (

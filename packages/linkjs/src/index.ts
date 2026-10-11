@@ -173,9 +173,11 @@ export { registerPlugin, getPlugins } from './plugins';
 export type { RuntimePlugin } from './plugins';
 export { retryPlugin } from './plugins/retry';
 export type { RetryPluginOptions } from './plugins/retry';
+export { availablePlugins } from './plugins/catalog';
+export type { AvailablePlugin } from './plugins/catalog';
 export type { EventBus, EventHandler, LinkjsEvents } from './event-bus';
 export type { PreloadRemoteOptions, RemoteManifest, ManifestAsset } from './preload';
-export type { Diagnostic, LinkjsSnapshot, RemoteSnapshot, ShareSnapshot, ShareVersionSnapshot, DevtoolsOptions } from './devtools';
+export type { Diagnostic, LinkjsSnapshot, RemoteSnapshot, ShareSnapshot, ShareVersionSnapshot, PluginSnapshot, DevtoolsOptions } from './devtools';
 
 export {
   captureSnapshot,

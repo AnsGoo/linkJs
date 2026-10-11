@@ -7,6 +7,8 @@
  *   便于 DevTools 扩展或控制台排查。
  */
 
+import { availablePlugins } from '../plugins/catalog';
+
 export interface Diagnostic {
   level: 'warn' | 'error';
   /** 稳定错误码，例如 `SHARE_VERSION_MISMATCH` / `LOAD_REMOTE_ERROR`。 */
@@ -50,8 +52,17 @@ export interface LinkjsSnapshot {
   };
   remotes: RemoteSnapshot[];
   shares: ShareSnapshot[];
+  /** 已注册插件的名字。 */
   plugins: string[];
+  /** 全部可用插件（内置 + 已注册的自定义插件）及启用状态。 */
+  availablePlugins: PluginSnapshot[];
   diagnostics: Diagnostic[];
+}
+
+export interface PluginSnapshot {
+  name: string;
+  description: string;
+  enabled: boolean;
 }
 
 const MAX_DIAGNOSTICS = 200;
@@ -140,6 +151,14 @@ function buildSnapshot(instance: any): LinkjsSnapshot {
     });
   });
 
+  const registered: string[] = (instance.plugins ?? []).map((plugin: { name: string }) => plugin.name);
+  const available: PluginSnapshot[] = [
+    ...availablePlugins.map((plugin) => ({ ...plugin, enabled: registered.includes(plugin.name) })),
+    ...registered
+      .filter((name) => !availablePlugins.some((plugin) => plugin.name === name))
+      .map((name) => ({ name, description: '(自定义)', enabled: true })),
+  ];
+
   return {
     instance: {
       name: instance.name,
@@ -149,7 +168,8 @@ function buildSnapshot(instance: any): LinkjsSnapshot {
     },
     remotes,
     shares,
-    plugins: (instance.plugins ?? []).map((plugin: { name: string }) => plugin.name),
+    plugins: registered,
+    availablePlugins: available,
     diagnostics: getDiagnostics(),
   };
 }

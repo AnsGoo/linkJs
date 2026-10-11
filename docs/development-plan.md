@@ -195,6 +195,7 @@
 - [x] 开发模式挂载可折叠侧边栏（Vue TSX + Shadow DOM 隔离样式），**默认收起为右侧一条竖排 "LinkJS" 标签（可见）**；点击展开，快捷键 `Alt/Option+Shift+L` 切换。
 - [x] 展开时给 `body` 加同侧内边距把内容推开（**停靠，不悬浮覆盖**）；`position: 'right'|'left'`。
 - [x] 面板展示 远程应用 / 共享依赖 / 插件 / 诊断；展开时每秒刷新，出现 error 诊断时标签显示红点。
+- [x] **插件目录**：`availablePlugins` 登记内置插件，面板列出全部可用插件（内置 + 自定义）并标注「已启用 / 可用」。
 - [x] 面板实现动态 `import()` 懒加载（独立 chunk，`vue`/`vue/jsx-runtime` 为外部依赖），生产构建不加载。
 - 实测：默认标签可见（34px，右侧）→ 点击展开（`body.paddingRight=384`）→ 显示 `vue=3.5.43 / pinia=3.0.4 / vue-router=5.4.0`。
 
