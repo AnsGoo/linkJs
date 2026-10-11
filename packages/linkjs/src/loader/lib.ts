@@ -5,16 +5,9 @@ import { runBeforeLoadRemote, runHook } from '../plugins';
 import { recordDiagnostic } from '../devtools';
 import { startPhase } from '../perf';
 import { getRemoteInfo, resolveEntryConfig, rewriteRequestUrl, useGetRemote, useHandleExpose, type ExtOption, type RemoteCache } from './utils';
+import type { LoadLibOptions } from './options';
 
-export interface LoadLibOptions {
-  host?: string;
-  entryName?: string;
-  timeout?: number;
-  /** 是否启用 Shadow DOM 样式隔离（配合 `linkjs/vue` 的 `LinkjsShadowRoot` 使用）。 */
-  shadow?: boolean;
-  /** 中止信号（库以动态 import 加载，无法真正取消，仅由插件用于超时竞速）。 */
-  signal?: AbortSignal;
-}
+export type { LoadLibOptions } from './options';
 
 export function useLoadRemoteLib<M = unknown>(remoteCache: RemoteCache) {
   return (entry: string, options?: LoadLibOptions) => loadRemoteLib<M>(remoteCache, entry, options);

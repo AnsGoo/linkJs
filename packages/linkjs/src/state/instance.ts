@@ -5,6 +5,7 @@ import type { RuntimePlugin } from '../plugins';
 import type { RequestRewriter } from '../loader/utils';
 import type { LoadAppOptions } from '../loader/app';
 import type { LoadLibOptions } from '../loader/lib';
+import type { LoadOptions } from '../loader/options';
 import { getShare, loadShare } from '../share';
 import { loadRuntime } from '../runtime';
 import type { InstanceMode, RemoteModule, ShareModule, ShareStrategy } from '../types';
@@ -109,7 +110,7 @@ export interface LinkjsInstance {
   /** 由 `ensureRuntimeMethods()` 惰性挂载，可被插件包装。 */
   loadApp?: (entry: string, options?: LoadAppOptions) => Promise<unknown>;
   loadLib?: (entry: string, options?: LoadLibOptions) => Promise<unknown>;
-  loadRemote?: (entry: string, options?: LoadAppOptions & LoadLibOptions) => Promise<unknown>;
+  loadRemote?: (entry: string, options?: LoadOptions) => Promise<unknown>;
 }
 
 function createInstanceObject(): LinkjsInstance {

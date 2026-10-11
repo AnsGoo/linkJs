@@ -3,6 +3,7 @@ import { LIB_EXPOSE, LOAD_STATUS, REMOTE_UPDATE } from '../event-bus/constant';
 import { getRemoteInfo, useGetRemote, type RemoteCache } from './utils';
 import { useLoadRemoteLib, type LoadLibOptions } from './lib';
 import { useLoadApp, type LoadAppOptions } from './app';
+import type { LoadOptions } from './options';
 import { deactivateAllSandboxes, deactivateSandbox } from '../sandbox';
 import { clearAppHmr, setupHmrIndexing } from '../hmr';
 import type { RemoteModule } from '../types';
@@ -137,7 +138,7 @@ function unloadLib(entry?: string): void {
   document.querySelectorAll(selector).forEach((el) => el.remove());
 }
 
-function loadRemote(entry: string, options?: LoadAppOptions & { entryName?: string }): Promise<RemoteModule | null> {
+function loadRemote(entry: string, options?: LoadOptions): Promise<RemoteModule | null> {
   const [appName] = entry.split('/');
   const remoteInfo = getRemoteInfo(appName);
   if (!remoteInfo) {

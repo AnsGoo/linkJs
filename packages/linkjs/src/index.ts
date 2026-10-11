@@ -18,6 +18,7 @@ import type { ShareOption } from './share';
 import type { RmoteConfig } from './loader';
 import type { LoadAppOptions } from './loader/app';
 import type { LoadLibOptions } from './loader/lib';
+import type { LoadOptions } from './loader/options';
 import { registerPlugin, runInitHooks, type RuntimePlugin } from './plugins';
 import { subscribeRemoteUpdate } from './hmr';
 import { loadRuntime } from './runtime';
@@ -46,7 +47,7 @@ function getSnapshot() {
 installDevtools(linkInstance, {
   clearCache: clearRemoteCache,
   unload: unloadRemote,
-  load: (entry, options) => loadRemote(entry, options as LoadAppOptions & LoadLibOptions),
+  load: (entry, options) => loadRemote(entry, options as LoadOptions),
   preload: preloadRemote as (options: unknown) => Promise<unknown>,
 });
 
@@ -83,7 +84,7 @@ function loadLib<M = unknown>(entry: string, options?: LoadLibOptions): Promise<
   ensureRuntimeMethods();
   return getInstance().loadLib!(entry, options) as Promise<M | null>;
 }
-function loadRemote<M = unknown>(entry: string, options?: LoadAppOptions & LoadLibOptions): Promise<M | null> {
+function loadRemote<M = unknown>(entry: string, options?: LoadOptions): Promise<M | null> {
   ensureRuntimeMethods();
   return getInstance().loadRemote!(entry, options) as Promise<M | null>;
 }
@@ -172,8 +173,7 @@ export {
 
 export type { RegistryOption } from './state';
 export type { RemoteUpdatePayload } from './hmr';
-export type { LoadAppOptions } from './loader/app';
-export type { LoadLibOptions } from './loader/lib';
+export type { LoadAppOptions, LoadLibOptions, LoadOptions } from './loader/options';
 export { registerPlugin, getPlugins } from './plugins';
 export type { RuntimePlugin } from './plugins';
 export { retryPlugin } from './plugins/retry';
