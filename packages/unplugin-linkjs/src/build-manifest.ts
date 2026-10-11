@@ -173,7 +173,7 @@ function updateManifestFile(
       manifestJson.integrity = integrity;
     }
     if (metaData) {
-      manifestJson.metaData = { ...(manifestJson.metaData || {}), ...metaData };
+      manifestJson.metaData = { ...manifestJson.metaData, ...metaData };
     }
     if (mode) {
       manifestJson.mode = mode;

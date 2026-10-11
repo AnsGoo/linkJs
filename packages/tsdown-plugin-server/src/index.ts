@@ -245,7 +245,7 @@ function handleManifest(contentBase: string[], urlPath: string, response: Server
       const manifest = JSON.parse(content.toString());
       manifest.mode = 'development';
       if (!manifest.metaData?.types && manifest.entry?.types) {
-        manifest.metaData = { types: manifest.entry.types, ...(manifest.metaData || {}) };
+        manifest.metaData = { ...manifest.metaData, types: manifest.entry.types };
       }
       response.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
       response.end(JSON.stringify(manifest, null, 2), 'utf-8');

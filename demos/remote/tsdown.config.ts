@@ -35,7 +35,7 @@ function fixVueDtsPlugin(): Record<string, unknown> {
       if (existsSync(manifestFile)) {
         const manifest = JSON.parse(readFileSync(manifestFile, 'utf-8'));
         manifest.metaData = {
-          ...(manifest.metaData || {}),
+          ...manifest.metaData,
           typesHash: `sha384-${createHash('sha384').update(patched).digest('base64')}`,
         };
         writeFileSync(manifestFile, JSON.stringify(manifest, null, 2), 'utf-8');

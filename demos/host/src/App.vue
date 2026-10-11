@@ -30,13 +30,9 @@ const RemoteHelloWorld = getRemote('remoteApp/HelloWorld')!;
       </div>
       <div>
         <!-- 远程组件（路线 A）：msg 的类型来自远程 d.ts，写错类型会报错 -->
-        <RemoteHelloWorld
-          msg="typed remote component via getRemote"
-          :age="18"
-          name="from-host"
-          sex="male"
-          tst="math"
-        />
+        <LinkjsShadowRoot name="remoteApp">
+          <RemoteHelloWorld msg="typed remote component via getRemote" :age="18" name="from-host" sex="male" tst="math" />
+        </LinkjsShadowRoot>
       </div>
       <LinkjsShadowRoot name="remote-lib">
         <RemoteLibComponent msg="I am remote lib" />
