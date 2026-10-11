@@ -1,6 +1,8 @@
 import HelloWorld from './components/HelloWorld.vue';
 import { expose, shared } from 'linkjs';
 
+export { HelloWorld };
+
 // 使用全局的 linkjs 实例
 
 expose(
