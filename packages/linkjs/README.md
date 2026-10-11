@@ -116,6 +116,26 @@ createInstance({
 实例 `getPublicPath` > 注册的 `host` > 当前页面 origin。静态 `publicPath` 亦可由
 构建期（unplugin `publicPath` 选项）或远程 `manifest.json` 声明。
 
+### 运行时快照（`remoteSnapshot` / `globalSnapshot`）
+
+在预取或加载前查询「是否已加载 / 已预取」，避免重复请求：
+
+```typescript
+import { preloadRemote, remoteSnapshot, globalSnapshot } from 'linkjs';
+
+// 单个远程：加载状态 + 预取情况
+const snap = remoteSnapshot('remoteApp');
+// { name, status: 'unloaded'|'loading'|'loaded', prefetched, manifestUrl, assets, ... }
+if (!snap?.prefetched && snap?.status !== 'loaded') {
+  await preloadRemote({ name: 'remoteApp' }); // 已预取/已加载时内部会自动跳过
+}
+
+// 全局：所有已注册 + 已预取远程汇总，带 version（每次预取缓存变更自增）
+const all = globalSnapshot();
+```
+
+`preloadRemote` 预取前会自动查询快照：命中去重键（`name` 或 `manifestUrl`）或远程已 `LOADED` 时直接复用，跳过网络；`force: true` 可强制刷新。
+
 ## 工作原理
 
 1. **模块暴露**：子应用通过 `expose` 函数暴露模块，内部会触发 `LIB_EXPOSE` 事件。

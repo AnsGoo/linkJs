@@ -1,4 +1,5 @@
 import { getRemoteInfo } from '../loader';
+import { LOAD_STATUS } from '../event-bus/constant';
 import { runHook } from '../plugins';
 
 /** 资源清单（与 unplugin 生成的 manifest `assets` 对齐）。 */
@@ -37,7 +38,7 @@ export interface RemoteManifest {
 }
 
 export interface PreloadRemoteOptions {
-  /** 已注册的远程名（用于解析 host 与资源归属）。 */
+  /** 已注册的远程名（用于解析 host 与资源归属；用作快照/去重键）。 */
   name?: string;
   /** 显式 host（覆盖注册表）。 */
   host?: string;
@@ -45,13 +46,62 @@ export interface PreloadRemoteOptions {
   manifestUrl?: string;
   /** 是否连同 exposes 的异步资源一起预取（默认 false，只预加载 entry 的同步资源）。 */
   prefetch?: boolean;
+  /** 强制重新拉取 manifest 与预取资源，忽略已加载/已预取快照。 */
+  force?: boolean;
+}
+
+/** 一次预取记录（供 `remoteSnapshot`/`globalSnapshot` 查询，避免重复请求）。 */
+export interface PrefetchRecord {
+  /** 去重键（有 name 用 name，否则用 manifestUrl）。 */
+  key: string;
+  /** 已注册的远程名（无则为匿名预取）。 */
+  name?: string;
+  manifestUrl: string;
+  manifest: RemoteManifest;
+  /** 已预取的资源 href。 */
+  assets: string[];
+  time: number;
+}
+
+const prefetchCache = new Map<string, PrefetchRecord>();
+let prefetchVersion = 0;
+
+function prefetchKey(options: PreloadRemoteOptions, url: string): string {
+  return options.name ?? url;
+}
+
+/** 查询一次预取记录（按 name 或 manifestUrl）。 */
+function getPrefetch(key: string): PrefetchRecord | undefined {
+  return prefetchCache.get(key);
+}
+
+/** 全部预取记录（供 `globalSnapshot` 汇总）。 */
+function getPrefetchRecords(): PrefetchRecord[] {
+  return [...prefetchCache.values()];
+}
+
+/** 预取快照版本号：每次记录/清空自增，用于消费方判断是否需要刷新。 */
+function getPrefetchVersion(): number {
+  return prefetchVersion;
+}
+
+/** 记录一次预取（写入快照缓存并递增版本）。 */
+function recordPrefetch(record: PrefetchRecord): void {
+  prefetchCache.set(record.key, record);
+  prefetchVersion += 1;
+}
+
+/** 清空预取快照缓存（测试/手动失效用）。 */
+function clearPrefetchCache(): void {
+  prefetchCache.clear();
+  prefetchVersion += 1;
 }
 
 function resolveManifestUrl(options: PreloadRemoteOptions): string {
   if (options.manifestUrl) {
     return options.manifestUrl;
   }
-  const info = options.name ? (getRemoteInfo(options.name) as { host?: string } | undefined) : undefined;
+  const info = options.name ? getRemoteInfo(options.name) : undefined;
   const host = options.host || info?.host;
   if (!host) {
     throw new Error('[linkjs] preloadRemote requires `manifestUrl`, `host`, or a registered remote `name`');
@@ -97,11 +147,30 @@ function addPreloadLink(rel: string, href: string, remoteName?: string, as?: str
  * 之前完成网络与解析准备。
  *
  * 返回解析到的 manifest，便于调用方进一步处理。
+ *
+ * 预取前会查询快照：已预取（同名/同 manifestUrl）或远程已加载时直接复用，避免重复请求；
+ * 传 `force: true` 可强制刷新。
  */
 async function preloadRemote(options: PreloadRemoteOptions): Promise<RemoteManifest> {
   await runHook('beforePreloadRemote', options);
 
   const url = resolveManifestUrl(options);
+  const key = prefetchKey(options, url);
+
+  if (!options.force) {
+    const cached = getPrefetch(key);
+    if (cached) {
+      return cached.manifest;
+    }
+    if (options.name) {
+      const info = getRemoteInfo(options.name);
+      if (info?.status === LOAD_STATUS.LOADED) {
+        // 已加载：无需再预取，返回最小 manifest 保持契约。
+        return { name: info.displayName || options.name };
+      }
+    }
+  }
+
   const response = await fetch(url);
   if (!response.ok) {
     throw new Error(`[linkjs] preloadRemote: failed to fetch manifest ${url} (${response.status})`);
@@ -157,8 +226,17 @@ async function preloadRemote(options: PreloadRemoteOptions): Promise<RemoteManif
     addPreloadLink('prefetch', resolved(href), options.name, undefined, manifest.integrity?.[href]);
   }
 
-  await runHook('afterPreloadRemote', manifest, [...sync, ...async].map(resolved));
+  const assets = [...sync, ...async].map(resolved);
+  recordPrefetch({ key, name: options.name, manifestUrl: url, manifest, assets, time: Date.now() });
+  await runHook('afterPreloadRemote', manifest, assets);
   return manifest;
 }
 
-export { preloadRemote };
+export {
+  preloadRemote,
+  getPrefetch,
+  getPrefetchRecords,
+  getPrefetchVersion,
+  recordPrefetch,
+  clearPrefetchCache,
+};

@@ -1,6 +1,7 @@
 import { beforeEach, expect, test, vi } from 'vitest';
-import { preloadRemote } from '../src/preload';
+import { preloadRemote, clearPrefetchCache } from '../src/preload';
 import { linkInstance } from '../src/state/instance';
+import { LOAD_STATUS } from '../src/event-bus/constant';
 
 interface FakeLink {
   tagName: string;
@@ -16,6 +17,7 @@ let created: FakeLink[];
 beforeEach(() => {
   created = [];
   linkInstance.remotes.clear();
+  clearPrefetchCache();
   (globalThis as any).location = { href: 'http://localhost:5173/', origin: 'http://localhost:5173' };
   (globalThis as any).document = {
     head: { appendChild: (el: FakeLink) => created.push(el) },
@@ -82,6 +84,44 @@ test('applies declared shareScope from the manifest onto the registered remote',
   expect(remote?.displayName).toBe('RemoteApp');
   expect(remote?.shareScope).toEqual(['ui', 'global']);
   expect(remote?.publicPath).toBe('https://cdn.example.com/remote/');
+});
+
+test('skips the network when already prefetched (snapshot)', async () => {
+  const fetchMock = vi.fn(async () => ({
+    ok: true,
+    json: async () => ({ name: 'RemoteApp', entry: { assets: { js: { sync: ['/a.js'] } } } }),
+  }));
+  (globalThis as any).fetch = fetchMock;
+
+  await preloadRemote({ manifestUrl: 'http://localhost:8080/manifest.json', name: 'remoteApp' });
+  const second = await preloadRemote({ manifestUrl: 'http://localhost:8080/manifest.json', name: 'remoteApp' });
+
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  expect(second.name).toBe('RemoteApp');
+});
+
+test('skips everything when the remote is already loaded', async () => {
+  linkInstance.remotes.set('remoteApp', { name: 'remoteApp', entry: '/', status: LOAD_STATUS.LOADED });
+  const fetchMock = vi.fn();
+  (globalThis as any).fetch = fetchMock;
+
+  const manifest = await preloadRemote({ manifestUrl: 'http://localhost:8080/manifest.json', name: 'remoteApp' });
+
+  expect(fetchMock).not.toHaveBeenCalled();
+  expect(manifest.name).toBe('remoteApp');
+});
+
+test('force refreshes even when already prefetched', async () => {
+  const fetchMock = vi.fn(async () => ({
+    ok: true,
+    json: async () => ({ name: 'RemoteApp', entry: { assets: { js: { sync: ['/a.js'] } } } }),
+  }));
+  (globalThis as any).fetch = fetchMock;
+
+  await preloadRemote({ manifestUrl: 'http://localhost:8080/manifest.json', name: 'remoteApp' });
+  await preloadRemote({ manifestUrl: 'http://localhost:8080/manifest.json', name: 'remoteApp', force: true });
+
+  expect(fetchMock).toHaveBeenCalledTimes(2);
 });
 
 test('throws when manifest fetch fails', async () => {

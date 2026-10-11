@@ -24,6 +24,7 @@ import { registerPlugin, runInitHooks, type RuntimePlugin } from './plugins';
 import { subscribeRemoteUpdate } from './hmr';
 import { loadRuntime } from './runtime';
 import { preloadRemote } from './preload';
+import { remoteSnapshot, globalSnapshot } from './snapshot';
 import {
   buildSnapshot,
   clearDiagnostics,
@@ -169,6 +170,8 @@ export {
   subscribeRemoteUpdate,
   loadRuntime,
   preloadRemote,
+  remoteSnapshot,
+  globalSnapshot,
   getSnapshot,
   getDiagnostics,
   clearDiagnostics,
@@ -195,7 +198,9 @@ export type { TimeoutPluginOptions } from './plugins/timeout';
 export { availablePlugins } from './plugins/catalog';
 export type { AvailablePlugin } from './plugins/catalog';
 export type { EventBus, EventHandler, LinkjsEvents } from './event-bus';
-export type { PreloadRemoteOptions, RemoteManifest, ManifestAsset } from './preload';
+export type { PreloadRemoteOptions, RemoteManifest, ManifestAsset, PrefetchRecord } from './preload';
+export { clearPrefetchCache } from './preload';
+export type { RemoteSnapshotEntry, GlobalSnapshot, RemoteLoadStatus } from './snapshot';
 export type { Diagnostic, LinkjsSnapshot, RemoteSnapshot, ShareSnapshot, ShareVersionSnapshot, ShareConflict, PluginSnapshot, DevtoolsOptions, DevtoolsOps } from './devtools';
 export { getPerfEntries, clearPerfEntries } from './perf';
 export type { PerfEntry } from './perf';
