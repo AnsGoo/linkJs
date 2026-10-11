@@ -58,12 +58,19 @@ test('applies declared shareScope from the manifest', async () => {
   globalThis.fetch = vi.fn(async () => ({
     ok: true,
     statusText: 'OK',
-    json: async () => ({ version: '1.0.0', shareScope: ['shared-ui'], entry: { js: '/lib.js' } }),
+    json: async () => ({
+      version: '1.0.0',
+      shareScope: ['shared-ui'],
+      publicPath: 'https://cdn.example.com/remote/',
+      entry: { js: '/lib.js' },
+    }),
   })) as any;
 
   await overrideRemote();
 
-  expect((linkInstance.remotes.get('remote') as any).shareScope).toEqual(['shared-ui']);
+  const remote = linkInstance.remotes.get('remote') as any;
+  expect(remote.shareScope).toEqual(['shared-ui']);
+  expect(remote.publicPath).toBe('https://cdn.example.com/remote/');
 });
 
 test('does nothing when storage is empty', async () => {

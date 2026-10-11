@@ -73,7 +73,7 @@ test('applies declared shareScope from the manifest onto the registered remote',
   linkInstance.remotes.set('remoteApp', { name: 'remoteApp', entry: '/', status: 'unloaded' });
   (globalThis as any).fetch = vi.fn(async () => ({
     ok: true,
-    json: async () => ({ name: 'RemoteApp', shareScope: ['ui', 'global'] }),
+    json: async () => ({ name: 'RemoteApp', shareScope: ['ui', 'global'], publicPath: 'https://cdn.example.com/remote/' }),
   }));
 
   await preloadRemote({ manifestUrl: 'http://localhost:8080/manifest.json', name: 'remoteApp' });
@@ -81,6 +81,7 @@ test('applies declared shareScope from the manifest onto the registered remote',
   const remote = linkInstance.remotes.get('remoteApp');
   expect(remote?.displayName).toBe('RemoteApp');
   expect(remote?.shareScope).toEqual(['ui', 'global']);
+  expect(remote?.publicPath).toBe('https://cdn.example.com/remote/');
 });
 
 test('throws when manifest fetch fails', async () => {

@@ -100,6 +100,59 @@ test('loadApp injects stylesheet/script and resolves on expose', async () => {
   expect(script?.src).toBe('http://localhost:8081/main.js');
 });
 
+test('loadApp resolves entry assets from the remote publicPath (CDN)', async () => {
+  const created: FakeElement[] = [];
+  const htmlAnchor = (href: string) => ({ getAttribute: (name: string) => (name === 'href' ? href : null) });
+  const htmlScript = (src: string) => ({ getAttribute: (name: string) => (name === 'src' ? src : null) });
+
+  globalThis.DOMParser = class {
+    parseFromString() {
+      return {
+        querySelectorAll: (selector: string) => {
+          if (selector.includes('stylesheet')) return [htmlAnchor('/style.css')];
+          if (selector.includes('modulepreload')) return [htmlAnchor('/chunk.js')];
+          return [htmlScript('/main.js')];
+        },
+      };
+    }
+  } as any;
+  globalThis.fetch = vi.fn(async () => ({ ok: true, text: async () => '<html></html>' })) as any;
+  globalThis.document = {
+    head: {
+      appendChild: (el: FakeElement) => {
+        created.push(el);
+        el.onload?.();
+      },
+    },
+    body: {
+      appendChild: (el: FakeElement) => {
+        created.push(el);
+        queueMicrotask(() => el.onload?.());
+      },
+    },
+    querySelector: () => null,
+    createElement: (tag: string) => createElement(tag),
+  } as any;
+
+  linkInstance.remotes.set('remote', {
+    name: 'remote',
+    entry: 'index.html',
+    type: 'app',
+    status: LOAD_STATUS.UNLOADED,
+    publicPath: 'https://cdn.example.com/remote/',
+  } as any);
+
+  const promise = loadApp('remote', {});
+  await new Promise((r) => setTimeout(r, 30));
+  linkInstance.eventBus.emit(LIB_EXPOSE, { libName: 'remote', lib: { default: 'COMP' } });
+  await promise;
+
+  const script = created.find((el) => el.tagName === 'script');
+  const css = created.find((el) => el.tagName === 'link' && el.rel === 'stylesheet');
+  expect(script?.src).toBe('https://cdn.example.com/main.js');
+  expect(css?.href).toBe('https://cdn.example.com/style.css');
+});
+
 test('loadApp with sandbox reverts globals on unloadRemote', async () => {
   globalThis.DOMParser = class {
     parseFromString() {

@@ -4,7 +4,17 @@ import { beginStyleCapture, endStyleCapture, ensureShadowTarget } from '../sandb
 import { runBeforeLoadRemote, runHook } from '../plugins';
 import { recordDiagnostic } from '../devtools';
 import { startPhase } from '../perf';
-import { getRemoteInfo, resolveEntryConfig, resolveShareScopes, rewriteRequestUrl, useGetRemote, useHandleExpose, type ExtOption, type RemoteCache } from './utils';
+import {
+  getRemoteInfo,
+  resolveEntryConfig,
+  resolvePublicPath,
+  resolveShareScopes,
+  rewriteRequestUrl,
+  useGetRemote,
+  useHandleExpose,
+  type ExtOption,
+  type RemoteCache,
+} from './utils';
 import type { LoadLibOptions } from './options';
 
 export type { LoadLibOptions } from './options';
@@ -33,9 +43,9 @@ async function loadRemoteLib<M = unknown>(
   const label = remoteInfo.displayName || appName;
   const endTotal = startPhase(`linkjs:load:lib:${appName}`, `加载库「${label}」`);
 
-  const host = options?.host || remoteInfo.host || `${location.protocol}//${location.host}`;
+  const host = await resolvePublicPath(remoteInfo, appName, options?.host);
   const entryName = options?.entryName || resolveEntryConfig(remoteInfo.entry).js;
-  const jsUrl = rewriteRequestUrl(`${host}${entryName}`, appName);
+  const jsUrl = rewriteRequestUrl(entryName ? new URL(entryName, host).href : host, appName);
   const timeout = options?.timeout ?? 10000;
 
   // Shadow DOM 隔离：在加载库模块前建立游离影子目标并开启样式捕获，
@@ -63,7 +73,7 @@ async function loadRemoteLib<M = unknown>(
   // 共享入口是可选产物，缺失或加载失败时不应阻塞主模块加载。
   const sharedEntry = resolveEntryConfig(remoteInfo.entry).shared;
   if (sharedEntry) {
-    const sharedUrl = rewriteRequestUrl(`${host}${sharedEntry}`, appName);
+    const sharedUrl = rewriteRequestUrl(new URL(sharedEntry, host).href, appName);
     try {
       await import(/* @vite-ignore */ sharedUrl);
     } catch (error) {

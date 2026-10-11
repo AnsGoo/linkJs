@@ -65,6 +65,7 @@ function generateManifestFile(
   shared: Record<string, any>,
   sharedDeps: Record<string, string[]> = {},
   shareScope?: string[],
+  publicPath?: string,
 ) {
   const packageJsonPath = resolve(process.cwd(), 'package.json');
 
@@ -122,6 +123,9 @@ function generateManifestFile(
       shareScope: resolveShareScopes(shared, shareScope),
       shared: {},
     };
+    if (publicPath) {
+      manifest.publicPath = publicPath;
+    }
 
     for (const [depName, depConfig] of Object.entries(shared)) {
       const declared = externalDeps[depName] || packageJson.dependencies?.[depName] || packageJson.peerDependencies?.[depName];

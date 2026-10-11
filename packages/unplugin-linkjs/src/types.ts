@@ -36,6 +36,8 @@ export interface ManifestJson {
   integrity?: Record<string, string>;
   /** 该远程参与的共享作用域（多作用域声明，供宿主解析）。 */
   shareScope?: string[];
+  /** 远程资源的静态 CDN 基址（供宿主解析资源位置）。 */
+  publicPath?: string;
   shared?: Record<
     string,
     {
@@ -64,6 +66,8 @@ export interface UnpluginLinkjsOptions {
    * 缺省时由 `shared` 各项的 `scope` 推导（默认 `global`）。
    */
   shareScope?: string[];
+  /** 远程资源的静态 CDN 基址（写入 manifest `publicPath`，供宿主分辨率资源）。 */
+  publicPath?: string;
   /**
    * 路线 B：需要自适应 runtime 的框架级依赖（如 `['vue', 'vue-router', 'pinia']`）。
    * dev 下这些依赖改写为 `$linkjs.loadRuntime(name, () => import(name))`：

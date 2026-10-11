@@ -30,7 +30,7 @@
 - [ ] **A2 标准 container `get/init` + `remoteType`(script/esm/module/manifest)**：打通离线 manifest 与跨宿主互通。`[高 / 大]`
 - [ ] **A3 数据预取**：在资源预取之上加数据层（vue-query / react-query 联动）。`[中 / 中]`
 - [ ] **A4 `remoteSnapshot`/`globalSnapshot`**：预取前查询已加载，避免重复请求。`[中 / 中]`
-- [ ] **A5 `getPublicPath`**：CDN 动态基址自解析。`[中 / 小]`
+- [x] **A5 `getPublicPath`**：CDN 动态基址自解析。`[中 / 小]`
 - [ ] **A6 `import:false` / `shareKey` / `packageName` 别名**：只提供不消费、以别名共享同一实例。`[中 / 中]`
 - [ ] **A7 `treeShaking` shared**：按需共享子依赖。`[中 / 中]`
 - [ ] **A8 `loadShareSync`**：同步取已加载实例（首屏用）。`[中 / 小]`

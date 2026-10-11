@@ -2,7 +2,7 @@ import { makeEventBus, type EventBus, type LinkjsEvents } from '../event-bus';
 import { __LINKJS_INSTANCE__, __LINKJS_OVERRIDES__ } from '../constant';
 import { LIB_EXPOSE, SHARED_EXPOSE, LOAD_STATUS } from '../event-bus/constant';
 import type { RuntimePlugin } from '../plugins';
-import type { RequestRewriter } from '../loader/utils';
+import type { PublicPathResolver, RequestRewriter } from '../loader/utils';
 import type { LoadAppOptions } from '../loader/app';
 import type { LoadLibOptions } from '../loader/lib';
 import type { LoadOptions } from '../loader/options';
@@ -26,6 +26,10 @@ export interface RemoteBase {
   name: string;
   entry: string | RemoteEntry;
   host?: string;
+  /** 静态 CDN 基址（相对 `host` 独立）；优先于 `host`，可被 `getPublicPath` 覆盖。 */
+  publicPath?: string;
+  /** 动态基址解析器：按运行时上下文自解析 CDN 基址（可异步）。 */
+  getPublicPath?: PublicPathResolver;
   /** 展示名（来自远程 manifest 的 `name`），缺省回退 `name`。 */
   displayName?: string;
   /** 远程类型：应用（走 HTML 入口）或库（走 JS 入口）。 */
@@ -97,6 +101,8 @@ export interface LinkjsInstance {
   shareInflight?: Map<string, Promise<RemoteModule>>;
   /** 请求 URL 重写器（插件通过 `apply` 注册）。 */
   requestRewriters?: RequestRewriter[];
+  /** 全局动态基址解析器（对所有未单独配置的远程生效）。 */
+  getPublicPath?: PublicPathResolver;
   /** 全局共享的 dev runtime（跨子应用可见，保证全页只有一份）。 */
   runtimeModules?: Map<string, RemoteModule>;
   /** runtime 并发加载去重。 */

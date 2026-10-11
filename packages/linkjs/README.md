@@ -88,6 +88,34 @@ loadRemote('http://example.com/remote-app/index.html', {
   });
 ```
 
+### CDN 动态基址（`getPublicPath`）
+
+远程资源（HTML / JS / CSS / 共享入口）默认基于注册的 `host` 解析。需要 CDN 或运行时
+自解析基址时，可声明动态解析器（`createInstance({ getPublicPath })` 为全局默认，
+`registerRemote({ getPublicPath })` 为单个远程覆盖）：
+
+```typescript
+import { createInstance } from 'linkjs';
+
+createInstance({
+  remotes: [
+    {
+      name: 'remoteApp',
+      entry: { html: 'index.html' },
+      // 按运行时上下文自解析 CDN 基址（可异步）
+      getPublicPath: ({ appName, host }) => `https://cdn.example.com/${appName}/`,
+    },
+  ],
+  // 全局兜底：未单独配置的远程统一走 CDN
+  getPublicPath: ({ appName, defaultPublicPath }) =>
+    appName.startsWith('cdn-') ? `https://cdn.example.com/${appName}/` : defaultPublicPath,
+});
+```
+
+基址解析优先级：调用方 `host` > 远程 `getPublicPath` > 远程静态 `publicPath` >
+实例 `getPublicPath` > 注册的 `host` > 当前页面 origin。静态 `publicPath` 亦可由
+构建期（unplugin `publicPath` 选项）或远程 `manifest.json` 声明。
+
 ## 工作原理
 
 1. **模块暴露**：子应用通过 `expose` 函数暴露模块，内部会触发 `LIB_EXPOSE` 事件。

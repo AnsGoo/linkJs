@@ -6,7 +6,20 @@ import { beginStyleCapture, endStyleCapture, ensureShadowTarget } from '../sandb
 import { runBeforeLoadRemote, runHook } from '../plugins';
 import { recordDiagnostic } from '../devtools';
 import { startPhase } from '../perf';
-import { loadCss, loadScript, preloadModule, resolveEntryConfig, resolveShareScopes, rewriteRequestUrl, useGetRemote, useHandleExpose, type ExtOption, type LoadScriptOptions, type RemoteCache } from './utils';
+import {
+  loadCss,
+  loadScript,
+  preloadModule,
+  resolveEntryConfig,
+  resolvePublicPath,
+  resolveShareScopes,
+  rewriteRequestUrl,
+  useGetRemote,
+  useHandleExpose,
+  type ExtOption,
+  type LoadScriptOptions,
+  type RemoteCache,
+} from './utils';
 import type { LoadAppOptions } from './options';
 
 export type { LoadAppOptions } from './options';
@@ -64,7 +77,7 @@ async function loadApp<M = unknown>(
   const label = remoteInfo.displayName || appName;
   const endTotal = startPhase(`linkjs:load:app:${appName}`, `加载应用「${label}」`);
 
-  const host = options?.host || remoteInfo.host || `${location.protocol}//${location.host}`;
+  const host = await resolvePublicPath(remoteInfo, appName, options?.host);
   const entryPath = options?.entry || resolveEntryConfig(remoteInfo.entry).html || '';
   const htmlUrl = entryPath ? new URL(entryPath, host).href : host;
   const timeout = options?.timeout ?? 10000;

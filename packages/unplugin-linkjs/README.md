@@ -98,6 +98,7 @@ await esbuild.build({
 | -------------------- | --------------------- | ---------------------------------------- | ---------------------------------- |
 | `shared`             | `Record<string, any>` | `{}`                                     | Shared dependencies configuration  |
 | `shareScope`         | `string[]`            | derived from `shared[*].scope`           | Share scopes this remote participates in (written to the manifest) |
+| `publicPath`         | `string`              | –                                        | Static CDN base URL for this remote's assets (written to the manifest) |
 | `isReplaceLinkjs`    | `boolean`             | `true`                                   | Whether to replace linkjs imports  |
 | `generateSharedFile` | `boolean`             | `true`                                   | Whether to generate shared.js file |
 | `extensions`         | `string[]`            | `['.js', '.jsx', '.ts', '.tsx', '.vue']` | File extensions to process         |
@@ -120,6 +121,7 @@ The plugin generates a `manifest.json` file in the build output directory (`outD
   },
   "expose": ["Export1", "Export2"],
   "shareScope": ["global"],
+  "publicPath": "https://cdn.example.com/remote/",
   "shared": {
     "vue": {
       "version": "3.5.27",
@@ -148,6 +150,7 @@ The plugin generates a `manifest.json` file in the build output directory (`outD
   - `shared`: Shared dependencies file path
 - `expose`: Array of exported items from the package
 - `shareScope`: Share scopes this remote participates in (explicit `shareScope` option, otherwise derived from `shared[*].scope`, defaulting to `["global"]`)
+- `publicPath`: Static CDN base URL for this remote's assets (from the `publicPath` option; optional)
 - `shared`: Shared dependencies configuration
   - `version`: Dependency version (preserves semver range like `^3.5.27` from package.json, except for `workspace:*` which uses `1.0.0`)
   - `scope`: Dependency scope ('global' or 'local')

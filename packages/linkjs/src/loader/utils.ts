@@ -34,6 +34,64 @@ function resolveShareScopes(remoteInfo: RegistryOption): (string | undefined)[] 
   return scopes.size ? [...scopes] : [undefined];
 }
 
+/** 动态解析远程资源基址（CDN）的上下文。 */
+export interface PublicPathContext {
+  /** 远程应用 / 库名。 */
+  appName: string;
+  /** 已录入的远程信息（注册表 / override / manifest）。 */
+  remoteInfo: RegistryOption;
+  /** 调用方显式传入的 host（优先级最高）。 */
+  host?: string;
+  /** 缺省基址（当前页面 origin）。 */
+  defaultPublicPath: string;
+}
+
+/** 动态基址解析器：返回远程资源基址（可异步，支持 CDN / 运行时自解析）。 */
+export type PublicPathResolver = (ctx: PublicPathContext) => string | Promise<string>;
+
+/** 是否为绝对 URL（含协议或协议相对）。 */
+function isAbsoluteUrl(value: string): boolean {
+  return /^[a-z][a-z0-9+.-]*:\/\//i.test(value) || value.startsWith('//');
+}
+
+/** 把相对基址解析为绝对 URL；绝对基址原样返回（不改动尾斜杠语义）。 */
+function toAbsoluteBase(value: string): string {
+  if (isAbsoluteUrl(value) || typeof location === 'undefined') {
+    return value;
+  }
+  return new URL(value, location.href).href;
+}
+
+/**
+ * 解析远程资源基址（**CDN 动态基址自解析**）。
+ *
+ * 优先级：调用方 `host` > 远程级 `getPublicPath` > 远程级静态 `publicPath` >
+ * 实例级 `getPublicPath`（全局 CDN 策略）> 注册的 `host` > 当前页面 origin。
+ *
+ * 返回值为可直接用于 `new URL(entry, base)` 的基址；相对值会按当前页面解析。
+ */
+async function resolvePublicPath(remoteInfo: RegistryOption, appName: string, explicitHost?: string): Promise<string> {
+  const defaultPublicPath = typeof location !== 'undefined' ? `${location.protocol}//${location.host}` : '';
+  const ctx: PublicPathContext = { appName, remoteInfo, host: explicitHost, defaultPublicPath };
+
+  let resolved: string | undefined;
+  if (explicitHost) {
+    resolved = explicitHost;
+  } else if (remoteInfo.getPublicPath) {
+    resolved = await remoteInfo.getPublicPath(ctx);
+  }
+  if (!resolved && remoteInfo.publicPath) {
+    resolved = remoteInfo.publicPath;
+  }
+  if (!resolved) {
+    const instanceResolver = getInstance().getPublicPath;
+    if (instanceResolver) {
+      resolved = await instanceResolver(ctx);
+    }
+  }
+  return toAbsoluteBase(resolved || remoteInfo.host || defaultPublicPath);
+}
+
 /** 请求 URL 重写器（插件通过 `instance.requestRewriters` 注册）。 */
 export type RequestRewriter = (url: string, ctx: { remoteName?: string }) => string | void;
 
@@ -217,5 +275,5 @@ function useHandleExpose<M = unknown>(
   return handler;
 }
 
-export { loadCss, preloadModule, loadScript, rewriteRequestUrl, getRemoteInfo, resolveEntryConfig, resolveShareScopes, useGetRemote, useHandleExpose };
+export { loadCss, preloadModule, loadScript, rewriteRequestUrl, getRemoteInfo, resolveEntryConfig, resolveShareScopes, resolvePublicPath, useGetRemote, useHandleExpose };
 export type { LoadScriptOptions, ResourceSecurityOptions, RemoteCache };

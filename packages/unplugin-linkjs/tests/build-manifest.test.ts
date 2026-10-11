@@ -41,4 +41,15 @@ describe('generateManifestFile', () => {
       rmSync(outDir, { recursive: true, force: true });
     }
   });
+
+  it('writes publicPath when provided', () => {
+    const outDir = mkdtempSync(join(tmpdir(), 'linkjs-manifest-'));
+    try {
+      generateManifestFile(outDir, [], {}, {}, undefined, 'https://cdn.example.com/remote/');
+      const manifest = JSON.parse(readFileSync(join(outDir, 'manifest.json'), 'utf-8'));
+      expect(manifest.publicPath).toBe('https://cdn.example.com/remote/');
+    } finally {
+      rmSync(outDir, { recursive: true, force: true });
+    }
+  });
 });

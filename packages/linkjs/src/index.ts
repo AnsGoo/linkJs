@@ -19,6 +19,7 @@ import type { RmoteConfig } from './loader';
 import type { LoadAppOptions } from './loader/app';
 import type { LoadLibOptions } from './loader/lib';
 import type { LoadOptions } from './loader/options';
+import type { PublicPathResolver } from './loader/utils';
 import { registerPlugin, runInitHooks, type RuntimePlugin } from './plugins';
 import { subscribeRemoteUpdate } from './hmr';
 import { loadRuntime } from './runtime';
@@ -98,6 +99,8 @@ interface UserOption {
   plugin?: RuntimePlugin | RuntimePlugin[];
   /** 宿主构建模式，决定子应用框架 runtime 走共享（dev）还是本地（prod）。默认自动探测。 */
   mode?: InstanceMode;
+  /** 全局动态基址解析器：为未单独配置 `publicPath`/`getPublicPath` 的远程解析 CDN 基址。 */
+  getPublicPath?: PublicPathResolver;
   /** 页内 DevTools 面板：`false` 关闭；缺省时开发模式自动开启。 */
   devtools?: boolean | DevtoolsOptions;
 }
@@ -120,11 +123,14 @@ function detectMode(explicit?: InstanceMode): InstanceMode {
 }
 
 function createInstance(options: UserOption) {
-  const { shareStrategy = 'version-first', remotes = [], shares = {}, plugin, mode, devtools } = options;
+  const { shareStrategy = 'version-first', remotes = [], shares = {}, plugin, mode, devtools, getPublicPath } = options;
   remotes.forEach((remote) => {
     registerRemote(remote);
   });
   registerShare(shares);
+  if (getPublicPath) {
+    linkInstance.getPublicPath = getPublicPath;
+  }
   // 先就绪实例方法，插件（如 retry）的 apply 才能包装到加载方法。
   ensureRuntimeMethods();
   if (plugin) {

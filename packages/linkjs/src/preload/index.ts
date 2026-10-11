@@ -28,6 +28,8 @@ export interface RemoteManifest {
   exposes?: Array<{ name: string; path: string; assets?: ManifestAsset }>;
   /** 该远程参与的共享作用域（多作用域声明）。 */
   shareScope?: string[];
+  /** 远程资源的静态 CDN 基址（供宿主解析资源位置）。 */
+  publicPath?: string;
   shared?: Record<string, unknown>;
   /** 产物 SRI 完整性（manifest path -> `sha384-...`）。 */
   integrity?: Record<string, string>;
@@ -115,6 +117,9 @@ async function preloadRemote(options: PreloadRemoteOptions): Promise<RemoteManif
       }
       if (Array.isArray(manifest.shareScope) && manifest.shareScope.length) {
         info.shareScope = manifest.shareScope;
+      }
+      if (typeof manifest.publicPath === 'string' && manifest.publicPath) {
+        info.publicPath = manifest.publicPath;
       }
     }
   }
