@@ -3,6 +3,7 @@ withDefaults(
   defineProps<{
     msg: string;
     age: number;
+    name: string;
   }>(),
   {
     msg: 'I am remote app!',

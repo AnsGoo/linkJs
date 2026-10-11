@@ -88,7 +88,7 @@ function serve(options: TsdownServeOptions | string | string[] = { contentBase: 
 
     // linkjs 类型变更事件流（host `consumeTypes` 订阅）。
     if (urlPath === '/__linkjs/events') {
-      handleSse(request, response);
+      handleSse(request, response, contentBase, manifestPath);
       return;
     }
     // manifest 指针：dev 模式下覆写 `mode`（供 host 建立长连接）。
@@ -209,8 +209,8 @@ function serve(options: TsdownServeOptions | string | string[] = { contentBase: 
   };
 }
 
-/** SSE：注册客户端并保持连接。 */
-function handleSse(request: IncomingMessage, response: ServerResponse) {
+/** SSE：注册客户端并保持连接。连接建立即发一次当前 `snapshot`，供 host 对齐（防漏事件/重连）。 */
+function handleSse(request: IncomingMessage, response: ServerResponse, contentBase: string[], manifestPath: string) {
   response.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache, no-transform',
@@ -221,6 +221,19 @@ function handleSse(request: IncomingMessage, response: ServerResponse) {
   sseClients.add(response);
   request.on('close', () => {
     sseClients.delete(response);
+  });
+
+  readFileFromContentBase(contentBase, manifestPath, (error, content) => {
+    if (error || !content) {
+      return;
+    }
+    try {
+      const manifest = JSON.parse(content.toString());
+      const snapshot = { name: manifest.name, version: manifest.version, typesHash: manifest.metaData?.typesHash };
+      response.write(`event: snapshot\ndata: ${JSON.stringify(snapshot)}\n\n`);
+    } catch {
+      /* ignore */
+    }
   });
 }
 

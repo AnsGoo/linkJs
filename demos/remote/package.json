@@ -27,7 +27,8 @@
     "lint:oxlint": "oxlint . --fix",
     "lint:eslint": "eslint . --fix --cache",
     "format": "oxfmt src/",
-    "build:lib": "tsdown"
+    "build:lib": "tsdown",
+    "dev:lib": "tsdown --watch"
   },
   "dependencies": {
     "linkjs": "workspace:*",
