@@ -398,7 +398,7 @@ function getPackageDependencies(pkgName: string, resolveFrom: string): string[] 
   }
   try {
     const pkgJson = JSON.parse(fs.readFileSync(pkgJsonPath, 'utf-8'));
-    const deps: Record<string, string> = { ...(pkgJson.dependencies || {}), ...(pkgJson.peerDependencies || {}) };
+    const deps: Record<string, string> = { ...pkgJson.dependencies, ...pkgJson.peerDependencies };
     const peerMeta: Record<string, { optional?: boolean }> = pkgJson.peerDependenciesMeta || {};
     for (const name of Object.keys(deps)) {
       if (peerMeta[name]?.optional) {

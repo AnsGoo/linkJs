@@ -163,7 +163,7 @@ function updateManifestFile(
 
     const { expose = [], entry = {}, dependencies = [], exposes, integrity, metaData, mode } = content || {};
     manifestJson.expose = Array.from(new Set([...expose, ...(manifestJson.expose || [])]));
-    manifestJson.entry = { ...(manifestJson.entry || {}), ...entry };
+    manifestJson.entry = { ...manifestJson.entry, ...entry };
     manifestJson.dependencies = dependencies;
 
     if (exposes) {

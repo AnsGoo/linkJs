@@ -43,8 +43,7 @@ function installedVersion(name: string): string {
 export function collectSharedVersions(options: SharedVersionsOptions = {}): Record<string, string> {
   const packageJsonPath = resolve(process.cwd(), 'package.json');
   const pkg = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
-  const names =
-    options.packages ?? Object.keys({ ...(pkg.dependencies ?? {}), ...(pkg.peerDependencies ?? {}) });
+  const names = options.packages ?? Object.keys({ ...pkg.dependencies, ...pkg.peerDependencies });
   const versions: Record<string, string> = {};
   for (const name of names) {
     versions[name] = installedVersion(name);
