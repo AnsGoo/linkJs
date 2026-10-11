@@ -20,6 +20,7 @@
 - [x] CI（install→build→typecheck→test→lint）
 - [x] 工程化清理（devepment 目录名、包元数据、pnpm overrides、share-runtime ESM）
 - [x] 5 个插件：retry / fallback / logger / auth / timeout
+- [x] 类型/工程质量（E1–E3）：消除 loader `any`、替代 Node `Module`、强类型 `LinkjsInstance` 与事件总线、加载选项收敛
 
 ---
 
@@ -102,4 +103,6 @@
 
 1. **A1 dts 类型转发** — 使用体验提升最大，且不改运行时契约。
 2. **B1 preload 插件** — 复用 `preloadRemote`，路由级预取实用。
-3. **E1/E2 消除 any + event-bus 类型** — 为长期维护打底。
+3. **G2 e2e 纳入 CI** — 三端 Playwright 回归，防止跨宿主 / 跨构建器退化。
+
+> 注：原第 3 项 **E1/E2 消除 any + event-bus 类型** 已完成（见 §E）。
