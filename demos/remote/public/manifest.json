@@ -1,17 +1,14 @@
 {
-  "name": "remote",
+  "name": "RemoteApp1",
   "version": "0.0.0",
   "description": "",
   "entry": {
-    "shared": "/dist/shared.js",
-    "js": "/dist/assets/index-BdlWu8bz.js",
-    "css": "/dist/assets/style-C82ZCTyC.css",
-    "html": "/dist/index.html"
+    "html": "index.html"
   },
   "expose": [],
   "shared": {
     "vue": {
-      "version": "^3.5.27",
+      "version": "^3.5.43",
       "scope": "global",
       "singleton": true
     }

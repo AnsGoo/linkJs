@@ -55,6 +55,15 @@ preloadRemote({
   /* remote-lib 未启动时忽略 */
 });
 
+// 读取远端 manifest，获取展示名（RemoteApp1）等信息。
+preloadRemote({
+  name: 'remote',
+  host: 'http://localhost:8080',
+  manifestUrl: 'http://localhost:8080/manifest.json',
+}).catch(() => {
+  /* remote 未启动时忽略 */
+});
+
 // 加载远程模块的函数
 function loadRemoteModule() {
   return loadApp('remote', {
