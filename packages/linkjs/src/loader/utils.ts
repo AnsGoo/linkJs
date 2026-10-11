@@ -1,8 +1,10 @@
 import { getInstance } from '..';
 import { LIB_EXPOSE } from '../event-bus/constant';
+import { getShadowRoot } from '../sandbox/shadow';
 
 /**
  * 注入 CSS 样式表。`remoteName` 会写到 `data-linkjs-remote`，便于卸载时回收。
+ * 若该远程已启用 Shadow DOM 隔离，则直接注入其影子树。
  */
 function loadCss(url: string, remoteName?: string): Promise<void> {
   return new Promise((resolve) => {
@@ -21,7 +23,8 @@ function loadCss(url: string, remoteName?: string): Promise<void> {
       console.warn(`[linkjs] Failed to load stylesheet: ${url}`);
       resolve();
     };
-    document.head.appendChild(link);
+    const target = remoteName ? getShadowRoot(remoteName) : undefined;
+    (target ?? document.head).appendChild(link);
   });
 }
 

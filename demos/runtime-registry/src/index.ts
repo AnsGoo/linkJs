@@ -4,7 +4,9 @@ const registryOptions: RegistryOption[] = [
   {
     name: 'remote',
     entry: {
-      html: 'dist/index.html',
+      // dev（vite）下入口是远程开发服务器根，而不是 dist 产物：
+      // dist/index.html 内的资源是绝对路径 `/assets/...`，在 dev server 根下会 404。
+      html: 'index.html',
       js: 'dist/index.js',
     },
     shared: {
@@ -20,9 +22,8 @@ const registryOptions: RegistryOption[] = [
   {
     name: 'remote-lib',
     entry: {
-      types: '/mf/lib.d.ts',
+      // 与 demos/remote-lib/mf/manifest.json 的实际构建产物保持一致
       js: '/mf/lib.js',
-      css: '/mf/style.css',
       shared: '/mf/shared.js',
     },
     shared: {

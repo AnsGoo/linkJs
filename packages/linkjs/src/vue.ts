@@ -11,6 +11,7 @@ import {
   type ShallowRef,
 } from 'vue';
 import { getRemote, loadApp, subscribeRemoteUpdate, type LoadAppOptions } from './index';
+import { createShadowIsolation, type ShadowIsolation } from './sandbox/shadow';
 
 /**
  * 宿主消费远程组件并响应式重解析 expose。
@@ -50,6 +51,9 @@ interface MountableModule {
  *
  * 子应用入口/expose 变化时（`REMOTE_UPDATE`）自动卸载旧实例并重新挂载，
  * 宿主其余状态不受影响。
+ *
+ * 传入 `options.shadow = true` 时，在宿主节点上创建 ShadowRoot，子应用连同其样式
+ * 都挂进影子树，实现浏览器原生的 CSS 隔离（dev/build、跨构建器行为一致）。
  */
 function createRemoteApp(entry: string, options?: LoadAppOptions) {
   const appName = entry.split('/')[0];
@@ -59,21 +63,32 @@ function createRemoteApp(entry: string, options?: LoadAppOptions) {
     setup(_props, { attrs }) {
       const el = ref<HTMLElement>();
       let mod: MountableModule | null = null;
+      let iso: ShadowIsolation | null = null;
       let mounted = false;
 
       const doMount = async () => {
         if (!el.value) {
           return;
         }
-        mod = ((await loadApp(appName, options)) as unknown as MountableModule) || null;
-        mod?.mount?.(el.value, { ...attrs });
-        mounted = true;
+        if (options?.shadow) {
+          iso = createShadowIsolation(el.value, appName);
+        }
+        try {
+          mod = ((await loadApp(appName, options)) as unknown as MountableModule) || null;
+          const target = iso ? iso.mountPoint : el.value;
+          mod?.mount?.(target, { ...attrs });
+          mounted = true;
+        } finally {
+          iso?.stopCapture();
+        }
       };
       const doUnmount = () => {
         if (mounted) {
           mod?.unmount?.();
+          mounted = false;
         }
-        mounted = false;
+        iso?.dispose();
+        iso = null;
       };
 
       onMounted(() => {

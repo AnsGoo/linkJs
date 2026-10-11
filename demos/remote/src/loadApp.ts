@@ -20,7 +20,4 @@ app.use(router);
 
 console.log('Pinia and router installed');
 
-// 独立运行时，根容器挂上作用域属性，保证被隔离的 CSS 仍然生效
-document.querySelector('#app')?.setAttribute('data-linkjs-scope', 'remote');
-
 app.mount('#app');

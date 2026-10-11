@@ -2,9 +2,8 @@ import { fileURLToPath, URL } from 'node:url';
 
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
-// 注意：这里直接引用源码（而非包名），以便 Vite 监听 unplugin 源码变更并自动重启，
-// 避免"改了 unplugin 源码但 dist 未重建 → 不生效"的开发体验问题。
-import { unpluginLinkjs, unpluginLinkjsRollowPlugin, createCssScopePlugin } from '../../packages/unplugin-linkjs/src/index.ts';
+// 使用包依赖（dist 产物）。注意：修改 unplugin-linkjs 源码后需重新 build 才生效。
+import { unpluginLinkjs, unpluginLinkjsRollowPlugin } from 'unplugin-linkjs';
 
 const shared = {
   vue: {
@@ -52,12 +51,6 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
-    },
-  },
-  css: {
-    // CSS 作用域隔离：所有选择器加 [data-linkjs-scope="remote"] 前缀
-    postcss: {
-      plugins: [createCssScopePlugin('remote') as any],
     },
   },
   server: {

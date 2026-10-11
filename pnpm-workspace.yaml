@@ -4,3 +4,5 @@ prefer-workspace-packages: true
 packages:
   - 'packages/*'
   - 'demos/*'
+allowBuilds:
+  esbuild: true

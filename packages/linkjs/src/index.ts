@@ -90,3 +90,11 @@ export {
   deactivateAllSandboxes,
 } from './sandbox';
 export type { SandboxSnapshot } from './sandbox';
+export {
+  createShadowIsolation,
+  ensureShadowTarget,
+  beginStyleCapture,
+  endStyleCapture,
+  getShadowRoot,
+} from './sandbox/shadow';
+export type { ShadowIsolation, ShadowTarget, CreateShadowIsolationOptions } from './sandbox/shadow';

@@ -2,6 +2,7 @@ import { getInstance, loadShare } from '..';
 import { LIB_EXPOSE } from '../event-bus/constant';
 import { activateSandbox } from '../sandbox';
 import { installVueHmrRuntimeShim } from '../hmr';
+import { beginStyleCapture, endStyleCapture, ensureShadowTarget } from '../sandbox/shadow';
 import { loadCss, loadScript, preloadModule, useGetRemote, useHandleExpose, type ExtOption } from './utils';
 
 export interface LoadAppOptions {
@@ -19,6 +20,8 @@ export interface LoadAppOptions {
   ignoreScriptError?: boolean;
   /** 是否启用快照沙箱：加载前快照全局，unloadRemote 时回滚子应用对全局的增改 */
   sandbox?: boolean;
+  /** 是否启用 Shadow DOM 样式隔离（仅 `createRemoteApp` 消费）。 */
+  shadow?: boolean;
 }
 
 async function fetchHtml(url: string, retries: number): Promise<string> {
@@ -76,6 +79,13 @@ async function loadApp<Module>(
   const preload = options?.preload || remoteInfo?.shared || {};
 
   const extOption: ExtOption = { modelName };
+
+  // Shadow DOM 隔离：在脚本执行前建立游离影子目标并开启样式捕获，
+  // 即便宿主是「先预加载、后挂载容器」，子应用注入的样式也会进入影子树。
+  if (options?.shadow) {
+    ensureShadowTarget(appName);
+    beginStyleCapture(appName);
+  }
 
   // 预加载共享依赖（等待完成，避免与子应用加载竞态）
   await Promise.all(Object.keys(preload).map((libName) => loadShare(libName).catch(() => null)));
@@ -145,7 +155,22 @@ async function loadApp<Module>(
       .catch((error) => {
         rejectWith(error);
       });
-  });
+  }).then(
+    // 子应用加载完成（或失败）后立即关闭捕获窗口：子应用样式此时已注入影子树，
+    // 若不关闭会把宿主随后注入的样式也误收进影子树。
+    (result) => {
+      if (options?.shadow) {
+        endStyleCapture();
+      }
+      return result;
+    },
+    (error) => {
+      if (options?.shadow) {
+        endStyleCapture();
+      }
+      throw error;
+    },
+  );
 }
 
 export { useLoadApp };

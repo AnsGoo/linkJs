@@ -28,8 +28,10 @@ instances.loadRegistry(registryOptions);
 // 加载远程模块的函数
 function loadRemoteModule() {
   return loadApp('remote', {
-    host: 'http://localhost:8081',
+    host: 'http://localhost:8080',
     sandbox: true,
+    // 与 createRemoteApp 一致：预加载即启用 shadow，样式在捕获窗口内进入影子树
+    shadow: true,
   })
     .then((lib) => {
       console.log('Remote module loaded:', lib);

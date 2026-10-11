@@ -1,7 +1,12 @@
 import { defineConfig } from 'tsdown'
 import VuePlugin from 'unplugin-vue/rolldown';
 import { unpluginLinkjsRollowPlugin } from 'unplugin-linkjs';
+import tsdownPluginServer from 'tsdown-plugin-server';
 import * as Vue from 'vue';
+
+// 仅在 `tsdown --watch`（即 pnpm dev）时启动静态服务器；
+// 普通 `pnpm build` 不应因长期驻留的 HTTP server 而卡住。
+const isWatch = process.argv.includes('--watch');
 
 export default defineConfig({
   // fromVite: true,
@@ -42,8 +47,13 @@ export default defineConfig({
         },
       },
     }),
-    // tsdownPluginServer({
-    //   port: 4001,
-    // }),
+    // 把 mf/ 产物以静态服务器形式暴露在 4001，供宿主 loadLib 加载
+    ...(isWatch
+      ? [
+          tsdownPluginServer({
+            port: 4001,
+          }),
+        ]
+      : []),
   ],
 })
