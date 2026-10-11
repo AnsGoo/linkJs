@@ -156,8 +156,8 @@ interface ShareRow {
   name: string;
   summary: string;
   sub: string[];
-  source: DepSource | null;
 }
+// 声明：完全来自本远程自己的元数据（manifest/registry 的 shared 定义）。
 const sharedRows = computed<ShareRow[]>(() => {
   const shared = selected.value?.shared;
   if (!shared) return [];
@@ -171,8 +171,19 @@ const sharedRows = computed<ShareRow[]>(() => {
     if (cfg.eager) parts.push('eager');
     if (cfg.strictVersion) parts.push('strict');
     const deps = Array.isArray(cfg.dependencies) ? cfg.dependencies.map((d) => String(d)) : [];
-    return { name, summary: parts.join(' · ') || '—', sub: deps, source: depSource(name) };
+    return { name, summary: parts.join(' · ') || '—', sub: deps };
   });
+});
+
+// 运行时解析来源：每个声明的依赖实际命中/来自哪个实体。
+interface ResolveRow {
+  name: string;
+  source: DepSource | null;
+}
+const resolveRows = computed<ResolveRow[]>(() => {
+  const shared = selected.value?.shared;
+  if (!shared) return [];
+  return Object.keys(shared).map((name) => ({ name, source: depSource(name) }));
 });
 
 const topoEdges = computed<Array<[string, string]>>(() => {
@@ -281,14 +292,21 @@ const topoLabels = computed<Record<string, string>>(() => {
           </span>
         </div>
 
-        <h3>声明的共享依赖 ({{ sharedRows.length }})</h3>
+        <h3>声明的共享依赖（本远程元数据）({{ sharedRows.length }})</h3>
         <div v-if="!sharedRows.length" class="muted">（该远程未声明共享依赖）</div>
-        <div v-for="row in sharedRows" :key="row.name" class="dep">
+        <div v-for="row in sharedRows" :key="row.name" class="row">
+          <span class="k">{{ row.name }}</span>
+          <span class="v">{{ row.summary }}</span>
+        </div>
+
+        <h3>依赖解析来源 ({{ resolveRows.length }})</h3>
+        <div v-if="!resolveRows.length" class="muted">（无）</div>
+        <div v-for="row in resolveRows" :key="row.name" class="dep">
           <div class="row">
             <span class="k">{{ row.name }}</span>
-            <span class="v">{{ row.summary }}</span>
+            <span class="v">{{ row.source ? row.source.provider : '未解析' }}</span>
           </div>
-          <div v-if="row.source" class="dep-source">来源：{{ row.source.provider }} · {{ row.source.address }}</div>
+          <div v-if="row.source" class="dep-source">解析自 {{ row.source.address }}</div>
         </div>
 
         <h3>本远程提供的共享依赖 ({{ remoteProvided.length }})</h3>
