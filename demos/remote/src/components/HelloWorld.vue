@@ -5,7 +5,7 @@ withDefaults(
     age: number;
     name: string;
     sex: 'male' | 'female';
-    subject: string;
+    tst: string;
   }>(),
   {
     msg: 'I am remote app!',

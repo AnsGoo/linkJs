@@ -34,7 +34,7 @@ const RemoteHelloWorld = getRemote('remoteApp/HelloWorld')!;
           :age="18"
           name="from-host"
           sex="male"
-          subject="math"
+          tst="math"
         />
       </div>
       <LinkjsShadowRoot name="remote-lib">
