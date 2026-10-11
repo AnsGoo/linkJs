@@ -13,7 +13,8 @@
     "url": "git+https://github.com/AnsGoo/linkJs.git"
   },
   "scripts": {
-    "build": "pnpm -r --filter \"./packages/*\" build",
+    "build": "pnpm -r --filter \"./packages/*\" --filter \"runtime-registry\" build",
+    "prepare": "pnpm run build",
     "test": "pnpm -r --filter \"./packages/*\" run test",
     "typecheck": "pnpm -r --filter \"./packages/*\" run typecheck",
     "lint": "oxlint",

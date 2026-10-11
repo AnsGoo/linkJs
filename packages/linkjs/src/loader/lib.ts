@@ -1,11 +1,14 @@
 import { getInstance, loadShare } from '..';
 import { LIB_EXPOSE } from '../event-bus/constant';
+import { beginStyleCapture, endStyleCapture, ensureShadowTarget } from '../sandbox/shadow';
 import { getRemoteInfo, useGetRemote, useHandleExpose, type ExtOption } from './utils';
 
 export interface LoadLibOptions {
   host?: string;
   entryName?: string;
   timeout?: number;
+  /** 是否启用 Shadow DOM 样式隔离（配合 `linkjs/vue` 的 `LinkjsShadowRoot` 使用）。 */
+  shadow?: boolean;
 }
 
 export function useLoadRemoteLib<Module>(remoteCache: Map<string, Record<string, Module> | Module>) {
@@ -35,6 +38,13 @@ async function loadRemoteLib<Module>(
   const entryName = options?.entryName || remoteInfo?.entry?.js;
   const jsUrl = `${host}${entryName}`;
   const timeout = options?.timeout ?? 10000;
+
+  // Shadow DOM 隔离：在加载库模块前建立游离影子目标并开启样式捕获，
+  // 使库模块导入时注入的样式进入影子树（由 LinkjsShadowRoot 挂载时接管）。
+  if (options?.shadow) {
+    ensureShadowTarget(appName);
+    beginStyleCapture(appName);
+  }
 
   // 预加载该远程声明的共享依赖
   const shared = remoteInfo?.shared || {};
@@ -74,5 +84,18 @@ async function loadRemoteLib<Module>(
         }, timeout);
       })
       .catch(fail);
-  });
+  }).then(
+    (result) => {
+      if (options?.shadow) {
+        endStyleCapture();
+      }
+      return result;
+    },
+    (error) => {
+      if (options?.shadow) {
+        endStyleCapture();
+      }
+      throw error;
+    },
+  );
 }

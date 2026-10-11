@@ -108,7 +108,8 @@
 - [x] `overrideRemote` 输入校验：仅接受合法 http(s) URL，非法项跳过并告警；单个 host 失败不影响其它 host；fetch 增加超时。
 - [x] **scoped 样式 id 跨应用冲突修复**：`@vitejs/plugin-vue` 6 在 dev 下用 `hash(相对路径)` 生成 scopeId（不含内容），不同应用相同路径的组件（如都以 `src/components/HelloWorld.vue`）会得到相同 `data-v-*`，导致样式互相覆盖。修复：`features.componentIdGenerator` 按应用加盐（host/remote 各自唯一），见 `demos/*/vite.config.ts`。
   - 通用建议：把该 salt 做成共享插件/构建约定；或做更彻底的 CSS 隔离（Shadow DOM / scoped 前缀）。
-- [x] **CSS 作用域隔离**：`unplugin-linkjs` 提供 `createCssScopePlugin(scope)`（PostCSS），把子应用所有选择器加 `[data-linkjs-scope="<scope>"]` 前缀；宿主用该属性容器包裹子应用（独立运行时挂到根节点）。已接入 demo（remote），验证 host/remote 样式互不覆盖（host 500 / remote 900）。
+- [x] **CSS 隔离统一为 Shadow DOM**：运行期 `createShadowIsolation` / `ensureShadowTarget`（`packages/linkjs/src/sandbox/shadow.ts`）把远程的 DOM 与样式一并放进 ShadowRoot；宿主消费**远程应用**用 `createRemoteApp(entry, { shadow: true })`，消费**远程库组件**用 `linkjs/vue` 的 `LinkjsShadowRoot` + `loadLib(entry, { shadow: true })`。dev/build 一致、与构建器无关，实测 host(500)/remote(900) 样式互不覆盖且 HMR 正常。
+  - 旧的 PostCSS 前缀方案（`createCssScopePlugin` / `data-linkjs-scope`）已删除，不再使用。
 - [x] **JS 快照沙箱**：`captureSnapshot/restoreSnapshot/activateSandbox/deactivateSandbox`。加载前快照 `globalThis`，`unloadRemote` 时删除子应用新增的全局并还原被修改的全局。
   - 局限：子应用以原生 ESM 同页加载，ESM 无法用 `with(proxy)` 包裹，运行期间仍可读写宿主全局；真运行时隔离需 iframe/worker 独立 realm（未做）。
 - [ ] CSP / SRI integrity（需宿主与远端配合）。
@@ -119,7 +120,7 @@
 
 - [x] `packages/linkjs` 单测覆盖 share/loader/sandbox/override（38 用例）。
 - [x] 根 `package.json` 增加 `build`/`test`/`typecheck` 脚本。
-- [x] `unplugin-linkjs` 增加 vitest（17 用例：dependency-graph / build-shared / transform / css-scope）。
+- [x] `unplugin-linkjs` 增加 vitest（dependency-graph / build-shared / transform）。
 - [x] lint/typecheck 全绿（本轮范围内）。
 
 ---

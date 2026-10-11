@@ -1,4 +1,5 @@
 import {
+  Teleport,
   defineComponent,
   getCurrentScope,
   h,
@@ -108,4 +109,42 @@ function createRemoteApp(entry: string, options?: LoadAppOptions) {
   });
 }
 
-export { useRemoteModule, createRemoteApp };
+/**
+ * 把插槽内容渲染进 ShadowRoot 的容器组件，用于隔离**由宿主自身渲染**的远程内容
+ * （例如 `loadLib` 返回的组件）。
+ *
+ * 与 `createRemoteApp` 的路线 B（子应用自挂载）不同：这里的内容仍属于宿主的 Vue 实例，
+ * 只是通过 `Teleport` 把 DOM 放进影子树；样式则依赖 `loadLib({ shadow: true })` 在加载期
+ * 把该远程的样式捕获进同一影子树。
+ */
+const LinkjsShadowRoot = defineComponent({
+  name: 'LinkjsShadowRoot',
+  props: {
+    /** 与 `loadLib` 的 appName 一致，用于复用同一影子目标。 */
+    name: { type: String, required: true },
+  },
+  setup(props, { slots }) {
+    const host = ref<HTMLElement>();
+    const mountPoint = shallowRef<HTMLElement>();
+    let iso: ShadowIsolation | null = null;
+
+    onMounted(() => {
+      if (!host.value) {
+        return;
+      }
+      iso = createShadowIsolation(host.value, props.name);
+      mountPoint.value = iso.mountPoint;
+      // 库样式已在 loadLib({ shadow: true }) 的加载窗口内捕获，这里只需接管挂载点。
+      iso.stopCapture();
+    });
+    onUnmounted(() => {
+      iso?.dispose();
+      iso = null;
+    });
+
+    return () =>
+      h('div', { ref: host }, mountPoint.value ? [h(Teleport as any, { to: mountPoint.value }, slots.default?.())] : []);
+  },
+});
+
+export { useRemoteModule, createRemoteApp, LinkjsShadowRoot };

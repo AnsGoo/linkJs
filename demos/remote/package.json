@@ -19,12 +19,12 @@
     }
   },
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
+    "dev": "pnpm --filter unplugin-linkjs --filter linkjs build && vite",
+    "build": "pnpm --filter unplugin-linkjs --filter linkjs build && vite build",
     "preview": "vite preview",
     "test:unit": "vitest",
     "test:e2e": "playwright test",
-    "build-only": "vite build",
+    "build-only": "pnpm --filter unplugin-linkjs --filter linkjs build && vite build",
     "type-check": "vue-tsc --build",
     "lint": "run-s lint:*",
     "lint:oxlint": "oxlint . --fix",

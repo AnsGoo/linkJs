@@ -39,6 +39,13 @@ export interface ShadowTarget {
   host: HTMLElement;
   shadow: ShadowRoot;
   mountPoint: HTMLElement;
+  /**
+   * 已归属该远程的样式模块路径（dev-id 去掉 query 后的部分）。
+   * 用于 HMR 时把「重新创建」的样式节点继续路由进影子树：
+   * 例如把 `<style scoped>` 改成 `<style>` 会改变样式模块 id（去掉 scoped 段），
+   * Vite 会新建一个 `<style>` 元素，需要按模块路径重新匹配。
+   */
+  modulePaths: Set<string>;
 }
 
 const targets = new Map<string, ShadowTarget>();
@@ -57,6 +64,53 @@ function isStyleOrStylesheetLink(node: Node): boolean {
     return (node as HTMLLinkElement).rel === 'stylesheet';
   }
   return false;
+}
+
+/** 取样式节点的归属标识：dev 下是 `data-vite-dev-id`，构建产物 link 用 href。 */
+function styleIdent(node: Node): string | null {
+  const el = node as HTMLElement;
+  if (typeof el.getAttribute !== 'function') {
+    return null;
+  }
+  const devId = el.getAttribute('data-vite-dev-id');
+  if (devId) {
+    return devId;
+  }
+  if (typeof HTMLLinkElement !== 'undefined' && node instanceof HTMLLinkElement) {
+    return node.href || null;
+  }
+  return null;
+}
+
+/** 归一化：去掉 query（`?vue&type=style&scoped=...`），保留模块文件路径。 */
+function normalizeIdent(ident: string): string {
+  return ident.split('?')[0];
+}
+
+/**
+ * 决定某个样式节点应归属哪个影子树：
+ * - 捕获窗口内：归当前加载的远程，并记录其模块路径以便后续 HMR 复用；
+ * - 窗口外：按已记录的模块路径匹配（处理 HMR 重建的样式节点）。
+ * 都不匹配则返回 null（保持原语义，留在 document.head）。
+ */
+function routeStyleTarget(node: Node): ShadowTarget | null {
+  const ident = styleIdent(node);
+  if (captureTarget) {
+    if (ident) {
+      captureTarget.modulePaths.add(normalizeIdent(ident));
+    }
+    return captureTarget;
+  }
+  if (!ident) {
+    return null;
+  }
+  const path = normalizeIdent(ident);
+  for (const target of targets.values()) {
+    if (target.modulePaths.has(path)) {
+      return target;
+    }
+  }
+  return null;
 }
 
 // --- DOM 方法补丁 -------------------------------------------------------------
@@ -86,15 +140,21 @@ function patchDom(): void {
   originalPrepend = Element.prototype.prepend;
 
   Node.prototype.appendChild = function <T extends Node>(node: T): T {
-    if (captureTarget && isStyleOrStylesheetLink(node)) {
-      return originalAppendChild.call(captureTarget.shadow, node) as T;
+    if (isStyleOrStylesheetLink(node)) {
+      const target = routeStyleTarget(node);
+      if (target) {
+        return originalAppendChild.call(target.shadow, node) as T;
+      }
     }
     return originalAppendChild.call(this, node) as T;
   };
 
   Node.prototype.insertBefore = function <T extends Node>(node: T, child: Node | null): T {
-    if (captureTarget && isStyleOrStylesheetLink(node)) {
-      return originalInsertBefore.call(captureTarget.shadow, node, captureTarget.shadow.firstChild) as T;
+    if (isStyleOrStylesheetLink(node)) {
+      const target = routeStyleTarget(node);
+      if (target) {
+        return originalInsertBefore.call(target.shadow, node, target.shadow.firstChild) as T;
+      }
     }
     return originalInsertBefore.call(this, node, child) as T;
   };
@@ -103,24 +163,27 @@ function patchDom(): void {
     position: InsertPosition,
     element: Element,
   ): Element | null {
-    if (captureTarget && isStyleOrStylesheetLink(element)) {
-      return originalAppendChild.call(captureTarget.shadow, element) as Element;
+    if (isStyleOrStylesheetLink(element)) {
+      const target = routeStyleTarget(element);
+      if (target) {
+        return originalAppendChild.call(target.shadow, element) as Element;
+      }
     }
     return originalInsertAdjacentElement.call(this, position, element);
   };
 
-  // append/prepend：只把样式节点分流到影子树，其余节点保持原语义，避免误搬。
+  // append/prepend：只把能路由到影子树的样式节点分流，其余节点保持原语义。
   Element.prototype.append = function (...nodes: (Node | string)[]): void {
-    if (!captureTarget) {
-      return originalAppend.apply(this, nodes);
-    }
     const rest: (Node | string)[] = [];
     for (const node of nodes) {
       if (node instanceof Node && isStyleOrStylesheetLink(node)) {
-        originalAppendChild.call(captureTarget.shadow, node);
-      } else {
-        rest.push(node);
+        const target = routeStyleTarget(node);
+        if (target) {
+          originalAppendChild.call(target.shadow, node);
+          continue;
+        }
       }
+      rest.push(node);
     }
     if (rest.length > 0) {
       originalAppend.apply(this, rest);
@@ -128,16 +191,16 @@ function patchDom(): void {
   };
 
   Element.prototype.prepend = function (...nodes: (Node | string)[]): void {
-    if (!captureTarget) {
-      return originalPrepend.apply(this, nodes);
-    }
     const rest: (Node | string)[] = [];
     for (const node of nodes) {
       if (node instanceof Node && isStyleOrStylesheetLink(node)) {
-        originalInsertBefore.call(captureTarget.shadow, node, captureTarget.shadow.firstChild);
-      } else {
-        rest.push(node);
+        const target = routeStyleTarget(node);
+        if (target) {
+          originalInsertBefore.call(target.shadow, node, target.shadow.firstChild);
+          continue;
+        }
       }
+      rest.push(node);
     }
     if (rest.length > 0) {
       originalPrepend.apply(this, rest);
@@ -176,7 +239,7 @@ function createTarget(name: string, mode: ShadowRootMode): ShadowTarget {
   const mountPoint = document.createElement('div');
   mountPoint.setAttribute(SCOPE_MOUNT_ATTR, name);
   shadow.appendChild(mountPoint);
-  return { name, host, shadow, mountPoint };
+  return { name, host, shadow, mountPoint, modulePaths: new Set<string>() };
 }
 
 /**

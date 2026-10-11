@@ -202,7 +202,7 @@ async function loadRuntime(name, localLoader) {
 - `onMounted` → `loadApp(appName)` → 调 `mod.mount(el, {...attrs})`；
 - 订阅 `REMOTE_UPDATE` → `unmount` 旧实例 + 重新 `mount`（入口/expose 变化时）；
 - `onUnmounted` → 退订 + `unmount`；
-- 渲染 `<div ref="el">`，宿主用 `data-linkjs-scope` 包裹容器做 CSS 隔离。
+- 渲染 `<div ref="el">`；传入 `{ shadow: true }` 时在容器上创建 ShadowRoot，CSS 隔离走运行期 Shadow 方案（`packages/linkjs/src/sandbox/shadow.ts`）。
 
 ### 5.5 组件加载顺序（无需特殊处理）
 
@@ -256,10 +256,10 @@ const instance = createInstance({
 ```vue
 <script setup lang="ts">
 import { createRemoteApp } from 'linkjs/vue';
-const RemoteApp = createRemoteApp('remote');
+const RemoteApp = createRemoteApp('remote', { shadow: true });
 </script>
 <template>
-  <div data-linkjs-scope="remote"><RemoteApp msg="I am remote app" /></div>
+  <RemoteApp msg="I am remote app" />
 </template>
 ```
 
@@ -273,20 +273,13 @@ const Comp = useRemoteModule('remote/HelloWorld');
 
 ### 6.3 开发提示：改了 unplugin 源码如何生效
 
-默认情况 vite.config 通过包名解析 `unplugin-linkjs` 会命中 `dist`，因此**改源码不生效**（需重建 dist + 重启 dev server）。
+demo 通过**包名** `unplugin-linkjs` 解析（exports 指向 `dist`），因此改源码后需重建再重启 dev server：
 
-demo 采用**直接引用源码**规避：
-
-```ts
-// demos/remote/vite.config.ts
-import { unpluginLinkjs, unpluginLinkjsRollowPlugin, createCssScopePlugin } from '../../packages/unplugin-linkjs/src/index.ts';
+```bash
+pnpm --filter unplugin-linkjs build
 ```
 
-这样 Vite 会监听 unplugin 源码，改动即自动重启 dev server（日志：`... changed, restarting server...`）。
-
-配套：`packages/unplugin-linkjs` 加 `"type": "module"`，源码内相对导入统一带 `.js` 扩展名（同时消除 Vite 未来 `configLoader: native` 的前向兼容告警）。
-
-> 也可不改相对路径，改为 `tsdown --watch` 重建 dist + 手动重启；但不会像上面那样自动重启。
+> 早期曾用相对路径直接引源码 + `development` 导出条件；现已统一为包依赖，避免 `dist`/`src` 漂移导致「改了不生效」或「构建产物与源码不一致」。
 
 ---
 
@@ -312,7 +305,8 @@ import { unpluginLinkjs, unpluginLinkjsRollowPlugin, createCssScopePlugin } from
 - `src/event-bus/constant.ts`：`REMOTE_UPDATE`
 - `src/hmr/index.ts`：索引、shim、订阅
 - `src/runtime/index.ts`：`loadRuntime` / `resetRuntimeCache`
-- `src/vue.ts`：`useRemoteModule` / `createRemoteApp`
+- `src/vue.ts`：`useRemoteModule` / `createRemoteApp` / `LinkjsShadowRoot`
+- `src/sandbox/shadow.ts`：`createShadowIsolation` / `ensureShadowTarget`（Shadow DOM 样式隔离）
 - `src/loader/index.ts`：`ensureRemoteUpdates`、`subscribeRemoteUpdate` 导出、`unloadRemote` 清理
 - `src/loader/app.ts`：按需安装 shim
 - `src/state/instance.ts`：`mode`、`loadRuntime` 挂载到实例与 `$linkjs`

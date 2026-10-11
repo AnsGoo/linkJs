@@ -32,8 +32,8 @@
     }
   },
   "scripts": {
-    "build": "tsdown",
-    "dev": "tsdown --watch",
+    "build": "pnpm --filter unplugin-linkjs --filter tsdown-plugin-server --filter linkjs build && tsdown",
+    "dev": "pnpm --filter unplugin-linkjs --filter tsdown-plugin-server --filter linkjs build && tsdown --watch",
     "play": "vite",
     "test": "vitest",
     "typecheck": "vue-tsc --noEmit",

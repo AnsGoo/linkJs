@@ -281,14 +281,14 @@ setup() {
     mod.mount(el.value!, attrsSnapshot)
   })
   onUnmounted(() => mod?.unmount())
-  return () => h('div', { ref: el, 'data-linkjs-scope': appScope })
+  return () => h('div', { ref: el })
 }
 ```
 
 宿主模板里直接：
 
 ```html
-<div data-linkjs-scope="remote"><RemoteApp /></div>
+<RemoteApp :shadow="true" />
 ```
 
 ### 7.5 HMR 流（路线 B）
@@ -306,7 +306,7 @@ setup() {
 
 ### 7.7 CSS 与跨 runtime 通信
 
-- CSS 继续用 `data-linkjs-scope` 包裹；路线 B 下可进一步选配 Shadow DOM 提升隔离性。
+- CSS 隔离统一用 Shadow DOM：远程应用 `createRemoteApp(entry, { shadow: true })`，远程库组件 `LinkjsShadowRoot` + `loadLib(entry, { shadow: true })`。
 - 宿主 → 子应用：初始 props 由 `mount` 快照传入；动态更新用 `update(props)` 或事件。
 - 子应用 → 宿主：linkjs 事件总线 / 回调 props。
 
