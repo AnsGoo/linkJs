@@ -1,5 +1,5 @@
 import { createHash } from 'crypto';
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'fs';
+import { mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from 'fs';
 import { basename, dirname, resolve } from 'path';
 import type { ConsumeTypesAuth, ConsumeTypesOptions, ManifestJson, RemoteTypeTarget } from './types.js';
 
@@ -140,10 +140,10 @@ function renderRemoteTypeDeclarations(infos: RemoteTypeInfo[]): string {
     lines.push('');
   }
 
-  lines.push(`declare module 'linkjs' {`);
-  lines.push('  interface LinkjsRemoteTypes {');
+  // 全局接口合并（linkjs 以 `declare global` 声明同名接口），避免用 ambient
+  // `declare module 'linkjs'` 遮蔽其真实导出。
+  lines.push('interface LinkjsRemoteTypes {');
   lines.push(...mapLines);
-  lines.push('  }');
   lines.push('}');
   return `${lines.join('\n')}\n`;
 }
@@ -203,21 +203,28 @@ async function fetchRemoteType(
 
 /** 校验（best-effort）宿主 tsconfig 是否纳入了聚合声明，未纳入则 warn。 */
 function checkTsconfigInclude(projectRoot: string, warn: (msg: string) => void): void {
-  const tsconfigPath = resolve(projectRoot, 'tsconfig.json');
-  if (!existsSync(tsconfigPath)) {
+  let candidates: string[];
+  try {
+    candidates = readdirSync(projectRoot).filter((file) => /^tsconfig.*\.json$/.test(file));
+  } catch {
     return;
   }
-  try {
-    const raw = readFileSync(tsconfigPath, 'utf-8');
-    if (!raw.includes('.linkjs')) {
-      warn(
-        `[linkjs] consumeTypes: 生成的 "${DEFAULT_OUT_DIR}/${DEFAULT_DTS_FILE}" 未被 tsconfig 纳入，` +
-          `请在 tsconfig 的 "include"/"files" 或源码中通过 /// <reference path> 引用它。`,
-      );
-    }
-  } catch {
-    /* ignore */
+  if (candidates.length === 0) {
+    return;
   }
+  for (const file of candidates) {
+    try {
+      if (readFileSync(resolve(projectRoot, file), 'utf-8').includes('.linkjs')) {
+        return;
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  warn(
+    `[linkjs] consumeTypes: 生成的 "${DEFAULT_OUT_DIR}/${DEFAULT_DTS_FILE}" 未被 tsconfig 纳入，` +
+      `请在 tsconfig 的 "include"/"files" 或源码中通过 /// <reference path> 引用它。`,
+  );
 }
 
 /**

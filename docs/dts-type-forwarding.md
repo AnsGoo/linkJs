@@ -58,8 +58,8 @@
 │  产物： node_modules/.linkjs/<remote>/<hash>.d.ts            │
 │         node_modules/.linkjs/linkjs-remotes.d.ts (聚合声明)   │
 │                                                             │
-│  聚合声明增强： declare module 'linkjs' { interface          │
-│                 LinkjsRemoteTypes { 'remote/Expose': ... } } │
+│  聚合声明增强（全局接口合并）：                               │
+│                 interface LinkjsRemoteTypes { ... }          │
 └─────────────────────────────────────────────────────────────┘
               │ tsserver watch
               ▼
@@ -179,11 +179,11 @@ interface RemoteTypeTarget {
 declare module 'remoteApp' { export * from './remoteApp/lib'; }
 declare module 'remoteApp/HelloWorld' { export * from './remoteApp/lib'; }
 
-declare module 'linkjs' {
-  interface LinkjsRemoteTypes {
-    'remoteApp': typeof import('remoteApp');
-    'remoteApp/HelloWorld': typeof import('remoteApp')['HelloWorld'];
-  }
+// 全局接口合并（linkjs 以 `declare global` 声明同名接口）；
+// 不用 `declare module 'linkjs'`，避免 ambient 声明遮蔽其真实导出。
+interface LinkjsRemoteTypes {
+  'remoteApp': typeof import('remoteApp');
+  'remoteApp/HelloWorld': typeof import('remoteApp')['HelloWorld'];
 }
 ```
 
@@ -216,8 +216,10 @@ declare module 'linkjs' {
 ## 7. linkjs 类型 API（运行时零改动）
 
 ```ts
-// index.ts（入口模块）声明，供 augmentation 合并
-export interface LinkjsRemoteTypes {}
+// index.ts（入口模块）声明：全局接口，供 consumeTypes 生成声明做全局合并
+declare global {
+  interface LinkjsRemoteTypes {}
+}
 
 // 三个 API 增加字符串重载；注册表为空时自动回落原签名
 function getRemote<K extends keyof LinkjsRemoteTypes & string>(entry: K): LinkjsRemoteTypes[K] | null;

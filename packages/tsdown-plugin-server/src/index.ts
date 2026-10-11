@@ -37,6 +37,11 @@ interface TsdownServeOptions {
   host?: string;
   verbose?: boolean;
   open?: boolean;
+  /**
+   * manifest 路径（相对 contentBase），用于生产 `types-changed` 事件时读取当前指针。
+   * 默认 `/manifest.json`；产物在 `mf/` 下时设为 `/mf/manifest.json`。
+   */
+  manifestPath?: string;
 }
 
 /**
@@ -58,6 +63,7 @@ function serve(options: TsdownServeOptions | string | string[] = { contentBase: 
   const verbose: boolean = options.verbose !== false;
   const open: boolean = options.open || false;
   const historyApiFallback: boolean | string | undefined = options.historyApiFallback;
+  const manifestPath: string = options.manifestPath || '/manifest.json';
 
   if (options.mimeTypes) {
     // Convert mimeTypes to the correct format for mime.define
@@ -86,8 +92,8 @@ function serve(options: TsdownServeOptions | string | string[] = { contentBase: 
       return;
     }
     // manifest 指针：dev 模式下覆写 `mode`（供 host 建立长连接）。
-    if (urlPath === '/manifest.json' || urlPath === '/__linkjs/manifest.json') {
-      handleManifest(contentBase, response);
+    if (urlPath === '/__linkjs/manifest.json' || urlPath.endsWith('manifest.json')) {
+      handleManifest(contentBase, urlPath, response, manifestPath);
       return;
     }
 
@@ -198,7 +204,7 @@ function serve(options: TsdownServeOptions | string | string[] = { contentBase: 
       }
 
       // 每次构建完成广播类型变更（延迟到 unplugin writeBundle 写完 manifest 之后）。
-      setTimeout(() => broadcastManifestChange(contentBase), 50);
+      setTimeout(() => broadcastManifestChange(contentBase, manifestPath), 50);
     },
   };
 }
@@ -219,12 +225,9 @@ function handleSse(request: IncomingMessage, response: ServerResponse) {
 }
 
 /** 覆写 manifest 的 `mode` 为 development，供 host 建立类型变更长连接。 */
-function handleManifest(contentBase: string[], response: ServerResponse) {
-  readFileFromContentBase(contentBase, '/manifest.json', (error, content, filePath) => {
-    if (error || !content) {
-      notFound(response, filePath);
-      return;
-    }
+function handleManifest(contentBase: string[], urlPath: string, response: ServerResponse, manifestPath: string) {
+  const target = urlPath === '/__linkjs/manifest.json' ? manifestPath : urlPath;
+  const respond = (content: Buffer) => {
     try {
       const manifest = JSON.parse(content.toString());
       manifest.mode = 'development';
@@ -236,12 +239,31 @@ function handleManifest(contentBase: string[], response: ServerResponse) {
     } catch {
       found(response, 'application/json', content);
     }
+  };
+
+  readFileFromContentBase(contentBase, target, (error, content, filePath) => {
+    if (!error && content) {
+      respond(content);
+      return;
+    }
+    // 回退到配置的 manifestPath（例如请求 `/manifest.json` 但产物在 `/mf/` 下）。
+    if (target !== manifestPath) {
+      readFileFromContentBase(contentBase, manifestPath, (fallbackError, fallbackContent, fallbackPath) => {
+        if (fallbackError || !fallbackContent) {
+          notFound(response, fallbackPath);
+          return;
+        }
+        respond(fallbackContent);
+      });
+      return;
+    }
+    notFound(response, filePath);
   });
 }
 
 /** 读取当前 manifest，广播 `types-changed`（含 name/version/typesHash 供 host 去重）。 */
-function broadcastManifestChange(contentBase: string[]) {
-  readFileFromContentBase(contentBase, '/manifest.json', (error, content) => {
+function broadcastManifestChange(contentBase: string[], manifestPath: string) {
+  readFileFromContentBase(contentBase, manifestPath, (error, content) => {
     if (error || !content) {
       broadcast('types-changed', {});
       return;

@@ -4,7 +4,12 @@ import { resolve } from 'path';
 import { defineConfig } from 'tsdown';
 import VuePlugin from 'unplugin-vue/rolldown';
 import { unpluginLinkjsRollowPlugin } from 'unplugin-linkjs';
+import tsdownPluginServer from 'tsdown-plugin-server';
 import * as Vue from 'vue';
+
+// 仅在 `tsdown --watch`（即 `pnpm build:lib -- --watch`）时启动静态服务：
+// 普通 `pnpm build:lib` 不应因长期驻留的 HTTP server 而卡住。
+const isWatch = process.argv.includes('--watch');
 
 /**
  * 临时 workaround：当前 tsdown/rolldown-plugin-dts 处理 Vue SFC 声明时会把 vue 类型
@@ -82,8 +87,14 @@ export default defineConfig({
     }),
     // 修正 Vue SFC 声明中的悬空 `_$vue` 命名空间（见上方说明）
     fixVueDtsPlugin(),
-    // tsdownPluginServer({
-    //   port: 4001,
-    // }),
+    // watch 时把 mf/ 产物以静态服务暴露在 4002，供宿主 consumeTypes 拉取类型 + 订阅事件
+    ...(isWatch
+      ? [
+          tsdownPluginServer({
+            port: 4002,
+            manifestPath: '/mf/manifest.json',
+          }),
+        ]
+      : []),
   ],
 });

@@ -4,7 +4,7 @@ import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import vueJsx from '@vitejs/plugin-vue-jsx';
 import vueDevTools from 'vite-plugin-vue-devtools';
-import { linkjsSharedVersions } from 'unplugin-linkjs';
+import { linkjsSharedVersions, unpluginLinkjs } from 'unplugin-linkjs';
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
@@ -20,6 +20,12 @@ export default defineConfig({
     vueDevTools(),
     // 注入已安装的共享依赖版本（globalThis.__LINKJS_SHARED_VERSIONS__），运行时自动补齐
     linkjsSharedVersions(),
+    // 拉取远端类型并生成 declare module '<remote>/<Expose>'（dev 模式订阅 SSE 热更新）
+    unpluginLinkjs.vite({
+      consumeTypes: {
+        remotes: [{ name: 'remoteApp', manifestUrl: 'http://localhost:4002/mf/manifest.json' }],
+      },
+    }),
   ],
   resolve: {
     alias: {

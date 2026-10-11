@@ -37,22 +37,22 @@ import {
   type DevtoolsOptions,
 } from './devtools';
 
-/**
- * 远程模块类型注册表。
- *
- * 由 `unplugin-linkjs` 的 `consumeTypes` 生成的声明文件增强（module augmentation）：
- *
- * ```ts
- * declare module 'linkjs' {
- *   interface LinkjsRemoteTypes {
- *     'remoteApp/HelloWorld': typeof import('remoteApp')['HelloWorld'];
- *   }
- * }
- * ```
- *
- * 未接入时为空接口，`getRemote/loadLib/loadRemote` 自动回落到通用泛型签名。
- */
-export interface LinkjsRemoteTypes {}
+declare global {
+  /**
+   * 远程模块类型注册表。
+   *
+   * 由 `unplugin-linkjs` 的 `consumeTypes` 生成声明文件，通过**全局接口合并**增强：
+   *
+   * ```ts
+   * interface LinkjsRemoteTypes {
+   *   'remoteApp/HelloWorld': typeof import('remoteApp')['HelloWorld'];
+   * }
+   * ```
+   *
+   * 未接入时为空接口，`getRemote/loadLib/loadRemote` 自动回落到通用泛型签名。
+   */
+  interface LinkjsRemoteTypes {}
+}
 
 function getInstance() {
   return linkInstance;

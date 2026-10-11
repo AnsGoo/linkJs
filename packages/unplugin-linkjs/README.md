@@ -179,10 +179,9 @@ Generated (`node_modules/.linkjs/linkjs-remotes.d.ts`):
 
 ```ts
 declare module 'remoteApp/HelloWorld' { export * from './remoteApp/<hash>-lib'; }
-declare module 'linkjs' {
-  interface LinkjsRemoteTypes {
-    'remoteApp/HelloWorld': typeof import('remoteApp')['HelloWorld'];
-  }
+
+interface LinkjsRemoteTypes {
+  'remoteApp/HelloWorld': typeof import('remoteApp')['HelloWorld'];
 }
 ```
 
