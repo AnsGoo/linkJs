@@ -23,7 +23,7 @@ import { getSnapshot, getDiagnostics, onDiagnostic, getLoadMetrics, getPerfEntri
 ```
 LinkjsSnapshot
 ├─ instance: { id, name, version, mode, shareStrategy }   // id 用于多实例区分
-├─ remotes: { name, type, status, host, entry, version, shareScope }[]
+├─ remotes: { name, displayName, type, status, host, entry, version, shareScope }[]   // displayName = manifest name
 ├─ shares: { scope, name, versions: { version, loaded, requiredVersion, strictVersion, eager }[] }[]
 ├─ conflicts: { scope, name, requiredVersion, provided[] }[]   // 谁需要 X / 谁提供 Y
 ├─ plugins: string[]                         // 已注册插件名
@@ -68,7 +68,7 @@ __LINKJS__.clearCache('remote');
 
 ## 6. 性能标记（Perf）
 
-用 `performance.mark/measure` 记录，`getPerfEntries()` 读取（无 `performance` 时降级为空操作）。
+用 `performance.mark/measure` 记录，`getPerfEntries()` 读取（无 `performance` 时降级为空操作）。每条含 `label`（人类可读，**用远程 manifest 名**）与 `name`（技术名）。
 
 | 阶段名 | 含义 |
 | --- | --- |

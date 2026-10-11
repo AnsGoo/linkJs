@@ -22,6 +22,8 @@ export interface RemoteBase {
   name: string;
   entry: string | RemoteEntry;
   host?: string;
+  /** 展示名（来自远程 manifest 的 `name`），缺省回退 `name`。 */
+  displayName?: string;
   type?: 'app' | 'lib';
   shared?: Record<string, Omit<ShareInfo, 'name' | 'lib' | 'status'>>;
   /** 该远程关联的共享作用域（可多个，默认 `global`）。 */

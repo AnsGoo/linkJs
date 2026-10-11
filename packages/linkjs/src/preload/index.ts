@@ -104,6 +104,14 @@ async function preloadRemote(options: PreloadRemoteOptions): Promise<RemoteManif
   }
   const manifest = (await response.json()) as RemoteManifest;
 
+  // 记录 manifest 里的包名作为展示名。
+  if (options.name && typeof manifest.name === 'string' && manifest.name) {
+    const info = getRemoteInfo(options.name) as { displayName?: string } | undefined;
+    if (info) {
+      info.displayName = manifest.name;
+    }
+  }
+
   const sync = new Set<string>();
   const async = new Set<string>();
   const collect = (asset: ManifestAsset | undefined, includeAsync: boolean) => {

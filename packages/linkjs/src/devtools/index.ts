@@ -23,6 +23,8 @@ export interface Diagnostic {
 
 export interface RemoteSnapshot {
   name: string;
+  /** 展示名（远程 manifest 的 `name`）。 */
+  displayName?: string;
   type?: string;
   status?: string;
   host?: string;
@@ -141,6 +143,7 @@ function buildSnapshot(instance: any): LinkjsSnapshot {
   instance.remotes?.forEach((remote: any) => {
     remotes.push({
       name: remote.name,
+      displayName: remote.displayName,
       type: remote.type,
       status: remote.status,
       host: remote.host,

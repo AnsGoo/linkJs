@@ -92,7 +92,14 @@ function renderSnapshot(snapshot: LinkjsSnapshot, filter: string, onCopy: () => 
   const match = (text: string) => !q || text.toLowerCase().includes(q);
   const show = (key: string) => !q || key.toLowerCase().includes(q);
 
-  const remotes = snapshot.remotes.filter((remote) => match(`${remote.name} ${remote.type ?? ''} ${remote.status ?? ''} ${remote.host ?? ''}`));
+  // 注册名 -> 远程 manifest 包名（展示名）
+  const displayByApp = new Map(snapshot.remotes.map((remote) => [remote.name, remote.displayName || remote.name]));
+  const prettyEntry = (entry: string) => {
+    const [app, ...rest] = entry.split('/');
+    return [displayByApp.get(app) || app, ...rest].join('/');
+  };
+
+  const remotes = snapshot.remotes.filter((remote) => match(`${remote.name} ${remote.displayName ?? ''} ${remote.type ?? ''} ${remote.status ?? ''} ${remote.host ?? ''}`));
   const shareRows = snapshot.shares.flatMap((share) =>
     share.versions
       .filter((v) => match(`${share.name} ${share.scope} ${v.version}`))
@@ -134,7 +141,9 @@ function renderSnapshot(snapshot: LinkjsSnapshot, filter: string, onCopy: () => 
       ) : (
         remotes.map((remote) => (
           <div key={remote.name} class="row">
-            <span class="k">{`${remote.name}${remote.type ? ` (${remote.type})` : ''}`}</span>
+            <span class="k" title={`${remote.name}${remote.host ? ` @${remote.host}` : ''}`}>
+              {`${remote.displayName || remote.name}${remote.displayName && remote.displayName !== remote.name ? ` (${remote.name})` : ''}${remote.type ? ` · ${remote.type}` : ''}`}
+            </span>
             <span class={`pill ${remote.status === 'loaded' ? 'loaded' : ''}`}>{remote.status || '-'}</span>
           </div>
         ))
@@ -176,7 +185,7 @@ function renderSnapshot(snapshot: LinkjsSnapshot, filter: string, onCopy: () => 
         metrics.map((metric, index) => (
           <div key={`${metric.entry}:${metric.time}:${index}`} class="row">
             <span class="k" title={`${metric.entry}${metric.host ? ` @${metric.host}` : ''}`}>
-              {`加载${kindLabel(metric.kind)}「${metric.entry}」`}
+              {`加载${kindLabel(metric.kind)}「${prettyEntry(metric.entry)}」`}
             </span>
             <span class={`pill ${metric.status === 'error' ? 'error' : 'loaded'}`}>{ms(metric.durationMs)}</span>
           </div>
