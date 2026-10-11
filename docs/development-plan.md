@@ -218,6 +218,14 @@
 
 ---
 
+## P17 Fallback 降级运行时插件
+
+- [x] `fallbackPlugin({ fallback, defaultFallback, onError })`：加载失败时 **resolve 兜底值/占位** 而非 reject，容器优雅降级。
+- [x] 与 `retryPlugin` 组合（顺序 `[retry, fallback]`）：先多源重试、全部失败再降级；内置目录加入 `linkjs-fallback`。
+- 测试：`packages/linkjs/tests/fallback.test.ts`（5 用例）；demo 注册两个插件，DevTools 显示 `插件 (2/2)`。
+
+---
+
 ## 执行记录（本轮）
 
 | 阶段 | 状态 | 说明 |

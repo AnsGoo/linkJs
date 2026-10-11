@@ -173,6 +173,8 @@ export { registerPlugin, getPlugins } from './plugins';
 export type { RuntimePlugin } from './plugins';
 export { retryPlugin } from './plugins/retry';
 export type { RetryPluginOptions } from './plugins/retry';
+export { fallbackPlugin } from './plugins/fallback';
+export type { FallbackPluginOptions } from './plugins/fallback';
 export { availablePlugins } from './plugins/catalog';
 export type { AvailablePlugin } from './plugins/catalog';
 export type { EventBus, EventHandler, LinkjsEvents } from './event-bus';

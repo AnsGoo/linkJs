@@ -12,5 +12,6 @@ export interface AvailablePlugin {
 }
 
 export const availablePlugins: AvailablePlugin[] = [
-  { name: 'linkjs-retry', description: '远程加载失败时按候补 host 重试 / 降级' },
+  { name: 'linkjs-retry', description: '远程加载失败时按候补 host 重试 / 降级域名' },
+  { name: 'linkjs-fallback', description: '远程加载失败时使用兜底模块 / 占位，优雅降级' },
 ];
