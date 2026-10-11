@@ -43,7 +43,12 @@ function getSnapshot() {
 }
 
 // 安装 DevTools 便于排查（全局 __LINKJS__ 与 $linkjs.debug）。
-installDevtools(linkInstance);
+installDevtools(linkInstance, {
+  clearCache: clearRemoteCache,
+  unload: unloadRemote,
+  load: (entry, options) => loadRemote(entry, options as LoadAppOptions & LoadLibOptions),
+  preload: preloadRemote as (options: unknown) => Promise<unknown>,
+});
 
 // 运行时加载方法挂到实例，便于插件（如 retry）通过 `apply(instance)` 包装/扩展。
 // 用惰性设置，避免循环导入期 linkInstance 尚未就绪。
@@ -185,7 +190,9 @@ export { availablePlugins } from './plugins/catalog';
 export type { AvailablePlugin } from './plugins/catalog';
 export type { EventBus, EventHandler, LinkjsEvents } from './event-bus';
 export type { PreloadRemoteOptions, RemoteManifest, ManifestAsset } from './preload';
-export type { Diagnostic, LinkjsSnapshot, RemoteSnapshot, ShareSnapshot, ShareVersionSnapshot, PluginSnapshot, DevtoolsOptions } from './devtools';
+export type { Diagnostic, LinkjsSnapshot, RemoteSnapshot, ShareSnapshot, ShareVersionSnapshot, ShareConflict, PluginSnapshot, DevtoolsOptions, DevtoolsOps } from './devtools';
+export { getPerfEntries, clearPerfEntries } from './perf';
+export type { PerfEntry } from './perf';
 
 export {
   captureSnapshot,

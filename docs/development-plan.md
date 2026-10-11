@@ -261,6 +261,18 @@
 
 ---
 
+## P22 可观测 / DevTools 增强（backlog C 组）
+
+- [x] **C1** 面板：指标（logger 加载耗时/成功失败）+ 性能（各阶段，含**共享依赖加载**）+ 诊断即错误时间线。
+- [x] **C2** 共享冲突面板：`buildSnapshot.conflicts` 展示「谁需要 X / 谁提供 Y」。
+- [x] **C3** 面板：复制 JSON、文本过滤、拖拽调整宽度、`instance.id` 多实例区分、快捷键。
+- [x] **C4** `__LINKJS__` 操作入口（`load/preload/clearCache/unload/remotes/shares/conflicts/metrics/perf`）+ Chrome DevTools 扩展脚手架（`tools/devtools-extension/`）。
+- [x] **C5** 性能标记 `performance.mark/measure`：`fetch` / `scripts` / `total` / **`share`**。
+- [x] 修复：观测数据（diagnostics/metrics/perf）改用 `globalThis` 桶存储，避免打包拆分导致读/写分属不同副本。
+- 测试：`tests/perf.test.ts`、`tests/devtools.test.ts`（冲突/指标/perf/id）。
+
+---
+
 ## 执行记录（本轮）
 
 | 阶段 | 状态 | 说明 |

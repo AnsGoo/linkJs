@@ -48,6 +48,17 @@ test('buildSnapshot marks registered plugins as enabled', () => {
   expect(snapshot.availablePlugins.find((p) => p.name === 'linkjs-retry')?.enabled).toBe(true);
 });
 
+test('buildSnapshot detects share version conflicts and exposes metrics/perf/id', () => {
+  registerShare({ 'vue-router': { name: 'vue-router', version: '5.4.0', requiredVersion: '^6.0.0', lib: {} } });
+
+  const snapshot = buildSnapshot(linkInstance);
+  const conflict = snapshot.conflicts.find((c) => c.name === 'vue-router');
+  expect(conflict).toMatchObject({ requiredVersion: '^6.0.0', provided: ['5.4.0'] });
+  expect(Array.isArray(snapshot.metrics)).toBe(true);
+  expect(Array.isArray(snapshot.perf)).toBe(true);
+  expect(snapshot.instance.id).toMatch(/^linkjs-/);
+});
+
 test('recordDiagnostic stores, prints, and notifies subscribers', () => {
   const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
   const seen: { code: string }[] = [];

@@ -2,6 +2,7 @@ import type Module from 'module';
 import { getInstance } from '..';
 import type { ShareOption } from '../state/instance';
 import { recordDiagnostic } from '../devtools';
+import { startPhase } from '../perf';
 import { VersionComparator } from './version-comparator';
 
 export type { ShareOption };
@@ -127,6 +128,8 @@ function loadAndCacheModule(
     return running;
   }
 
+  // 统计共享依赖实际加载耗时（缓存命中/并发复用时不计）。
+  const endPhase = startPhase(`linkjs:share:${name}`);
   const promise = loadModule(shareInfo)
     .then((mod) => {
       loadedModules.set(versionKey, mod);
@@ -134,6 +137,7 @@ function loadAndCacheModule(
     })
     .finally(() => {
       inflight.delete(inflightKey);
+      endPhase();
     });
 
   inflight.set(inflightKey, promise);

@@ -26,16 +26,21 @@ export interface LoggerPluginOptions {
 }
 
 const MAX_METRICS = 200;
-const metrics: LoadMetric[] = [];
+
+// 用 global 兜底存储：避免模块重复实例化导致读取端拿不到写入端的数据。
+function metricsStore(): LoadMetric[] {
+  const g = globalThis as { __linkjs_load_metrics__?: LoadMetric[] };
+  return (g.__linkjs_load_metrics__ ??= []);
+}
 
 /** 读取已收集的加载指标。 */
 function getLoadMetrics(): LoadMetric[] {
-  return [...metrics];
+  return [...metricsStore()];
 }
 
 /** 清空加载指标。 */
 function clearLoadMetrics(): void {
-  metrics.length = 0;
+  metricsStore().length = 0;
 }
 
 function format(event: LogEvent, prefix: string): string {
@@ -46,7 +51,8 @@ function format(event: LogEvent, prefix: string): string {
     return `${prefix} ${mark} load "${event.entry}"${host} (${event.kind}) ${event.durationMs}ms${err}`;
   }
   if (event.type === 'share') {
-    return `${prefix} ⇄ share "${event.name}"`;
+    const ms = event.durationMs != null ? ` ${Math.round(event.durationMs)}ms` : '';
+    return `${prefix} ⇄ share "${event.name}"${ms}`;
   }
   return `${prefix} ⇩ preload ${event.assets} asset(s)`;
 }
@@ -88,9 +94,10 @@ export function loggerPlugin(options: LoggerPluginOptions = {}): RuntimePlugin {
           time: Date.now(),
         };
         if (collect) {
-          metrics.push(metric);
-          if (metrics.length > MAX_METRICS) {
-            metrics.splice(0, metrics.length - MAX_METRICS);
+          const store = metricsStore();
+          store.push(metric);
+          if (store.length > MAX_METRICS) {
+            store.splice(0, store.length - MAX_METRICS);
           }
         }
         emit({ type: 'load', ...metric });
@@ -106,9 +113,10 @@ export function loggerPlugin(options: LoggerPluginOptions = {}): RuntimePlugin {
           time: Date.now(),
         };
         if (collect) {
-          metrics.push(metric);
-          if (metrics.length > MAX_METRICS) {
-            metrics.splice(0, metrics.length - MAX_METRICS);
+          const store = metricsStore();
+          store.push(metric);
+          if (store.length > MAX_METRICS) {
+            store.splice(0, store.length - MAX_METRICS);
           }
         }
         emit({ type: 'load', entry, kind, host: metric.host, durationMs: metric.durationMs, status: 'error', error });
@@ -125,8 +133,8 @@ export function loggerPlugin(options: LoggerPluginOptions = {}): RuntimePlugin {
       host.loadLib = wrap(host.loadLib, 'lib');
       host.loadRemote = wrap(host.loadRemote, 'remote');
     },
-    afterLoadShare(name) {
-      emit({ type: 'share', name });
+    afterLoadShare(name, _module, durationMs) {
+      emit({ type: 'share', name, durationMs });
     },
     afterPreloadRemote(_manifest, assets) {
       emit({ type: 'preload', assets: assets.length });

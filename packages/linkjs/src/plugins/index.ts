@@ -34,7 +34,7 @@ export interface RuntimePlugin {
 
   /** 单个共享依赖加载前后。 */
   beforeLoadShare?(name: string): void | Promise<void>;
-  afterLoadShare?(name: string, module: unknown): void | Promise<void>;
+  afterLoadShare?(name: string, module: unknown, durationMs?: number): void | Promise<void>;
 
   /** 入口（脚本/入口模块）加载前后。 */
   beforeLoadEntry?(remoteInfo: RegistryOption): void | Promise<void>;

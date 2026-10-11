@@ -5,6 +5,7 @@ import { installVueHmrRuntimeShim } from '../hmr';
 import { beginStyleCapture, endStyleCapture, ensureShadowTarget } from '../sandbox/shadow';
 import { runBeforeLoadRemote, runHook } from '../plugins';
 import { recordDiagnostic } from '../devtools';
+import { startPhase } from '../perf';
 import { loadCss, loadScript, preloadModule, rewriteRequestUrl, useGetRemote, useHandleExpose, type ExtOption, type LoadScriptOptions } from './utils';
 
 export interface LoadAppOptions {
@@ -77,6 +78,7 @@ async function loadApp<Module>(
   const remoteInfo = (await runBeforeLoadRemote({ ...(linkInstance.remotes.get(appName) as any) })) as any;
   await runHook('afterResolve', remoteInfo);
   await runHook('beforeLoadContainer', remoteInfo);
+  const endTotal = startPhase(`linkjs:remote:${appName}`);
 
   const host = options?.host || remoteInfo?.host || `${location.protocol}//${location.host}`;
   const entryPath = options?.entry || remoteInfo?.entry?.html || '';
@@ -100,15 +102,25 @@ async function loadApp<Module>(
     Object.keys(preload).flatMap((libName) =>
       shareScopes.map(async (shareScope) => {
         await runHook('beforeLoadShare', libName);
+        const start = Date.now();
         const mod = await loadShare(libName, shareScope ? { scope: shareScope } : undefined).catch(() => null);
-        await runHook('afterLoadShare', libName, mod);
+        await runHook('afterLoadShare', libName, mod, Date.now() - start);
       }),
     ),
   );
 
-  const html = await fetchHtml(rewriteRequestUrl(htmlUrl, appName), retries, options?.signal);
+  const html = await (async () => {
+    const endFetch = startPhase(`linkjs:remote:${appName}:fetch`);
+    try {
+      return await fetchHtml(rewriteRequestUrl(htmlUrl, appName), retries, options?.signal);
+    } finally {
+      endFetch();
+    }
+  })();
 
   await runHook('beforeLoadEntry', remoteInfo);
+
+  const endScripts = startPhase(`linkjs:remote:${appName}:scripts`);
 
   return new Promise<Module | null>((resolve, reject) => {
     const handleLibExpose = useHandleExpose(remoteCache, resolve, appName, extOption);
@@ -175,6 +187,7 @@ async function loadApp<Module>(
 
     Promise.all(scriptPromises)
       .then(async () => {
+        endScripts();
         await runHook('afterLoadEntry', remoteInfo);
         // 脚本加载完成，等待子模块触发 LIB_EXPOSE 事件
         extOption.timeoutId = setTimeout(() => {
@@ -191,6 +204,7 @@ async function loadApp<Module>(
       if (options?.shadow) {
         endStyleCapture();
       }
+      endTotal();
       void runHook('afterLoadContainer', remoteInfo, result);
       void runHook('onLoad', { appName, remoteInfo, module: result });
       void runHook('afterLoadRemote', remoteInfo, result);
@@ -200,6 +214,7 @@ async function loadApp<Module>(
       if (options?.shadow) {
         endStyleCapture();
       }
+      endTotal();
       recordDiagnostic({
         level: 'error',
         code: 'LOAD_REMOTE_ERROR',

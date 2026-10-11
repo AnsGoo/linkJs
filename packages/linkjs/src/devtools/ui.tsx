@@ -5,12 +5,11 @@
  * 页内 DevTools 侧边栏（Vue TSX 实现，仅开发模式挂载）。
  *
  * 默认收起为**右侧一条竖排 "LinkJS" 标签**（面板未展开）：
- * - 点击标签展开完整面板（远程应用 / 共享依赖 / 插件 / 诊断），并给 `body` 加右侧内边距把内容推开（不悬浮覆盖）；
- * - 点击「收起」或快捷键 `Alt/Option + Shift + L` 可折叠；
+ * - 点击展开完整面板（远程应用 / 共享依赖 / 共享冲突 / 插件 / 指标 / 性能 / 诊断），并给 `body` 加同侧内边距把内容推开（不悬浮覆盖）；
+ * - 支持：按文本过滤、复制 JSON、拖拽调整宽度、快捷键 `Alt/Option + Shift + L` 折叠/展开；
  * - 有 error 诊断时标签显示红点。
  *
- * 样式通过 Shadow DOM 隔离；核心运行时只在开发模式动态 `import()` 本模块，且 `vue` 为
- * 外部依赖，非 Vue 宿主加载失败会静默降级，生产构建不加载。
+ * 样式通过 Shadow DOM 隔离；核心运行时只在开发模式动态 `import()` 本模块，且 `vue` 为外部依赖。
  */
 
 import { computed, createApp, defineComponent, onMounted, onUnmounted, ref, watch, type App, type PropType, type VNode } from 'vue';
@@ -23,18 +22,18 @@ export interface DevtoolsUIOptions {
 }
 
 const STORAGE_KEY = '__linkjs_devtools_open__';
+const WIDTH_KEY = '__linkjs_devtools_width__';
 const HOST_ID = '__linkjs_devtools__';
-const WIDTH = 384;
+const DEFAULT_WIDTH = 384;
 
 const CSS = `
 :host { all: initial; }
 .host { position: fixed; inset: 0; pointer-events: none; z-index: 2147483000;
   font: 12px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
 .host, .host * { box-sizing: border-box; }
-.sidebar { position: absolute; top: 0; bottom: 0; width: ${WIDTH}px; display: flex;
+.sidebar { position: absolute; top: 0; bottom: 0; display: flex;
   pointer-events: auto; transition: transform .25s ease; z-index: 2;
   box-shadow: 0 0 0 1px rgba(255,255,255,.06), 0 8px 40px rgba(0,0,0,.35); }
-/* 收起态：始终露出 34px 竖排标签（默认可见，只是面板未展开） */
 .sidebar.right { right: 0; transform: translateX(calc(100% - 34px)); }
 .sidebar.left { left: 0; transform: translateX(calc(-100% + 34px)); }
 .sidebar.right.open, .sidebar.left.open { transform: translateX(0); }
@@ -47,74 +46,116 @@ const CSS = `
 .tab .dot { width: 10px; height: 10px; border-radius: 50%; background: #e5484d; border: 2px solid #fff; display: none; }
 .tab.has-error .dot { display: block; }
 .content { flex: 1; min-width: 0; overflow: auto; background: #1e1e2e; color: #e6e6f0; padding: 12px 14px; }
-.content h2 { margin: 0 0 10px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; gap: 8px; color: #cdd0dc; }
+.content h2 { margin: 0 0 8px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; gap: 8px; color: #cdd0dc; }
+.content .id { color: #6b7085; font-weight: 400; font-size: 11px; }
 .content h3 { margin: 14px 0 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #8b90a4; }
 .row { display: flex; justify-content: space-between; gap: 8px; padding: 3px 0; border-bottom: 1px solid #2a2a3a; }
 .row:last-child { border-bottom: none; }
 .row .k { color: #aab; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row .v { color: #e6e6f0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-.pill { padding: 0 6px; border-radius: 8px; font-size: 10px; line-height: 16px; background: #33334a; color: #cdd0dc; }
+.pill { padding: 0 6px; border-radius: 8px; font-size: 10px; line-height: 16px; background: #33334a; color: #cdd0dc; white-space: nowrap; }
 .pill.loaded { background: #1f6f4a; color: #d8ffe9; }
+.pill.error { background: #7a2530; color: #ffd9dd; }
 .diag { padding: 4px 0; border-bottom: 1px solid #2a2a3a; }
 .diag .code { color: #ffb4a2; font-family: ui-monospace, monospace; }
 .diag.error .code { color: #ff6b6b; }
 .muted { color: #777c8f; }
-button.close { background: transparent; border: 1px solid #3a3a52; color: #cdd0dc; border-radius: 6px; cursor: pointer; font-size: 11px; padding: 2px 8px; }
+.toolbar { display: flex; gap: 6px; margin: 6px 0 2px; }
+.toolbar input { flex: 1; min-width: 0; background: #15151f; border: 1px solid #33334a; color: #e6e6f0; border-radius: 6px; padding: 3px 8px; font-size: 12px; }
+button.mini { background: transparent; border: 1px solid #3a3a52; color: #cdd0dc; border-radius: 6px; cursor: pointer; font-size: 11px; padding: 2px 8px; white-space: nowrap; }
+.hint { color: #565b70; font-size: 10px; margin-top: 10px; }
+.handle { position: absolute; top: 0; bottom: 0; width: 6px; cursor: col-resize; background: transparent; }
+.sidebar.right .handle { left: 34px; }
+.sidebar.left .handle { right: 34px; }
+.handle:hover { background: rgba(100,126,255,.4); }
 `;
 
-function Row(props: { label: string; value: string; pill?: string }): VNode {
+function ms(value: number): string {
+  return value >= 1000 ? `${(value / 1000).toFixed(2)}s` : `${Math.round(value)}ms`;
+}
+
+function rowEl(key: string, value: string, pill?: string): VNode {
   return (
     <div class="row">
-      <span class="k">{props.label}</span>
-      {props.pill ? <span class={`pill ${props.pill}`}>{props.value}</span> : <span class="v">{props.value}</span>}
+      <span class="k">{key}</span>
+      {pill ? <span class={`pill ${pill}`}>{value}</span> : <span class="v">{value}</span>}
     </div>
   );
 }
 
-function renderSnapshot(snapshot: LinkjsSnapshot, onClose: () => void): VNode {
+function renderSnapshot(snapshot: LinkjsSnapshot, filter: string, onCopy: () => void, onClose: () => void): VNode {
+  const q = filter.trim().toLowerCase();
+  const match = (text: string) => !q || text.toLowerCase().includes(q);
+  const show = (key: string) => !q || key.toLowerCase().includes(q);
+
+  const remotes = snapshot.remotes.filter((remote) => match(`${remote.name} ${remote.type ?? ''} ${remote.status ?? ''} ${remote.host ?? ''}`));
   const shareRows = snapshot.shares.flatMap((share) =>
-    share.versions.map((version, index) => (
-      <Row
-        key={`${share.scope}:${share.name}:${version.version}:${index}`}
-        label={`${share.name}${share.scope !== 'global' ? ` @${share.scope}` : ''}`}
-        value={`${version.version}${version.loaded ? ' ✓' : ''}`}
-        pill={version.loaded ? 'loaded' : undefined}
-      />
-    )),
+    share.versions
+      .filter((v) => match(`${share.name} ${share.scope} ${v.version}`))
+      .map((v, index) => (
+        <div key={`${share.scope}:${share.name}:${v.version}:${index}`} class="row">
+          <span class="k">{`${share.name}${share.scope !== 'global' ? ` @${share.scope}` : ''}`}</span>
+          <span class={`pill ${v.loaded ? 'loaded' : ''}`}>{`${v.version}${v.loaded ? ' ✓' : ''}`}</span>
+        </div>
+      )),
   );
+  const conflicts = snapshot.conflicts.filter((c) => match(`${c.name} ${c.requiredVersion}`));
+  const plugins = snapshot.availablePlugins.filter((p) => show(p.name));
+  const metrics = snapshot.metrics.filter((m) => match(`${m.entry} ${m.status} ${m.host ?? ''}`)).slice(-12).reverse();
+  const perf = snapshot.perf.filter((p) => show(p.name)).slice(-12).reverse();
+  const diagnostics = snapshot.diagnostics
+    .filter((d) => match(`${d.code} ${d.message}`))
+    .slice(-20)
+    .reverse();
 
   return (
     <>
       <h2>
-        <span>LinkJS DevTools</span>
-        <span class="muted">{`${snapshot.instance.mode} · ${snapshot.instance.shareStrategy}`}</span>
-        <button class="close" onClick={onClose}>
-          收起
-        </button>
+        <span>
+          LinkJS DevTools <span class="id">{snapshot.instance.id}</span>
+        </span>
+        <span>
+          <button class="mini" onClick={onCopy}>
+            复制 JSON
+          </button>{' '}
+          <button class="mini" onClick={onClose}>
+            收起
+          </button>
+        </span>
       </h2>
 
       <h3>远程应用</h3>
-      {snapshot.remotes.length === 0 ? (
+      {remotes.length === 0 ? (
         <div class="muted">（无）</div>
       ) : (
-        snapshot.remotes.map((remote) => (
-          <Row
-            key={remote.name}
-            label={`${remote.name}${remote.type ? ` (${remote.type})` : ''}`}
-            value={remote.status || '-'}
-            pill={remote.status === 'loaded' ? 'loaded' : undefined}
-          />
+        remotes.map((remote) => (
+          <div key={remote.name} class="row">
+            <span class="k">{`${remote.name}${remote.type ? ` (${remote.type})` : ''}`}</span>
+            <span class={`pill ${remote.status === 'loaded' ? 'loaded' : ''}`}>{remote.status || '-'}</span>
+          </div>
         ))
       )}
 
       <h3>共享依赖</h3>
       {shareRows.length === 0 ? <div class="muted">（无）</div> : shareRows}
 
-      <h3>{`插件 (${snapshot.availablePlugins.filter((plugin) => plugin.enabled).length}/${snapshot.availablePlugins.length})`}</h3>
-      {snapshot.availablePlugins.length === 0 ? (
+      {conflicts.length > 0 ? (
+        <>
+          <h3>{`共享冲突 (${conflicts.length})`}</h3>
+          {conflicts.map((conflict, index) => (
+            <div key={`${conflict.name}:${index}`} class="row">
+              <span class="k">{conflict.name}</span>
+              <span class="pill error">{`需要 ${conflict.requiredVersion} / 提供 ${conflict.provided.join(', ') || '无'}`}</span>
+            </div>
+          ))}
+        </>
+      ) : null}
+
+      <h3>{`插件 (${snapshot.availablePlugins.filter((p) => p.enabled).length}/${snapshot.availablePlugins.length})`}</h3>
+      {plugins.length === 0 ? (
         <div class="muted">（无）</div>
       ) : (
-        snapshot.availablePlugins.map((plugin) => (
+        plugins.map((plugin) => (
           <div key={plugin.name} class="row">
             <span class="k" title={plugin.description}>
               {plugin.name}
@@ -124,20 +165,43 @@ function renderSnapshot(snapshot: LinkjsSnapshot, onClose: () => void): VNode {
         ))
       )}
 
-      <h3>{`诊断 (${snapshot.diagnostics.length})`}</h3>
-      {snapshot.diagnostics.length === 0 ? (
+      <h3>指标</h3>
+      {metrics.length === 0 ? (
+        <div class="muted">（启用 logger 插件后可见）</div>
+      ) : (
+        metrics.map((metric, index) => (
+          <div key={`${metric.entry}:${metric.time}:${index}`} class="row">
+            <span class="k">{metric.entry}</span>
+            <span class={`pill ${metric.status === 'error' ? 'error' : 'loaded'}`}>{`${ms(metric.durationMs)}`}</span>
+          </div>
+        ))
+      )}
+
+      <h3>性能</h3>
+      {perf.length === 0 ? (
         <div class="muted">（无）</div>
       ) : (
-        snapshot.diagnostics
-          .slice(-20)
-          .reverse()
-          .map((diagnostic, index) => (
-            <div key={`${diagnostic.time}:${index}`} class={`diag ${diagnostic.level}`}>
-              <span class="code">{diagnostic.code}</span>
-              <span>{` ${diagnostic.message}`}</span>
-            </div>
-          ))
+        perf.map((entry, index) => (
+          <div key={`${entry.name}:${index}`} class="row">
+            <span class="k">{entry.name}</span>
+            <span class="v">{ms(entry.durationMs)}</span>
+          </div>
+        ))
       )}
+
+      <h3>诊断</h3>
+      {diagnostics.length === 0 ? (
+        <div class="muted">（无）</div>
+      ) : (
+        diagnostics.map((diagnostic, index) => (
+          <div key={`${diagnostic.time}:${index}`} class={`diag ${diagnostic.level}`}>
+            <span class="code">{diagnostic.code}</span>
+            <span>{` ${diagnostic.message}`}</span>
+          </div>
+        ))
+      )}
+
+      <div class="hint">快捷键 Alt/Option + Shift + L · 拖左侧边可调整宽度</div>
     </>
   );
 }
@@ -149,19 +213,62 @@ const DevtoolsPanel = defineComponent({
     position: { type: String as PropType<DevtoolsPosition>, default: 'right' },
   },
   setup(props) {
-    const readStored = () => {
+    const readBool = () => {
       try {
         return localStorage.getItem(STORAGE_KEY) === '1';
       } catch {
         return false;
       }
     };
-    const open = ref(readStored());
+    const readWidth = () => {
+      try {
+        const value = Number(localStorage.getItem(WIDTH_KEY));
+        return value >= 240 ? value : DEFAULT_WIDTH;
+      } catch {
+        return DEFAULT_WIDTH;
+      }
+    };
+
+    const open = ref(readBool());
+    const filter = ref('');
+    const width = ref(readWidth());
     const snapshot = ref(buildSnapshot(props.instance));
     let timer: ReturnType<typeof setInterval> | undefined;
+    let prevBody: { paddingLeft: string; paddingRight: string; transition: string } | null = null;
 
     const refresh = () => {
       snapshot.value = buildSnapshot(props.instance);
+    };
+    const copy = () => {
+      try {
+        void navigator.clipboard?.writeText(JSON.stringify(snapshot.value, null, 2));
+      } catch {
+        /* ignore */
+      }
+    };
+
+    const dock = () => {
+      const body = document.body;
+      if (!body) {
+        return;
+      }
+      if (!prevBody) {
+        prevBody = { paddingLeft: body.style.paddingLeft, paddingRight: body.style.paddingRight, transition: body.style.transition };
+      }
+      if (open.value) {
+        body.style.transition = 'padding .25s ease';
+        if (props.position === 'left') {
+          body.style.paddingLeft = `${width.value}px`;
+          body.style.paddingRight = prevBody.paddingRight;
+        } else {
+          body.style.paddingRight = `${width.value}px`;
+          body.style.paddingLeft = prevBody.paddingLeft;
+        }
+      } else {
+        body.style.paddingLeft = prevBody.paddingLeft;
+        body.style.paddingRight = prevBody.paddingRight;
+        body.style.transition = prevBody.transition;
+      }
     };
 
     const syncTimer = () => {
@@ -184,10 +291,32 @@ const DevtoolsPanel = defineComponent({
     const toggle = () => {
       open.value = !open.value;
       syncTimer();
+      dock();
     };
     const close = () => {
       open.value = false;
       syncTimer();
+      dock();
+    };
+
+    const startResize = (event: PointerEvent) => {
+      event.preventDefault();
+      const move = (e: PointerEvent) => {
+        const raw = props.position === 'left' ? e.clientX : window.innerWidth - e.clientX;
+        width.value = Math.max(240, Math.min(Math.min(720, window.innerWidth - 160), raw));
+        dock();
+      };
+      const up = () => {
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', up);
+        try {
+          localStorage.setItem(WIDTH_KEY, String(width.value));
+        } catch {
+          /* ignore */
+        }
+      };
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', up);
     };
 
     const onKeydown = (event: KeyboardEvent) => {
@@ -196,38 +325,6 @@ const DevtoolsPanel = defineComponent({
         toggle();
       }
     };
-
-    // 停靠：展开时给 body 加同侧内边距，把页面内容推开（而非悬浮覆盖）。
-    let prevBody: { paddingLeft: string; paddingRight: string; transition: string } | null = null;
-    const dock = () => {
-      const body = document.body;
-      if (!body) {
-        return;
-      }
-      if (!prevBody) {
-        prevBody = {
-          paddingLeft: body.style.paddingLeft,
-          paddingRight: body.style.paddingRight,
-          transition: body.style.transition,
-        };
-      }
-      if (open.value) {
-        body.style.transition = 'padding .25s ease';
-        if (props.position === 'left') {
-          body.style.paddingLeft = `${WIDTH}px`;
-          body.style.paddingRight = prevBody.paddingRight;
-        } else {
-          body.style.paddingRight = `${WIDTH}px`;
-          body.style.paddingLeft = prevBody.paddingLeft;
-        }
-      } else {
-        body.style.paddingLeft = prevBody.paddingLeft;
-        body.style.paddingRight = prevBody.paddingRight;
-        body.style.transition = prevBody.transition;
-      }
-    };
-    watch(open, dock);
-    watch(() => props.position, dock);
 
     const off = onDiagnostic(() => {
       if (open.value) {
@@ -251,18 +348,32 @@ const DevtoolsPanel = defineComponent({
         body.style.transition = prevBody.transition;
       }
     });
+    watch(open, dock);
+    watch(() => props.position, dock);
     syncTimer();
 
     const hasError = computed(() => getDiagnostics().some((diagnostic) => diagnostic.level === 'error'));
 
     return () => (
       <div class="host">
-        <aside class={['sidebar', props.position, open.value ? 'open' : '']}>
+        <aside class={['sidebar', props.position, open.value ? 'open' : '']} style={{ width: `${width.value}px` }}>
           <button class={['tab', hasError.value ? 'has-error' : '']} onClick={toggle}>
             <span class="dot" />
             <span class="logo">LinkJS</span>
           </button>
-          <div class="content">{renderSnapshot(snapshot.value, close)}</div>
+          <div class="handle" onPointerdown={startResize} />
+          <div class="content">
+            {renderSnapshot(snapshot.value, filter.value, copy, close)}
+            <div class="toolbar">
+              <input
+                placeholder="过滤…"
+                value={filter.value}
+                onInput={(e: Event) => {
+                  filter.value = (e.target as HTMLInputElement).value;
+                }}
+              />
+            </div>
+          </div>
         </aside>
       </div>
     );

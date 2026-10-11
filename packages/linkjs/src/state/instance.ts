@@ -74,6 +74,8 @@ if (!linkInstance) {
     eventBus,
     version: '1.0.0',
     name: 'linkjs',
+    // 唯一实例标识（多实例/多宿主同页时用于区分）。
+    id: `linkjs-${Math.random().toString(36).slice(2, 8)}`,
     apps: new Map(),
     libs: new Map(),
     shares: new Map<string, Map<string, ShareInfo>>(),

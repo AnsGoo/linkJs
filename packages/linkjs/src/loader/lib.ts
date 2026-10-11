@@ -3,6 +3,7 @@ import { LIB_EXPOSE } from '../event-bus/constant';
 import { beginStyleCapture, endStyleCapture, ensureShadowTarget } from '../sandbox/shadow';
 import { runBeforeLoadRemote, runHook } from '../plugins';
 import { recordDiagnostic } from '../devtools';
+import { startPhase } from '../perf';
 import { getRemoteInfo, rewriteRequestUrl, useGetRemote, useHandleExpose, type ExtOption } from './utils';
 
 export interface LoadLibOptions {
@@ -35,6 +36,7 @@ async function loadRemoteLib<Module>(
   const remoteInfo = (await runBeforeLoadRemote({ ...(getRemoteInfo(appName) as any) })) as any;
   await runHook('afterResolve', remoteInfo);
   await runHook('beforeLoadContainer', remoteInfo);
+  const endTotal = startPhase(`linkjs:lib:${appName}`);
 
   const host = options?.host || remoteInfo?.host || `${location.protocol}//${location.host}`;
   const entryName = options?.entryName || remoteInfo?.entry?.js;
@@ -55,8 +57,9 @@ async function loadRemoteLib<Module>(
     Object.keys(shared).flatMap((dep) =>
       shareScopes.map(async (shareScope) => {
         await runHook('beforeLoadShare', dep);
+        const start = Date.now();
         const mod = await loadShare(dep, shareScope ? { scope: shareScope } : undefined).catch(() => null);
-        await runHook('afterLoadShare', dep, mod);
+        await runHook('afterLoadShare', dep, mod, Date.now() - start);
       }),
     ),
   );
@@ -100,6 +103,7 @@ async function loadRemoteLib<Module>(
       if (options?.shadow) {
         endStyleCapture();
       }
+      endTotal();
       void runHook('afterLoadContainer', remoteInfo, result);
       void runHook('onLoad', { appName, remoteInfo, module: result });
       void runHook('afterLoadRemote', remoteInfo, result);
@@ -109,6 +113,7 @@ async function loadRemoteLib<Module>(
       if (options?.shadow) {
         endStyleCapture();
       }
+      endTotal();
       recordDiagnostic({
         level: 'error',
         code: 'LOAD_REMOTE_ERROR',
