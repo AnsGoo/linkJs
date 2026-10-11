@@ -4,7 +4,7 @@ import { expose, shared } from 'linkjs';
 // 使用全局的 linkjs 实例
 
 expose(
-  'remote-lib',
+  'remoteApp',
   { HelloWorld },
   {
     version: '1.0.0',

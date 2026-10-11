@@ -55,17 +55,17 @@ preloadRemote({
   /* remote-lib 未启动时忽略 */
 });
 
-// 读取远端 manifest，获取展示名（RemoteApp1）等信息；在加载前 await，保证日志/标签一致。
+// 读取远端 manifest，获取展示名（RemoteApp）等信息；在加载前 await，保证日志/标签一致。
 const prepareRemoteMeta = () =>
   preloadRemote({
-    name: 'remote',
+    name: 'remoteApp',
     host: 'http://localhost:8080',
     manifestUrl: 'http://localhost:8080/manifest.json',
   }).catch(() => undefined);
 
 // 加载远程模块的函数
 function loadRemoteModule() {
-  return loadApp('remote', {
+  return loadApp('remoteApp', {
     host: 'http://localhost:8080',
     sandbox: true,
     // 与 createRemoteApp 一致：预加载即启用 shadow，样式在捕获窗口内进入影子树
