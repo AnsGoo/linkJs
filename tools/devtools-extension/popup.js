@@ -1,126 +1,60 @@
 'use strict';
 
-// 工具栏弹窗：对当前标签页执行脚本读取 __LINKJS__ 快照并渲染（与页内面板一致）。
-// 仅在加载了 linkjs 的页面可用（后台据此 enable/disable 图标）。
+// 工具栏弹窗：对当前标签页执行脚本读取 __LINKJS__ 快照，挂载共享 UI。
 
-const titleEl = document.getElementById('title');
-const instanceIdEl = document.getElementById('instance-id');
-const sectionsEl = document.getElementById('sections');
-const filterEl = document.getElementById('filter');
-const copyBtn = document.getElementById('copy');
-
-let snapshot = null;
-
-function readSnapshotInPage() {
+const READ_SNAPSHOT = () => {
   const api = window.__LINKJS__;
   if (!api || typeof api.getSnapshot !== 'function') {
     return { __state: 'missing' };
   }
   try {
-    // JSON 往返，确保返回值可序列化（快照里可能含 Error / 非纯对象）。
     return JSON.parse(JSON.stringify(api.getSnapshot()));
   } catch (e) {
     return { __state: 'error', message: String((e && e.message) || e) };
   }
-}
+};
+
+const RUN_ACTION = (fnName, fnArg) => {
+  const api = window.__LINKJS__;
+  if (!api || typeof api[fnName] !== 'function') {
+    return;
+  }
+  try {
+    fnArg === undefined ? api[fnName]() : api[fnName](fnArg);
+  } catch {
+    /* ignore */
+  }
+};
 
 async function activeTabId() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   return tab && tab.id != null ? tab.id : null;
 }
 
-async function call(op, arg) {
+async function fetchSnapshot() {
+  const tabId = await activeTabId();
+  if (tabId == null) {
+    return { __state: 'missing' };
+  }
+  try {
+    const [result] = await chrome.scripting.executeScript({ target: { tabId }, world: 'MAIN', func: READ_SNAPSHOT });
+    return (result && result.result) || { __state: 'missing' };
+  } catch (error) {
+    return { __state: 'unreachable', message: (error && error.message) || String(error) };
+  }
+}
+
+async function onAction(op, arg) {
   const tabId = await activeTabId();
   if (tabId == null) {
     return;
   }
   try {
-    await chrome.scripting.executeScript({
-      target: { tabId },
-      func: (fnName, fnArg) => {
-        const api = window.__LINKJS__;
-        if (!api || typeof api[fnName] !== 'function') {
-          return;
-        }
-        try {
-          fnArg === undefined ? api[fnName]() : api[fnName](fnArg);
-        } catch {
-          /* ignore */
-        }
-      },
-      args: [op, arg],
-      world: 'MAIN',
-    });
+    await chrome.scripting.executeScript({ target: { tabId }, world: 'MAIN', func: RUN_ACTION, args: [op, arg] });
   } catch {
     /* ignore */
   }
-  setTimeout(render, 250);
+  setTimeout(() => shell.refresh(), 250);
 }
 
-async function render() {
-  const tabId = await activeTabId();
-  if (tabId == null) {
-    sectionsEl.replaceChildren();
-    return;
-  }
-  let snap = null;
-  let accessError = null;
-  try {
-    const [result] = await chrome.scripting.executeScript({ target: { tabId }, func: readSnapshotInPage, world: 'MAIN' });
-    snap = result && result.result;
-  } catch (error) {
-    accessError = error;
-  }
-
-  if (accessError) {
-    instanceIdEl.textContent = '';
-    titleEl.classList.remove('has-error');
-    snapshot = null;
-    sectionsEl.replaceChildren(
-      document.createTextNode(
-        '无法访问当前页面：' + ((accessError && accessError.message) || accessError) +
-          '\n请在 chrome://extensions 的扩展详情里把“网站访问权限”设为“在所有网站上”。',
-      ),
-    );
-    return;
-  }
-
-  if (!snap || snap.__state === 'missing') {
-    instanceIdEl.textContent = '';
-    titleEl.classList.remove('has-error');
-    snapshot = null;
-    sectionsEl.replaceChildren(document.createTextNode('此页面未检测到 linkjs（需在开发模式下 createInstance，暴露 window.__LINKJS__）'));
-    return;
-  }
-  if (snap.__state === 'error') {
-    sectionsEl.replaceChildren(document.createTextNode('读取失败：' + snap.message));
-    return;
-  }
-
-  snapshot = snap;
-  instanceIdEl.textContent = (snap.instance && snap.instance.id) || '';
-  const { hasError } = window.LinkJSView.render(snap, sectionsEl, {
-    filter: filterEl.value,
-    onAction: call,
-    hint: '操作按钮直接作用于当前页面',
-  });
-  titleEl.classList.toggle('has-error', hasError);
-}
-
-filterEl.addEventListener('input', () => {
-  if (snapshot) {
-    const { hasError } = window.LinkJSView.render(snapshot, sectionsEl, { filter: filterEl.value, onAction: call, hint: '操作按钮直接作用于当前页面' });
-    titleEl.classList.toggle('has-error', hasError);
-  }
-});
-copyBtn.addEventListener('click', () => {
-  if (snapshot) {
-    try {
-      navigator.clipboard.writeText(JSON.stringify(snapshot, null, 2));
-    } catch {
-      /* ignore */
-    }
-  }
-});
-
-render();
+const shell = window.LinkJSView.mount(document.getElementById('app'), { fetchSnapshot, onAction });
