@@ -16,7 +16,8 @@
     }
   },
   "scripts": {
-    "dev": "pnpm --filter unplugin-linkjs --filter linkjs build && vite",
+    "dev": "pnpm --filter unplugin-linkjs --filter linkjs build && run-p dev:vite dev:lib",
+    "dev:vite": "vite",
     "build": "pnpm --filter unplugin-linkjs --filter linkjs build && vite build",
     "preview": "vite preview",
     "test:unit": "vitest",
