@@ -4,6 +4,20 @@
 // 由 DevTools 面板（panel.js）与工具栏弹窗（popup.js）共用。
 
 (function () {
+  // 递归追加子节点：数组展平，null/false 跳过，字符串/数字转文本节点。
+  function appendChildren(node, children) {
+    for (const child of children) {
+      if (child == null || child === false) continue;
+      if (Array.isArray(child)) {
+        appendChildren(node, child);
+      } else if (typeof child === 'string' || typeof child === 'number') {
+        node.appendChild(document.createTextNode(String(child)));
+      } else {
+        node.appendChild(child);
+      }
+    }
+  }
+
   function h(tag, attrs, children) {
     const node = document.createElement(tag);
     if (attrs) {
@@ -14,10 +28,7 @@
         else if (attrs[key] != null && attrs[key] !== false) node.setAttribute(key, attrs[key]);
       }
     }
-    for (const child of [].concat(children || [])) {
-      if (child == null) continue;
-      node.appendChild(typeof child === 'string' ? document.createTextNode(child) : child);
-    }
+    appendChildren(node, [children]);
     return node;
   }
 
@@ -59,8 +70,11 @@
     ]);
   }
 
+  // 返回扁平数组（[h3, ...rows]），避免调用方 push(...section(...)) 出现嵌套数组。
   function section(title, rows) {
-    return [h('h3', null, title), rows.length ? rows : h('div', { class: 'muted' }, '（无）')];
+    const heading = h('h3', null, title);
+    const body = rows.length ? rows : [h('div', { class: 'muted' }, '（无）')];
+    return [heading, ...body];
   }
 
   /**
