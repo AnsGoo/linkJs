@@ -14,7 +14,7 @@
  * 外部依赖，非 Vue 宿主加载失败会静默降级，生产构建不加载。
  */
 
-import { computed, createApp, defineComponent, onMounted, onUnmounted, ref, type App, type PropType, type VNode } from 'vue';
+import { computed, createApp, defineComponent, onMounted, onUnmounted, ref, watch, type App, type PropType, type VNode } from 'vue';
 import { buildSnapshot, getDiagnostics, onDiagnostic, type LinkjsSnapshot } from './index';
 
 export type DevtoolsPosition = 'right' | 'left';
@@ -26,6 +26,7 @@ export interface DevtoolsUIOptions {
 const STORAGE_KEY = '__linkjs_devtools_open__';
 const HOST_ID = '__linkjs_devtools__';
 const EDGE = 12;
+const WIDTH = 384;
 
 const CSS = `
 :host { all: initial; }
@@ -191,17 +192,58 @@ const DevtoolsPanel = defineComponent({
       }
     };
 
+    // 停靠：展开时给 body 加同侧内边距，把页面内容推开（而非悬浮覆盖）。
+    let prevBody: { paddingLeft: string; paddingRight: string; transition: string } | null = null;
+    const dock = () => {
+      const body = document.body;
+      if (!body) {
+        return;
+      }
+      if (!prevBody) {
+        prevBody = {
+          paddingLeft: body.style.paddingLeft,
+          paddingRight: body.style.paddingRight,
+          transition: body.style.transition,
+        };
+      }
+      if (open.value) {
+        body.style.transition = 'padding .25s ease';
+        if (props.position === 'left') {
+          body.style.paddingLeft = `${WIDTH}px`;
+          body.style.paddingRight = prevBody.paddingRight;
+        } else {
+          body.style.paddingRight = `${WIDTH}px`;
+          body.style.paddingLeft = prevBody.paddingLeft;
+        }
+      } else {
+        body.style.paddingLeft = prevBody.paddingLeft;
+        body.style.paddingRight = prevBody.paddingRight;
+        body.style.transition = prevBody.transition;
+      }
+    };
+    watch(open, dock);
+    watch(() => props.position, dock);
+
     const off = onDiagnostic(() => {
       if (open.value) {
         refresh();
       }
     });
-    onMounted(() => window.addEventListener('keydown', onKeydown));
+    onMounted(() => {
+      window.addEventListener('keydown', onKeydown);
+      dock();
+    });
     onUnmounted(() => {
       window.removeEventListener('keydown', onKeydown);
       off();
       if (timer) {
         clearInterval(timer);
+      }
+      const body = document.body;
+      if (body && prevBody) {
+        body.style.paddingLeft = prevBody.paddingLeft;
+        body.style.paddingRight = prevBody.paddingRight;
+        body.style.transition = prevBody.transition;
       }
     });
     syncTimer();
