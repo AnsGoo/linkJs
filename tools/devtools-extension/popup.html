@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>LinkJS</title>
+    <link rel="stylesheet" href="view.css" />
+    <style>
+      html, body { width: 460px; max-height: 600px; }
+      body { overflow: auto; }
+    </style>
+  </head>
+  <body>
+    <header class="content">
+      <h2 id="title">
+        <span class="title">
+          <span class="dot" title="存在 error 诊断"></span>
+          LinkJS <span class="id" id="instance-id"></span>
+        </span>
+        <span><button class="mini" id="copy">复制 JSON</button></span>
+      </h2>
+      <div class="toolbar">
+        <input id="filter" placeholder="过滤…" />
+      </div>
+    </header>
+    <main class="content" id="sections"></main>
+    <script src="view.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>
