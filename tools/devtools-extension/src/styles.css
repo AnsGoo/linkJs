@@ -64,6 +64,8 @@ button.mini:hover { border-color: #647eff; }
 .remote-item .rk { flex: 1; }
 .pill.app { background: #2b3a5c; color: #cfe0ff; }
 .pill.lib { background: #3a2b57; color: #e3d4ff; }
+.pill.host { background: #4a3a1a; color: #ffe0a3; }
+.remote-item.host .rk { font-weight: 600; }
 
 /* 依赖拓扑图 */
 .topo { overflow: auto; padding: 6px 0; }

@@ -9,6 +9,8 @@ const props = defineProps<{
   onAction: (op: string, arg?: unknown) => void;
 }>();
 
+const HOST = '__host__';
+
 const q = computed(() => (props.filter || '').trim().toLowerCase());
 const match = (text: unknown) => !q.value || String(text).toLowerCase().includes(q.value);
 
@@ -16,13 +18,48 @@ const remotes = computed(() =>
   (props.snapshot.remotes || []).filter((r) => match(`${r.name} ${r.displayName || ''} ${r.type || ''} ${r.status || ''} ${r.host || ''}`)),
 );
 
-const selectedName = ref<string | null>(null);
+const selectedName = ref<string>(HOST);
+const isHost = computed(() => selectedName.value === HOST);
 const selected = computed<RemoteSnapshot | null>(() => (props.snapshot.remotes || []).find((r) => r.name === selectedName.value) || null);
 
 watch(remotes, () => {
-  if (selectedName.value && !selected.value) selectedName.value = null;
+  if (selectedName.value !== HOST && !selected.value) selectedName.value = HOST;
 });
 
+// --- HOST（宿主应用）---
+const instance = computed(() => props.snapshot.instance || {});
+const hostRows = computed(() => {
+  const it = instance.value;
+  const rows: Array<{ key: string; value: string }> = [];
+  const push = (key: string, value: unknown) => {
+    if (value !== undefined && value !== null && value !== '') rows.push({ key, value: String(value) });
+  };
+  push('id', it.id);
+  push('name', it.name);
+  push('version', it.version);
+  push('mode', it.mode);
+  push('shareStrategy', it.shareStrategy);
+  push('origin', it.origin);
+  return rows;
+});
+
+const hostShares = computed(() =>
+  (props.snapshot.shares || []).map((s) => ({
+    name: s.name,
+    detail: `${s.scope}: ${s.versions.map((v) => v.version).join(', ')}`,
+  })),
+);
+
+const hostTopoEdges = computed<Array<[string, string]>>(() => {
+  const edges: Array<[string, string]> = [];
+  for (const r of props.snapshot.remotes || []) {
+    edges.push(['host', r.name]);
+    for (const dep of Object.keys(r.shared || {})) edges.push([r.name, dep]);
+  }
+  return edges;
+});
+
+// --- Remote（远程）---
 const entryRows = computed(() => {
   const entry = selected.value?.entry;
   if (entry == null) return [];
@@ -85,8 +122,15 @@ const topoEdges = computed<Array<[string, string]>>(() => {
 
 <template>
   <div class="remote-split">
-    <!-- 左栏：远程列表（App / Lib） -->
+    <!-- 左栏：HOST + 远程列表（App / Lib） -->
     <aside class="remote-list">
+      <h3>宿主 / 远程</h3>
+      <button class="remote-item host" :class="{ active: isHost }" @click="selectedName = HOST">
+        <span class="pill host">HOST</span>
+        <span class="rk">{{ instance.name || 'host' }}</span>
+        <span class="pill">{{ (snapshot.remotes || []).length }} 远程</span>
+      </button>
+
       <h3>远程 ({{ remotes.length }})</h3>
       <div v-if="!remotes.length" class="muted">（无）</div>
       <button
@@ -102,10 +146,30 @@ const topoEdges = computed<Array<[string, string]>>(() => {
       </button>
     </aside>
 
-    <!-- 右栏：上=元数据，下=共享依赖 + 拓扑图 -->
+    <!-- 右栏 -->
     <section class="remote-detail">
-      <div v-if="!selected" class="muted">从左侧选择一个远程查看详情</div>
-      <template v-else>
+      <!-- HOST 详情 -->
+      <template v-if="isHost">
+        <h3>宿主元数据</h3>
+        <div v-for="row in hostRows" :key="row.key" class="row">
+          <span class="k">{{ row.key }}</span>
+          <span class="v">{{ row.value }}</span>
+        </div>
+
+        <h3>提供共享依赖 ({{ hostShares.length }})</h3>
+        <div v-if="!hostShares.length" class="muted">（未注册共享依赖）</div>
+        <div v-for="row in hostShares" :key="row.name" class="row">
+          <span class="k">{{ row.name }}</span>
+          <span class="v">{{ row.detail }}</span>
+        </div>
+
+        <h3>依赖拓扑（HOST → 远程 → 共享依赖）</h3>
+        <div v-if="!hostTopoEdges.length" class="muted">（无远程）</div>
+        <TopologyGraph v-else root="host" :edges="hostTopoEdges" />
+      </template>
+
+      <!-- 远程详情 -->
+      <template v-else-if="selected">
         <h3>元数据</h3>
         <div v-for="row in metaRows" :key="row.key" class="row">
           <span class="k">{{ row.key }}</span>
@@ -149,6 +213,8 @@ const topoEdges = computed<Array<[string, string]>>(() => {
           <TopologyGraph :root="selected.name" :edges="topoEdges" />
         </template>
       </template>
+
+      <div v-else class="muted">从左侧选择 HOST 或一个远程查看详情</div>
     </section>
   </div>
 </template>

@@ -76,6 +76,8 @@ export interface LinkjsSnapshot {
     version: string;
     mode: string;
     shareStrategy: string;
+    /** 宿主页面 origin（如 `http://localhost:5173`）。 */
+    origin?: string;
   };
   remotes: RemoteSnapshot[];
   shares: ShareSnapshot[];
@@ -294,6 +296,7 @@ function buildSnapshot(instance: LinkjsInstance): LinkjsSnapshot {
       version: instance.version,
       mode: instance.mode,
       shareStrategy: instance.shareStrategy,
+      origin: typeof location !== 'undefined' ? location.origin : undefined,
     },
     remotes,
     shares,

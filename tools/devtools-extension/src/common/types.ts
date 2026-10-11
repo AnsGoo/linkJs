@@ -27,7 +27,7 @@ export interface ShareVersionSnapshot {
 }
 
 export interface Snapshot {
-  instance?: { id?: string; name?: string; version?: string; mode?: string; shareStrategy?: string };
+  instance?: { id?: string; name?: string; version?: string; mode?: string; shareStrategy?: string; origin?: string };
   remotes?: RemoteSnapshot[];
   shares?: Array<{ scope: string; name: string; versions: ShareVersionSnapshot[] }>;
   conflicts?: Array<{ scope: string; name: string; requiredVersion: string; provided: string[] }>;
