@@ -192,11 +192,11 @@
 
 ## P14 页内 DevTools 侧边栏（借鉴 Vue DevTools）
 
-- [x] 开发模式挂载可折叠侧边栏（Vue 组件 + Shadow DOM 隔离样式），**默认完全隐藏**；鼠标移到屏幕边缘感应区滑出竖排 "LinkJS" 标签，点击展开（快捷键 `Alt/Option+Shift+L` 切换）。
-- [x] 面板展示 remotes / shares / plugins / diagnostics；展开时每秒刷新，出现 error 诊断时标签显示红点。
-- [x] `createInstance({ devtools })` 可控（`false` 关闭、`position: 'right'|'left'`）；亦可 `installDevtoolsUI()` / `uninstallDevtoolsUI()`。
-- [x] 面板以 Vue 实现，核心运行时动态 `import()` 懒加载（`vue` 为外部依赖），生产构建不加载。
-- 实测：默认隐藏（tab 在视口外）→ 悬停边缘探出 → 点击展开；shares `vue=3.5.43 / pinia=3.0.4 / vue-router=5.4.0`。
+- [x] 开发模式挂载可折叠侧边栏（Vue TSX + Shadow DOM 隔离样式），**默认收起为右侧一条竖排 "LinkJS" 标签（可见）**；点击展开，快捷键 `Alt/Option+Shift+L` 切换。
+- [x] 展开时给 `body` 加同侧内边距把内容推开（**停靠，不悬浮覆盖**）；`position: 'right'|'left'`。
+- [x] 面板展示 远程应用 / 共享依赖 / 插件 / 诊断；展开时每秒刷新，出现 error 诊断时标签显示红点。
+- [x] 面板实现动态 `import()` 懒加载（独立 chunk，`vue`/`vue/jsx-runtime` 为外部依赖），生产构建不加载。
+- 实测：默认标签可见（34px，右侧）→ 点击展开（`body.paddingRight=384`）→ 显示 `vue=3.5.43 / pinia=3.0.4 / vue-router=5.4.0`。
 
 ---
 

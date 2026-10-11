@@ -4,10 +4,9 @@
 /**
  * 页内 DevTools 侧边栏（Vue TSX 实现，仅开发模式挂载）。
  *
- * 默认**完全隐藏**：
- * - 鼠标移到屏幕右缘（或左缘）的感应区时，竖排 "LinkJS" 标签滑出；
- * - 点击标签展开完整面板（远程应用 / 共享依赖 / 插件 / 诊断）；
- * - 收起后回到隐藏；亦可用快捷键 `Alt/Option + Shift + L` 切换。
+ * 默认收起为**右侧一条竖排 "LinkJS" 标签**（面板未展开）：
+ * - 点击标签展开完整面板（远程应用 / 共享依赖 / 插件 / 诊断），并给 `body` 加右侧内边距把内容推开（不悬浮覆盖）；
+ * - 点击「收起」或快捷键 `Alt/Option + Shift + L` 可折叠；
  * - 有 error 诊断时标签显示红点。
  *
  * 样式通过 Shadow DOM 隔离；核心运行时只在开发模式动态 `import()` 本模块，且 `vue` 为
@@ -25,7 +24,6 @@ export interface DevtoolsUIOptions {
 
 const STORAGE_KEY = '__linkjs_devtools_open__';
 const HOST_ID = '__linkjs_devtools__';
-const EDGE = 12;
 const WIDTH = 384;
 
 const CSS = `
@@ -33,17 +31,13 @@ const CSS = `
 .host { position: fixed; inset: 0; pointer-events: none; z-index: 2147483000;
   font: 12px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
 .host, .host * { box-sizing: border-box; }
-.edge { position: absolute; top: 0; bottom: 0; width: ${EDGE}px; pointer-events: auto; z-index: 1; }
-.edge.right { right: 0; } .edge.left { left: 0; }
-.sidebar { position: absolute; top: 0; bottom: 0; width: 384px; display: flex;
+.sidebar { position: absolute; top: 0; bottom: 0; width: ${WIDTH}px; display: flex;
   pointer-events: auto; transition: transform .25s ease; z-index: 2;
   box-shadow: 0 0 0 1px rgba(255,255,255,.06), 0 8px 40px rgba(0,0,0,.35); }
-.sidebar.right { right: 0; transform: translateX(100%); }
-.sidebar.left { left: 0; transform: translateX(-100%); }
-.edge.right:hover ~ .sidebar.right, .sidebar.right:hover { transform: translateX(calc(100% - 34px)); }
-.edge.left:hover ~ .sidebar.left, .sidebar.left:hover { transform: translateX(calc(-100% + 34px)); }
-.sidebar.right.open { transform: translateX(0); }
-.sidebar.left.open { transform: translateX(0); }
+/* 收起态：始终露出 34px 竖排标签（默认可见，只是面板未展开） */
+.sidebar.right { right: 0; transform: translateX(calc(100% - 34px)); }
+.sidebar.left { left: 0; transform: translateX(calc(-100% + 34px)); }
+.sidebar.right.open, .sidebar.left.open { transform: translateX(0); }
 .tab { width: 34px; height: 100%; flex: 0 0 34px; cursor: pointer; position: relative;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
   background: linear-gradient(180deg, #42d392, #647eff); color: #fff; border: none; padding: 0; }
@@ -252,7 +246,6 @@ const DevtoolsPanel = defineComponent({
 
     return () => (
       <div class="host">
-        <div class={`edge ${props.position}`} />
         <aside class={['sidebar', props.position, open.value ? 'open' : '']}>
           <button class={['tab', hasError.value ? 'has-error' : '']} onClick={toggle}>
             <span class="dot" />
