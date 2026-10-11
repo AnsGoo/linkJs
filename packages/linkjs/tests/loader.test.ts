@@ -1,6 +1,7 @@
 import { expect, test, beforeEach, vi } from 'vitest';
 import { linkInstance } from '../src/state/instance';
 import { loadApp, clearRemoteCache, unloadRemote } from '../src/loader';
+import { registerPlugin } from '../src/plugins';
 import { LIB_EXPOSE, LOAD_STATUS } from '../src/event-bus/constant';
 
 interface FakeElement {
@@ -186,4 +187,51 @@ test('loadApp maintains remote status: loading -> loaded -> unloaded', async () 
 
   unloadRemote('remote');
   expect(linkInstance.remotes.get('remote')?.status).toBe(LOAD_STATUS.UNLOADED);
+});
+
+test('loadApp fires plugin lifecycle hooks in order', async () => {
+  globalThis.DOMParser = class {
+    parseFromString() {
+      return {
+        querySelectorAll: (selector: string) =>
+          selector === 'script[src]' ? [{ getAttribute: (n: string) => (n === 'src' ? '/main.js' : null) }] : [],
+      };
+    }
+  } as any;
+  globalThis.fetch = vi.fn(async () => ({ ok: true, text: async () => '<html></html>' })) as any;
+  globalThis.document = {
+    head: { appendChild: () => {} },
+    body: { appendChild: (el: FakeElement) => queueMicrotask(() => el.onload?.()) },
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    createElement: (tag: string) => createElement(tag),
+  } as any;
+
+  const calls: string[] = [];
+  linkInstance.plugins = [];
+  registerPlugin({
+    name: 'p',
+    afterResolve: () => void calls.push('afterResolve'),
+    beforeLoadContainer: () => void calls.push('beforeLoadContainer'),
+    beforeLoadEntry: () => void calls.push('beforeLoadEntry'),
+    afterLoadEntry: () => void calls.push('afterLoadEntry'),
+    afterLoadContainer: () => void calls.push('afterLoadContainer'),
+    onLoad: () => void calls.push('onLoad'),
+    afterLoadRemote: () => void calls.push('afterLoadRemote'),
+  });
+
+  const promise = loadApp('remote', { host: 'http://localhost:8081' });
+  await new Promise((r) => setTimeout(r, 30));
+  linkInstance.eventBus.emit(LIB_EXPOSE, { libName: 'remote', lib: { default: 'COMP' } });
+  await promise;
+
+  expect(calls).toEqual([
+    'afterResolve',
+    'beforeLoadContainer',
+    'beforeLoadEntry',
+    'afterLoadEntry',
+    'afterLoadContainer',
+    'onLoad',
+    'afterLoadRemote',
+  ]);
 });

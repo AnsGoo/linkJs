@@ -40,7 +40,39 @@ function registerShare(options: Record<string, ShareOption>) {
       continue;
     }
     scopeMap.set(name, [...existing, option]);
+
+    // eager：注册后立即加载（运行时近似 Module Federation 的 eager 语义）。
+    if (option.eager) {
+      void loadShare(name, {
+        scope,
+        version: option.version,
+        requiredVersion: option.requiredVersion,
+        strictVersion: option.strictVersion,
+      }).catch((error) => {
+        console.warn(`[linkjs] eager shared "${name}" failed to load:`, error);
+      });
+    }
   }
+}
+
+/** 版本不满足 `requiredVersion` 时的诊断（strict 则抛错）。 */
+function warnVersionMismatch(
+  name: string,
+  resolved: string,
+  requirement: string | false | undefined,
+  strict: boolean | undefined,
+): void {
+  if (!requirement) {
+    return;
+  }
+  if (VersionComparator.satisfiesVersion(resolved, requirement)) {
+    return;
+  }
+  const message = `[linkjs] shared "${name}": resolved version ${resolved} does not satisfy requiredVersion ${requirement}`;
+  if (strict) {
+    throw new Error(message);
+  }
+  console.warn(`${message}（非 strict，继续）`);
 }
 
 async function loadModule(shareInfo: ShareOption): Promise<Module> {
@@ -126,6 +158,8 @@ async function resolveVersionFirst(
   available: ShareOption[],
   loadedModules: Map<string, Module>,
   loaded: VersionedModule[],
+  requirement: string | false | undefined,
+  strict: boolean | undefined,
 ): Promise<Module | null> {
   const candidates = toCandidates(loaded, available);
   const best = version
@@ -136,6 +170,7 @@ async function resolveVersionFirst(
     return null;
   }
   const candidate = best as Candidate;
+  warnVersionMismatch(name, candidate.version, requirement, strict);
   if (candidate.source === 'loaded') {
     return candidate.module as Module;
   }
@@ -153,12 +188,15 @@ async function resolveLoadedFirst(
   available: ShareOption[],
   loadedModules: Map<string, Module>,
   loaded: VersionedModule[],
+  requirement: string | false | undefined,
+  strict: boolean | undefined,
 ): Promise<Module | null> {
   if (loaded.length > 0) {
     const bestLoaded = version
       ? VersionComparator.findBestMatch(version, loaded, [])
       : VersionComparator.findLatestVersion(loaded);
     if (bestLoaded) {
+      warnVersionMismatch(name, bestLoaded.version, requirement, strict);
       return bestLoaded.module as Module;
     }
   }
@@ -174,6 +212,7 @@ async function resolveLoadedFirst(
   if (!bestAvailable) {
     return null;
   }
+  warnVersionMismatch(name, bestAvailable.version, requirement, strict);
   return loadAndCacheModule(instance, scope, name, bestAvailable.module as ShareOption, loadedModules);
 }
 
@@ -195,6 +234,8 @@ async function loadShare(
   options?: {
     version?: string;
     scope?: string;
+    requiredVersion?: string | false;
+    strictVersion?: boolean;
   },
 ): Promise<Module | null> {
   const instance = getInstance();
@@ -206,6 +247,10 @@ async function loadShare(
     return null;
   }
 
+  // 版本要求：优先调用方传入，其次取已注册声明里的 requiredVersion/strictVersion。
+  const requirement = options?.requiredVersion ?? available.find((info) => info.requiredVersion !== undefined)?.requiredVersion;
+  const strict = options?.strictVersion ?? available.find((info) => info.strictVersion !== undefined)?.strictVersion;
+
   let loadedModules = instance.sharedMap.get(scope);
   if (!loadedModules) {
     loadedModules = new Map<string, Module>();
@@ -215,9 +260,9 @@ async function loadShare(
 
   const strategy = instance.shareStrategy || DEFAULT_STRATEGY;
   if (strategy === 'loaded-first') {
-    return resolveLoadedFirst(instance, scope, name, version, available, loadedModules, loaded);
+    return resolveLoadedFirst(instance, scope, name, version, available, loadedModules, loaded, requirement, strict);
   }
-  return resolveVersionFirst(instance, scope, name, version, available, loadedModules, loaded);
+  return resolveVersionFirst(instance, scope, name, version, available, loadedModules, loaded, requirement, strict);
 }
 
 /**

@@ -13,6 +13,13 @@ describe('registerPlugin', () => {
     expect(getPlugins().map((plugin) => plugin.name)).toEqual(['a', 'b']);
   });
 
+  test('calls apply(instance) on registration', () => {
+    const seen: unknown[] = [];
+    registerPlugin({ name: 'a', apply: (instance) => void seen.push(instance) });
+    expect(seen).toHaveLength(1);
+    expect(seen[0]).toBe(linkInstance);
+  });
+
   test('ignores entries without a valid name', () => {
     registerPlugin([{ name: 'a' }, {} as RuntimePlugin]);
     expect(getPlugins().map((plugin) => plugin.name)).toEqual(['a']);

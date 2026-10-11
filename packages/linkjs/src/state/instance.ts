@@ -24,6 +24,8 @@ export interface RemoteBase {
   host?: string;
   type?: 'app' | 'lib';
   shared?: Record<string, Omit<ShareInfo, 'name' | 'lib' | 'status'>>;
+  /** 该远程关联的共享作用域（可多个，默认 `global`）。 */
+  shareScope?: string[];
   version?: string;
   expose?: Record<string, any>;
   status: (typeof LOAD_STATUS)[keyof typeof LOAD_STATUS];
@@ -50,6 +52,12 @@ interface ShareInfo {
   status: keyof typeof LOAD_STATUS;
   scope?: string;
   singleton?: boolean;
+  /** 注册后立即加载（运行时近似 Module Federation 的 `eager`）。 */
+  eager?: boolean;
+  /** 期望版本范围（用于版本诊断）；`false` 表示不校验。 */
+  requiredVersion?: string | false;
+  /** 版本不满足 `requiredVersion` 时是否抛错（默认仅告警）。 */
+  strictVersion?: boolean;
 }
 
 export type ShareOption = Omit<ShareInfo, 'status'>;

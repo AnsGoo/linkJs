@@ -8,6 +8,10 @@ import { getInstance, type RegistryOption } from '..';
  */
 export interface RuntimePlugin {
   name: string;
+  /**
+   * 插件装载回调：注册时以 linkjs 单例调用，便于插件持有实例/打补丁（Module Federation 的 `apply`）。
+   */
+  apply?(instance: unknown): void;
   /** `createInstance` 阶段（实例构建前）。 */
   beforeInit?(options: unknown): void;
   /** `createInstance` 阶段（实例构建后）。 */
@@ -15,6 +19,14 @@ export interface RuntimePlugin {
 
   /** 远程加载前：可返回改写后的 remoteInfo（host/entry/shared 等）。 */
   beforeLoadRemote?(remoteInfo: RegistryOption): RegistryOption | void | Promise<RegistryOption | void>;
+  /** 远程信息解析完成（`beforeLoadRemote` 串联之后、真正请求之前）。 */
+  afterResolve?(remoteInfo: RegistryOption): void | Promise<void>;
+  /** 远程容器（入口应用/库）开始加载。 */
+  beforeLoadContainer?(remoteInfo: RegistryOption): void | Promise<void>;
+  /** 远程容器加载完成（暴露模块已就绪）。 */
+  afterLoadContainer?(remoteInfo: RegistryOption, remoteModule: unknown): void | Promise<void>;
+  /** 远程暴露模块就绪（容器级 `onLoad`，携带暴露命名空间）。 */
+  onLoad?(info: { appName: string; remoteInfo: RegistryOption; module: unknown }): void | Promise<void>;
   /** 远程加载成功。 */
   afterLoadRemote?(remoteInfo: RegistryOption, remoteModule: unknown): void | Promise<void>;
   /** 远程加载失败。 */
@@ -27,6 +39,10 @@ export interface RuntimePlugin {
   /** 入口（脚本/入口模块）加载前后。 */
   beforeLoadEntry?(remoteInfo: RegistryOption): void | Promise<void>;
   afterLoadEntry?(remoteInfo: RegistryOption): void | Promise<void>;
+
+  /** 资源预加载前后（`preloadRemote`）。 */
+  beforePreloadRemote?(options: unknown): void | Promise<void>;
+  afterPreloadRemote?(manifest: unknown, assets: string[]): void | Promise<void>;
 }
 
 type PluginHost = { plugins?: RuntimePlugin[] };
@@ -35,7 +51,7 @@ function getPlugins(): RuntimePlugin[] {
   return (getInstance() as PluginHost).plugins ?? [];
 }
 
-/** 注册一个或多个插件（同名插件只保留首个）。 */
+/** 注册一个或多个插件（同名插件只保留首个），并对新插件调用 `apply(instance)`。 */
 function registerPlugin(plugin: RuntimePlugin | RuntimePlugin[]): void {
   const instance = getInstance() as PluginHost;
   if (!instance.plugins) {
@@ -46,8 +62,16 @@ function registerPlugin(plugin: RuntimePlugin | RuntimePlugin[]): void {
     if (!item || typeof item.name !== 'string') {
       continue;
     }
-    if (!instance.plugins.some((existing) => existing.name === item.name)) {
-      instance.plugins.push(item);
+    if (instance.plugins.some((existing) => existing.name === item.name)) {
+      continue;
+    }
+    instance.plugins.push(item);
+    if (typeof item.apply === 'function') {
+      try {
+        item.apply(instance);
+      } catch (error) {
+        console.warn(`[linkjs] plugin "${item.name}.apply" failed:`, error);
+      }
     }
   }
 }

@@ -1,4 +1,4 @@
-import { describe, expect, test, beforeEach } from 'vitest';
+import { describe, expect, test, beforeEach, vi } from 'vitest';
 import { linkInstance } from '../src/state/instance';
 import { registerShare, loadShare, getShare } from '../src/share';
 
@@ -151,5 +151,32 @@ describe('scope isolation', () => {
     const b = await loadShare('lodash', { scope: 'app2' });
     expect(a).toEqual({ name: 'app1' });
     expect(b).toEqual({ name: 'app2' });
+  });
+});
+
+describe('share options (eager / requiredVersion / strictVersion)', () => {
+  beforeEach(() => {
+    reset();
+    linkInstance.shareStrategy = 'version-first';
+  });
+
+  test('eager share is loaded on registration', async () => {
+    registerShare({ lodash: { version: '1.0.0', eager: true, lib: { name: 'v1' } } });
+    await new Promise((r) => setTimeout(r, 0));
+    expect(getShare('lodash')).toEqual({ name: 'v1' });
+  });
+
+  test('strictVersion throws when resolved version does not satisfy requiredVersion', async () => {
+    registerShare({ lodash: { version: '1.0.0', requiredVersion: '^2.0.0', strictVersion: true, lib: { name: 'v1' } } });
+    await expect(loadShare('lodash')).rejects.toThrow(/does not satisfy requiredVersion/);
+  });
+
+  test('non-strict requiredVersion warns but still resolves', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    registerShare({ lodash: { version: '1.0.0', requiredVersion: '^2.0.0', lib: { name: 'v1' } } });
+    const mod = await loadShare('lodash');
+    expect(mod).toEqual({ name: 'v1' });
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
   });
 });

@@ -30,6 +30,8 @@ async function loadRemoteLib<Module>(
   const linkInstance = getInstance();
   const extOption: ExtOption = { modelName };
   const remoteInfo = (await runBeforeLoadRemote({ ...(getRemoteInfo(appName) as any) })) as any;
+  await runHook('afterResolve', remoteInfo);
+  await runHook('beforeLoadContainer', remoteInfo);
 
   const host = options?.host || remoteInfo?.host || `${location.protocol}//${location.host}`;
   const entryName = options?.entryName || remoteInfo?.entry?.js;
@@ -43,14 +45,17 @@ async function loadRemoteLib<Module>(
     beginStyleCapture(appName);
   }
 
-  // 预加载该远程声明的共享依赖
+  // 预加载该远程声明的共享依赖（支持多个共享作用域）
   const shared = remoteInfo?.shared || {};
+  const shareScopes: (string | undefined)[] = remoteInfo?.shareScope?.length ? remoteInfo.shareScope : [undefined];
   await Promise.all(
-    Object.keys(shared).map(async (dep) => {
-      await runHook('beforeLoadShare', dep);
-      const mod = await loadShare(dep).catch(() => null);
-      await runHook('afterLoadShare', dep, mod);
-    }),
+    Object.keys(shared).flatMap((dep) =>
+      shareScopes.map(async (shareScope) => {
+        await runHook('beforeLoadShare', dep);
+        const mod = await loadShare(dep, shareScope ? { scope: shareScope } : undefined).catch(() => null);
+        await runHook('afterLoadShare', dep, mod);
+      }),
+    ),
   );
 
   // 加载共享依赖入口文件，注册远程提供的共享依赖。
@@ -92,6 +97,8 @@ async function loadRemoteLib<Module>(
       if (options?.shadow) {
         endStyleCapture();
       }
+      void runHook('afterLoadContainer', remoteInfo, result);
+      void runHook('onLoad', { appName, remoteInfo, module: result });
       void runHook('afterLoadRemote', remoteInfo, result);
       return result;
     },

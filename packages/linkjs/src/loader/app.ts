@@ -72,6 +72,8 @@ async function loadApp<Module>(
   const linkInstance = getInstance();
   // 插件可改写 remoteInfo（host/entry/shared 等）
   const remoteInfo = (await runBeforeLoadRemote({ ...(linkInstance.remotes.get(appName) as any) })) as any;
+  await runHook('afterResolve', remoteInfo);
+  await runHook('beforeLoadContainer', remoteInfo);
 
   const host = options?.host || remoteInfo?.host || `${location.protocol}//${location.host}`;
   const entryPath = options?.entry || remoteInfo?.entry?.html || '';
@@ -89,13 +91,16 @@ async function loadApp<Module>(
     beginStyleCapture(appName);
   }
 
-  // 预加载共享依赖（等待完成，避免与子应用加载竞态）
+  // 预加载共享依赖（等待完成，避免与子应用加载竞态）；支持远程声明多个共享作用域。
+  const shareScopes: (string | undefined)[] = remoteInfo?.shareScope?.length ? remoteInfo.shareScope : [undefined];
   await Promise.all(
-    Object.keys(preload).map(async (libName) => {
-      await runHook('beforeLoadShare', libName);
-      const mod = await loadShare(libName).catch(() => null);
-      await runHook('afterLoadShare', libName, mod);
-    }),
+    Object.keys(preload).flatMap((libName) =>
+      shareScopes.map(async (shareScope) => {
+        await runHook('beforeLoadShare', libName);
+        const mod = await loadShare(libName, shareScope ? { scope: shareScope } : undefined).catch(() => null);
+        await runHook('afterLoadShare', libName, mod);
+      }),
+    ),
   );
 
   const html = await fetchHtml(htmlUrl, retries);
@@ -183,6 +188,8 @@ async function loadApp<Module>(
       if (options?.shadow) {
         endStyleCapture();
       }
+      void runHook('afterLoadContainer', remoteInfo, result);
+      void runHook('onLoad', { appName, remoteInfo, module: result });
       void runHook('afterLoadRemote', remoteInfo, result);
       return result;
     },
