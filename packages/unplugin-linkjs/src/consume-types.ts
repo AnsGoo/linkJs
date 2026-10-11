@@ -212,6 +212,13 @@ async function fetchRemoteType(
 
 /** 校验（best-effort）宿主 tsconfig 是否纳入了聚合声明，未纳入则 warn。 */
 function checkTsconfigInclude(projectRoot: string, dtsFile: string, warn: (msg: string) => void): void {
+  // 放在 node_modules（不被 watch）或项目根时需显式纳入；放在 src/ 等目录通常已被 include 通配覆盖，跳过校验。
+  const isNodeModules = dtsFile.includes('node_modules');
+  const isRootFile = !dtsFile.includes('/');
+  if (!isNodeModules && !isRootFile) {
+    return;
+  }
+
   let candidates: string[];
   try {
     candidates = readdirSync(projectRoot).filter((file) => /^tsconfig.*\.json$/.test(file));

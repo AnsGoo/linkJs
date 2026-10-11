@@ -23,6 +23,9 @@ export default defineConfig({
     // 拉取远端类型并生成 declare module '<remote>/<Expose>'（dev 模式订阅 SSE 热更新）
     unpluginLinkjs.vite({
       consumeTypes: {
+        // 生成到 src/ 内：被 tsconfig 的 `src/**/*` 覆盖、且 IDE(Volar/tsserver) 一定 watch，
+        // 放到 node_modules 或仅靠根级 include 时 IDE 可能不刷新。
+        dtsFile: 'src/linkjs-remotes.d.ts',
         remotes: [
           { name: 'remoteApp', manifestUrl: 'http://localhost:4002/mf/manifest.json' },
           { name: 'remote-lib', manifestUrl: 'http://localhost:4001/mf/manifest.json' },
