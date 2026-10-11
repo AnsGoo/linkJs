@@ -113,17 +113,24 @@ function buildSnapshot(instance: any): LinkjsSnapshot {
 
   const shares: ShareSnapshot[] = [];
   instance.shares?.forEach((scopeMap: Map<string, any[]>, scope: string) => {
-    const loadedScope: Map<string, unknown> | undefined = instance.sharedMap?.get(scope);
+    const loadedScope: Map<string, any> | undefined = instance.sharedMap?.get(scope);
     scopeMap.forEach((options: any[], name: string) => {
       shares.push({
         scope,
         name,
         versions: options.map((option) => {
-          const version = option.version || '0.0.0';
+          const declared: string | undefined = option.version;
+          const versionKey = `${name}@${declared || '0.0.0'}`;
+          const loadedModule = loadedScope?.get(versionKey);
+          // 未声明 version 时，尽量从已加载模块暴露的 `version` 读取（如 vue）；
+          // 读不到则标记为 unknown，避免误显示 0.0.0。
+          const exposed =
+            loadedModule?.version ?? (loadedModule as { default?: { version?: unknown } })?.default?.version;
+          const actualVersion = declared || (typeof exposed === 'string' ? exposed : 'unknown');
           return {
-            version,
+            version: actualVersion,
             singleton: option.singleton,
-            loaded: Boolean(loadedScope?.has(`${name}@${version}`)),
+            loaded: Boolean(loadedModule),
             requiredVersion: option.requiredVersion,
             strictVersion: option.strictVersion,
             eager: option.eager,
