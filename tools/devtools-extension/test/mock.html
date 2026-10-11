@@ -14,8 +14,21 @@
         getSnapshot: () => ({
           instance: { id: 'mock-123', name: 'linkjs', version: '1.0.0', mode: 'development', shareStrategy: 'version-first' },
           remotes: [
-            { name: 'remoteApp', displayName: 'RemoteApp', type: 'app', status: 'loaded', host: 'http://localhost:8080' },
-            { name: 'remote-lib', displayName: 'vue-components-starter', type: 'lib', status: 'unloaded', host: 'http://localhost:4001' },
+            {
+              name: 'remoteApp', displayName: 'RemoteApp', type: 'app', status: 'loaded', host: 'http://localhost:8080',
+              shareScope: ['global'],
+              shared: { vue: { version: '3.5.0', scope: 'global', singleton: true } },
+              integrity: { 'index.js': 'sha384-AAAA' },
+            },
+            {
+              name: 'remote-lib', displayName: 'vue-components-starter', type: 'lib', status: 'unloaded', host: 'http://localhost:4001',
+              shareScope: ['global'],
+              shared: {
+                vue: { version: '3.5.0', scope: 'global', singleton: true },
+                pinia: { version: '3.0.0', scope: 'global', dependencies: ['vue'] },
+                'vue-router': { version: '4.5.0', scope: 'global', dependencies: ['vue'] },
+              },
+            },
           ],
           shares: [{ scope: 'global', name: 'vue', versions: [{ version: '3.5.0', loaded: true }] }],
           conflicts: [{ scope: 'global', name: 'vue-router', requiredVersion: '^6.0.0', provided: ['5.4.0'] }],

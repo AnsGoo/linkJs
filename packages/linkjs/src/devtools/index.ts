@@ -33,6 +33,10 @@ export interface RemoteSnapshot {
   entry: unknown;
   version?: string;
   shareScope?: string[];
+  /** 该远程声明的共享依赖（名 -> 配置）。 */
+  shared?: Record<string, unknown>;
+  /** 产物 SRI 完整性（path -> sha384-...）。 */
+  integrity?: Record<string, string>;
 }
 
 export interface ShareVersionSnapshot {
@@ -219,6 +223,8 @@ function buildSnapshot(instance: LinkjsInstance): LinkjsSnapshot {
       entry: remote.entry,
       version: remote.version,
       shareScope: remote.shareScope,
+      shared: remote.shared,
+      integrity: remote.integrity,
     });
   });
 

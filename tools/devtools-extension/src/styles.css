@@ -56,3 +56,19 @@ button.mini:hover { border-color: #647eff; }
 .remote-item .rt { color: #6b7085; font-size: 11px; }
 
 .detail-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; color: #cdd0dc; }
+
+/* Remote 左右两栏 */
+.remote-split { display: flex; gap: 14px; align-items: flex-start; }
+.remote-list { flex: 0 0 240px; position: sticky; top: 0; max-height: calc(100vh - 90px); overflow: auto; }
+.remote-detail { flex: 1; min-width: 0; }
+.remote-item .rk { flex: 1; }
+.pill.app { background: #2b3a5c; color: #cfe0ff; }
+.pill.lib { background: #3a2b57; color: #e3d4ff; }
+
+/* 依赖拓扑图 */
+.topo { overflow: auto; padding: 6px 0; }
+.topo svg { display: block; }
+.topo-link { fill: none; stroke: #3a3a52; stroke-width: 1.4; }
+.topo-node { fill: #15151f; stroke: #3a3a52; stroke-width: 1; }
+.topo-node.root { fill: #1c2a24; stroke: #42b883; }
+.topo-label { fill: #e6e6f0; font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; }

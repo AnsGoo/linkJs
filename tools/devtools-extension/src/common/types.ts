@@ -13,6 +13,7 @@ export interface RemoteSnapshot {
   version?: string;
   shareScope?: string[];
   entry?: string | Record<string, unknown>;
+  shared?: Record<string, unknown>;
   integrity?: Record<string, string>;
   [key: string]: unknown;
 }
