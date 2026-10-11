@@ -90,6 +90,7 @@ export default defineConfig({
       ? [
           tsdownPluginServer({
             port: 4001,
+            manifestPath: '/mf/manifest.json',
           }),
         ]
       : []),

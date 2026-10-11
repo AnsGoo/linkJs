@@ -15,6 +15,7 @@ function unmount() {
   app = null;
 }
 
-expose('remoteApp', { mount, unmount }, { version: '1.0.0' });
+// 同时暴露 HelloWorld 组件，供宿主用 getRemote('remoteApp/HelloWorld') 消费（路线 A）。
+expose('remoteApp', { mount, unmount, HelloWorld }, { version: '1.0.0' });
 
 export { mount, unmount, HelloWorld };

@@ -16,10 +16,10 @@ export interface RemoteTypeInfo {
   typesHash: string;
   /** 缓存文件相对 outDir 的路径（含扩展名）。 */
   cacheRel: string;
-  /** 聚合声明中引用缓存文件的相对 specifier（不含扩展名），如 `./remoteApp/lib`。 */
-  cacheSpec: string;
   exposes: string[];
   mode: 'development' | 'production';
+  /** d.ts 内容（用于内联进聚合声明）。 */
+  content: string;
 }
 
 export interface ConsumeTypesResult {
@@ -110,8 +110,16 @@ function writeFileAtomic(file: string, content: string): void {
   renameSync(tmp, file);
 }
 
+/** 给多行文本每行加两空格缩进（用于内联进 ambient module）。 */
+function indentBlock(text: string): string {
+  return text
+    .split('\n')
+    .map((line) => (line ? `  ${line}` : line))
+    .join('\n');
+}
+
 /**
- * 生成聚合声明内容：`declare module '<name>/<Expose>'` + `linkjs` 类型注册表增强。
+ * 生成聚合声明内容：`declare module '<name>'` / `'<name>/<Expose>'` + 全局类型注册表。
  */
 function renderRemoteTypeDeclarations(infos: RemoteTypeInfo[]): string {
   const lines: string[] = [
@@ -122,8 +130,10 @@ function renderRemoteTypeDeclarations(infos: RemoteTypeInfo[]): string {
   const mapLines: string[] = [];
 
   for (const info of infos) {
+    // 直接内联 d.ts 内容：ambient `declare module` 里对**相对路径**的 `export * from` 不会解析，
+    // 会导致模块类型退化为 any，因此这里内联而非 re-export 缓存文件。
     lines.push(`declare module ${JSON.stringify(info.name)} {`);
-    lines.push(`  export * from ${JSON.stringify(info.cacheSpec)};`);
+    lines.push(indentBlock(info.content));
     lines.push('}');
     mapLines.push(`    ${JSON.stringify(info.name)}: typeof import(${JSON.stringify(info.name)});`);
 
@@ -131,7 +141,7 @@ function renderRemoteTypeDeclarations(infos: RemoteTypeInfo[]): string {
       const key = `${info.name}/${expose}`;
       lines.push('');
       lines.push(`declare module ${JSON.stringify(key)} {`);
-      lines.push(`  export * from ${JSON.stringify(info.cacheSpec)};`);
+      lines.push(`  export * from ${JSON.stringify(info.name)};`);
       lines.push('}');
       mapLines.push(
         `    ${JSON.stringify(key)}: typeof import(${JSON.stringify(info.name)})[${JSON.stringify(expose)}];`,
@@ -185,7 +195,6 @@ async function fetchRemoteType(
   const hashName = sanitizeHash(typesHash);
   const fileName = basename(new URL(typesUrl).pathname) || 'index.d.ts';
   const cacheRel = `${target.name}/${hashName}-${fileName}`;
-  const cacheSpec = `./${cacheRel.replace(/\.d\.(ts|mts|cts)$/, '')}`;
 
   writeFileAtomic(resolve(outDir, cacheRel), dtsContent);
 
@@ -195,9 +204,9 @@ async function fetchRemoteType(
     typesUrl,
     typesHash,
     cacheRel,
-    cacheSpec,
     exposes: resolveExposes(manifest),
     mode: resolveMode(target, manifest),
+    content: dtsContent,
   };
 }
 

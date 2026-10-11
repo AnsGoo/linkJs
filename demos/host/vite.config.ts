@@ -23,7 +23,10 @@ export default defineConfig({
     // 拉取远端类型并生成 declare module '<remote>/<Expose>'（dev 模式订阅 SSE 热更新）
     unpluginLinkjs.vite({
       consumeTypes: {
-        remotes: [{ name: 'remoteApp', manifestUrl: 'http://localhost:4002/mf/manifest.json' }],
+        remotes: [
+          { name: 'remoteApp', manifestUrl: 'http://localhost:4002/mf/manifest.json' },
+          { name: 'remote-lib', manifestUrl: 'http://localhost:4001/mf/manifest.json' },
+        ],
       },
     }),
   ],

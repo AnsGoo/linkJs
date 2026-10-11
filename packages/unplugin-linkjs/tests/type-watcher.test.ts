@@ -9,9 +9,9 @@ function info(typesHash: string): RemoteTypeInfo {
     typesUrl: 'http://cdn/lib.d.ts',
     typesHash,
     cacheRel: 'remoteApp/lib.d.ts',
-    cacheSpec: './remoteApp/lib',
     exposes: ['HelloWorld'],
     mode: 'development',
+    content: 'export declare const HelloWorld: number;\n',
   };
 }
 
