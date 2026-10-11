@@ -2,6 +2,7 @@
 withDefaults(
   defineProps<{
     msg: string;
+    age: number;
   }>(),
   {
     msg: 'I am remote app!',
@@ -12,6 +13,7 @@ withDefaults(
 <template>
   <div class="greetings">
     <h1 class="green">{{ msg }} hot update1232wew</h1>
+    <p>Age: {{ age }}</p>
     <h3>
       You’ve successfully created a project with
       <a href="https://vite.dev/" target="_blank" rel="noopener">Vite</a> +
