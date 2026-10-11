@@ -1,35 +1,44 @@
 'use strict';
 
-// 后台：检测每个标签页是否加载了 linkjs，只在有 __LINKJS__ 的页面启用（高亮可点）工具栏图标。
+// 后台：检测标签页是否加载了 linkjs，据此启用/置灰工具栏图标。
+// - 有 linkjs：启用（可点）+ 绿色徽标 ●
+// - 明确没有（注入成功但无 __LINKJS__）：置灰不可点
+// - 无法判断（注入失败/无网站权限/chrome:// 等）：fail-open 保持可点，避免“点不动”
 
-const DETECT = () => {
-  const api = window.__LINKJS__;
-  return Boolean(api && typeof api.getSnapshot === 'function');
-};
+const DETECT = () =>
+  Boolean(window.__LINKJS__ && typeof window.__LINKJS__.getSnapshot === 'function');
 
 async function refreshActionState(tabId) {
   if (tabId == null || tabId < 0) {
     return;
   }
+  let known = false;
   let has = false;
   try {
-    // 关键：在页面主世界执行，才能读到页面设置的 window.__LINKJS__（隔离世界读不到）。
+    // 关键：主世界执行，才能读到页面设置的 window.__LINKJS__（隔离世界读不到）。
     const [result] = await chrome.scripting.executeScript({ target: { tabId }, func: DETECT, world: 'MAIN' });
     has = Boolean(result && result.result);
-  } catch {
-    has = false;
+    known = true;
+  } catch (error) {
+    known = false;
+    console.debug('[linkjs] 探测失败（可能缺少网站访问权限）:', error && error.message);
   }
+
   try {
-    if (has) {
+    if (known && has) {
       await chrome.action.setBadgeBackgroundColor({ tabId, color: '#1f6f4a' });
       await chrome.action.setBadgeText({ tabId, text: '●' });
       await chrome.action.enable(tabId);
-    } else {
+    } else if (known && !has) {
       await chrome.action.setBadgeText({ tabId, text: '' });
       await chrome.action.disable(tabId);
+    } else {
+      // fail-open：无法判断时保持可点（弹窗内会给出原因）。
+      await chrome.action.setBadgeText({ tabId, text: '' });
+      await chrome.action.enable(tabId);
     }
-  } catch {
-    /* 忽略个别标签页的不支持 */
+  } catch (error) {
+    console.debug('[linkjs] 更新图标状态失败:', error && error.message);
   }
 }
 
@@ -40,4 +49,12 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.status === 'complete' || changeInfo.url) {
     void refreshActionState(tabId);
   }
+});
+chrome.runtime.onInstalled.addListener(() => {
+  console.debug('[linkjs] background installed');
+  chrome.tabs.query({ active: true, currentWindow: true }).then(([tab]) => {
+    if (tab && tab.id != null) {
+      void refreshActionState(tab.id);
+    }
+  });
 });

@@ -64,18 +64,32 @@ async function render() {
     return;
   }
   let snap = null;
+  let accessError = null;
   try {
     const [result] = await chrome.scripting.executeScript({ target: { tabId }, func: readSnapshotInPage, world: 'MAIN' });
     snap = result && result.result;
-  } catch {
-    snap = null;
+  } catch (error) {
+    accessError = error;
+  }
+
+  if (accessError) {
+    instanceIdEl.textContent = '';
+    titleEl.classList.remove('has-error');
+    snapshot = null;
+    sectionsEl.replaceChildren(
+      document.createTextNode(
+        '无法访问当前页面：' + ((accessError && accessError.message) || accessError) +
+          '\n请在 chrome://extensions 的扩展详情里把“网站访问权限”设为“在所有网站上”。',
+      ),
+    );
+    return;
   }
 
   if (!snap || snap.__state === 'missing') {
     instanceIdEl.textContent = '';
     titleEl.classList.remove('has-error');
     snapshot = null;
-    sectionsEl.replaceChildren(document.createTextNode('未检测到 linkjs（此页面未在开发模式下初始化）'));
+    sectionsEl.replaceChildren(document.createTextNode('此页面未检测到 linkjs（需在开发模式下 createInstance，暴露 window.__LINKJS__）'));
     return;
   }
   if (snap.__state === 'error') {
