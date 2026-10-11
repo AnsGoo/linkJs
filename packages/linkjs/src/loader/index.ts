@@ -167,6 +167,7 @@ function registerRemote(option: RmoteConfig) {
     return;
   }
   instance.remotes.set(name, {
+    name,
     entry,
     status: LOAD_STATUS.UNLOADED,
   });

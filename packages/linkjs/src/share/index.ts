@@ -1,6 +1,7 @@
 import type Module from 'module';
 import { getInstance } from '..';
 import type { ShareOption } from '../state/instance';
+import { recordDiagnostic } from '../devtools';
 import { VersionComparator } from './version-comparator';
 
 export type { ShareOption };
@@ -68,11 +69,16 @@ function warnVersionMismatch(
   if (VersionComparator.satisfiesVersion(resolved, requirement)) {
     return;
   }
-  const message = `[linkjs] shared "${name}": resolved version ${resolved} does not satisfy requiredVersion ${requirement}`;
+  const message = `shared "${name}": resolved version ${resolved} does not satisfy requiredVersion ${requirement}`;
   if (strict) {
-    throw new Error(message);
+    throw new Error(`[linkjs] ${message}`);
   }
-  console.warn(`${message}（非 strict，继续）`);
+  recordDiagnostic({
+    level: 'warn',
+    code: 'SHARE_VERSION_MISMATCH',
+    message,
+    context: { name, resolved, requirement },
+  });
 }
 
 async function loadModule(shareInfo: ShareOption): Promise<Module> {

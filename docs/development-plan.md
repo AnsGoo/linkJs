@@ -181,6 +181,15 @@
 
 ---
 
+## P13 可观测性（快照 + 诊断，借鉴 Module Federation DevTools）
+
+- [x] `getSnapshot()`：汇总 `instance`（name/version/mode/shareStrategy）、`remotes`（status/host/type/shareScope）、`shares`（scope × name × versions，含 loaded/requiredVersion/strictVersion/eager）、`plugins`、`diagnostics`。
+- [x] 诊断通道：`recordDiagnostic` / `getDiagnostics` / `clearDiagnostics` / `onDiagnostic`；版本冲突记为 `SHARE_VERSION_MISMATCH`，远程加载失败记为 `LOAD_REMOTE_ERROR`（上限 200 条）。
+- [x] 全局 `__LINKJS__`（含 `getSnapshot`）并挂到 `$linkjs.debug`；顺带修复 `registerRemote` 未写入 `name` 的问题。
+- 测试：`tests/devtools.test.ts`（2 用例）；demo 宿主打印快照（实测 remotes 均 loaded、shares vue/pinia/vue-router）。
+
+---
+
 ## 执行记录（本轮）
 
 | 阶段 | 状态 | 说明 |

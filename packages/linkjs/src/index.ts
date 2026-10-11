@@ -11,10 +11,19 @@ import { registerPlugin, runInitHooks, type RuntimePlugin } from './plugins';
 import { subscribeRemoteUpdate } from './hmr';
 import { loadRuntime } from './runtime';
 import { preloadRemote } from './preload';
+import { buildSnapshot, clearDiagnostics, getDiagnostics, installDevtools, onDiagnostic } from './devtools';
 
 function getInstance() {
   return linkInstance;
 }
+
+/** 当前 linkjs 实例的可观测快照（remotes / shares / plugins / diagnostics）。 */
+function getSnapshot() {
+  return buildSnapshot(linkInstance);
+}
+
+// 安装 DevTools 便于排查（全局 __LINKJS__ 与 $linkjs.debug）。
+installDevtools(linkInstance);
 
 type InstanceMode = 'development' | 'production';
 
@@ -79,6 +88,10 @@ export {
   subscribeRemoteUpdate,
   loadRuntime,
   preloadRemote,
+  getSnapshot,
+  getDiagnostics,
+  clearDiagnostics,
+  onDiagnostic,
 };
 
 export type { RegistryOption } from './state';
@@ -89,6 +102,7 @@ export { registerPlugin, getPlugins } from './plugins';
 export type { RuntimePlugin } from './plugins';
 export type { EventBus, EventHandler, LinkjsEvents } from './event-bus';
 export type { PreloadRemoteOptions, RemoteManifest, ManifestAsset } from './preload';
+export type { Diagnostic, LinkjsSnapshot, RemoteSnapshot, ShareSnapshot, ShareVersionSnapshot } from './devtools';
 
 export {
   captureSnapshot,

@@ -1,7 +1,7 @@
 import './assets/main.css';
 
 import registryOptions from 'runtime-registry';
-import { createInstance, loadApp, overrideRemote, preloadRemote } from 'linkjs';
+import { createInstance, getSnapshot, loadApp, overrideRemote, preloadRemote } from 'linkjs';
 
 const instances = createInstance({
   // 显式指定宿主模式：DEV 下子应用复用共享 runtime，PROD 下用子应用自带 runtime。
@@ -45,6 +45,8 @@ function loadRemoteModule() {
   })
     .then((lib) => {
       console.log('Remote module loaded:', lib);
+      // 可观测：打印当前 remotes/shares/诊断快照（也可在控制台用 __LINKJS__.getSnapshot()）
+      console.log('[linkjs] snapshot', getSnapshot());
     })
     .catch((error) => {
       console.error('Failed to load remote module:', error);

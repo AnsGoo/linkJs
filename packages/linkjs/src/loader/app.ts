@@ -4,6 +4,7 @@ import { activateSandbox } from '../sandbox';
 import { installVueHmrRuntimeShim } from '../hmr';
 import { beginStyleCapture, endStyleCapture, ensureShadowTarget } from '../sandbox/shadow';
 import { runBeforeLoadRemote, runHook } from '../plugins';
+import { recordDiagnostic } from '../devtools';
 import { loadCss, loadScript, preloadModule, useGetRemote, useHandleExpose, type ExtOption, type LoadScriptOptions } from './utils';
 
 export interface LoadAppOptions {
@@ -197,6 +198,12 @@ async function loadApp<Module>(
       if (options?.shadow) {
         endStyleCapture();
       }
+      recordDiagnostic({
+        level: 'error',
+        code: 'LOAD_REMOTE_ERROR',
+        message: `failed to load remote app "${appName}": ${String(error)}`,
+        context: { appName },
+      });
       void runHook('errorLoadRemote', error, remoteInfo);
       throw error;
     },

@@ -2,6 +2,7 @@ import { getInstance, loadShare } from '..';
 import { LIB_EXPOSE } from '../event-bus/constant';
 import { beginStyleCapture, endStyleCapture, ensureShadowTarget } from '../sandbox/shadow';
 import { runBeforeLoadRemote, runHook } from '../plugins';
+import { recordDiagnostic } from '../devtools';
 import { getRemoteInfo, useGetRemote, useHandleExpose, type ExtOption } from './utils';
 
 export interface LoadLibOptions {
@@ -106,6 +107,12 @@ async function loadRemoteLib<Module>(
       if (options?.shadow) {
         endStyleCapture();
       }
+      recordDiagnostic({
+        level: 'error',
+        code: 'LOAD_REMOTE_ERROR',
+        message: `failed to load remote lib "${appName}": ${String(error)}`,
+        context: { appName },
+      });
       void runHook('errorLoadRemote', error, remoteInfo);
       throw error;
     },
