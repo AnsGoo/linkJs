@@ -1,6 +1,7 @@
 import { createUnplugin } from 'unplugin';
 import type { Node, ImportDeclaration } from 'oxc-parser';
 import MagicString from 'magic-string';
+import { createHash } from 'crypto';
 
 import type { ManifestAsset, ManifestJson, UnpluginLinkjsOptions } from './types.js';
 import { generateManifestFile, updateManifestFile } from './build-manifest.js';
@@ -381,7 +382,23 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
         // 入口声明的共享依赖（来自 shared() 调用）
         const dependencies = Array.from(entrySharedDeps).filter((dep) => dep in analyzedSharedDeps);
 
-        updateManifestFile(outDir, { entry, dependencies, exposes: exposeAssets }, analyzedSharedDeps);
+        // 生成各产物（js/css/html）的 SRI 完整性，写进 manifest 供宿主预加载/校验。
+        const sha384 = (data: string | Buffer) => `sha384-${createHash('sha384').update(data).digest('base64')}`;
+        const integrity: Record<string, string> = {};
+        bundleKeys.forEach((key) => {
+          if (key.endsWith('.map') || isDeclarationFile(key)) {
+            return;
+          }
+          const item = bundle[key];
+          if (item.type === 'chunk') {
+            integrity[toManifestPath(key)] = sha384(item.code);
+          } else if (item.type === 'asset') {
+            const source = typeof item.source === 'string' ? item.source : Buffer.from(item.source);
+            integrity[toManifestPath(key)] = sha384(source);
+          }
+        });
+
+        updateManifestFile(outDir, { entry, dependencies, exposes: exposeAssets, integrity }, analyzedSharedDeps);
 
         // 生成依赖拓扑图（含共享依赖的子共享依赖）
         generateDependencyGraph(outDir, dependencyGraph, bundle, analyzedSharedDeps, dependencies);

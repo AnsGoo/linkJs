@@ -253,6 +253,14 @@
 
 ---
 
+## P21 SRI 完整性生成
+
+- [x] unplugin 构建期对每个产物（js/css/html）计算 `sha384`，写入 manifest `integrity`（`path -> sha384-...`）。
+- [x] 运行时：`preloadRemote` 按 `manifest.integrity` 为预加载 `<link>` 设置 `integrity`；`loadOverride` 读取 `manifest.integrity` 存入 `remote.integrity`（`RemoteBase.integrity`）。
+- 测试：`tests/preload.test.ts` 增加 integrity 用例；实测 remote-lib `mf/manifest.json` 含全部产物 hash。
+
+---
+
 ## 执行记录（本轮）
 
 | 阶段 | 状态 | 说明 |

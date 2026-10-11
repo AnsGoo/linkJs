@@ -88,6 +88,9 @@ async function loadOverride(option: OverrideEntry) {
   remote.host = host;
   remote.version = remoteInfo.version;
   remote.shared = remoteInfo.shared;
+  if (remoteInfo.integrity) {
+    remote.integrity = remoteInfo.integrity;
+  }
   if (remoteInfo.entry) {
     remote.entry = remoteInfo.entry;
   }

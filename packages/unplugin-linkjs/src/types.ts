@@ -32,6 +32,8 @@ export interface ManifestJson {
     path: string;
     assets: ManifestAsset;
   }>;
+  /** 产物 SRI 完整性（path -> `sha384-...`），供宿主预加载/校验。 */
+  integrity?: Record<string, string>;
   shared?: Record<
     string,
     {

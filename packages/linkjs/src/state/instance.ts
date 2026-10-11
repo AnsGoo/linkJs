@@ -26,6 +26,8 @@ export interface RemoteBase {
   shared?: Record<string, Omit<ShareInfo, 'name' | 'lib' | 'status'>>;
   /** 该远程关联的共享作用域（可多个，默认 `global`）。 */
   shareScope?: string[];
+  /** 产物 SRI 完整性（path -> `sha384-...`），键为远端 manifest 中的路径。 */
+  integrity?: Record<string, string>;
   version?: string;
   expose?: Record<string, any>;
   status: (typeof LOAD_STATUS)[keyof typeof LOAD_STATUS];

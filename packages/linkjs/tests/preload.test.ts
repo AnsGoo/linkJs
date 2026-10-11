@@ -71,3 +71,19 @@ test('throws when manifest fetch fails', async () => {
   (globalThis as any).fetch = vi.fn(async () => ({ ok: false, status: 404 }));
   await expect(preloadRemote({ manifestUrl: 'http://localhost:4001/manifest.json' })).rejects.toThrow(/failed to fetch manifest/);
 });
+
+test('applies SRI integrity from the manifest', async () => {
+  (globalThis as any).fetch = vi.fn(async () => ({
+    ok: true,
+    json: async () => ({
+      entry: { assets: { js: { sync: ['/mf/lib.js'] }, css: { sync: ['/mf/style.css'] } } },
+      integrity: { '/mf/lib.js': 'sha384-AAA', '/mf/style.css': 'sha384-BBB' },
+    }),
+  }));
+
+  await preloadRemote({ manifestUrl: 'http://localhost:4001/mf/manifest.json' });
+
+  const byHref = new Map(created.map((l) => [l.href, l]));
+  expect((byHref.get('http://localhost:4001/mf/lib.js') as any)?.integrity).toBe('sha384-AAA');
+  expect((byHref.get('http://localhost:4001/mf/style.css') as any)?.integrity).toBe('sha384-BBB');
+});

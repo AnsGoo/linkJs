@@ -27,6 +27,8 @@ export interface RemoteManifest {
   };
   exposes?: Array<{ name: string; path: string; assets?: ManifestAsset }>;
   shared?: Record<string, unknown>;
+  /** 产物 SRI 完整性（manifest path -> `sha384-...`）。 */
+  integrity?: Record<string, string>;
   [key: string]: unknown;
 }
 
@@ -62,7 +64,7 @@ function crossOriginFor(href: string): string | undefined {
   }
 }
 
-function addPreloadLink(rel: string, href: string, remoteName?: string, as?: string): void {
+function addPreloadLink(rel: string, href: string, remoteName?: string, as?: string, integrity?: string): void {
   if (document.querySelector(`link[href="${href}"]`)) {
     return;
   }
@@ -71,6 +73,9 @@ function addPreloadLink(rel: string, href: string, remoteName?: string, as?: str
   link.href = href;
   if (as) {
     link.as = as;
+  }
+  if (integrity) {
+    link.integrity = integrity;
   }
   const crossOrigin = crossOriginFor(href);
   if (crossOrigin) {
@@ -120,10 +125,16 @@ async function preloadRemote(options: PreloadRemoteOptions): Promise<RemoteManif
   const resolved = (href: string) => new URL(href, url).href;
   for (const href of sync) {
     const abs = resolved(href);
-    addPreloadLink(abs.endsWith('.css') ? 'preload' : 'modulepreload', abs, options.name, abs.endsWith('.css') ? 'style' : undefined);
+    addPreloadLink(
+      abs.endsWith('.css') ? 'preload' : 'modulepreload',
+      abs,
+      options.name,
+      abs.endsWith('.css') ? 'style' : undefined,
+      manifest.integrity?.[href],
+    );
   }
   for (const href of async) {
-    addPreloadLink('prefetch', resolved(href), options.name);
+    addPreloadLink('prefetch', resolved(href), options.name, undefined, manifest.integrity?.[href]);
   }
 
   await runHook('afterPreloadRemote', manifest, [...sync, ...async].map(resolved));
