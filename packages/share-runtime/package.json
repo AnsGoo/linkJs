@@ -5,12 +5,12 @@
   "license": "ISC",
   "author": "",
   "exports": {
-    ".": "./dist/index.mjs",
+    ".": "./lib/index.mjs",
     "./package.json": "./package.json"
   },
   "publishConfig": {
     "exports": {
-      ".": "./dist/index.mjs",
+      ".": "./lib/index.mjs",
       "./package.json": "./package.json"
     }
   },

@@ -171,7 +171,7 @@ init();
 ## 开发
 
 ```bash
-# 安装依赖
+# 安装依赖（安装后会自动 pnpm run build 构建各包 dist）
 pnpm install
 
 # 构建所有包
@@ -184,6 +184,10 @@ pnpm run test
 cd demos/remote && pnpm run dev
 cd demos/host && pnpm run dev
 ```
+
+> 说明：各包以 **dist 产物**对外（`exports` 只指向 dist，无 `src` 回退），因此不会出现
+> “dev 用 src、构建用 dist” 的漂移。demo 的 `dev`/`build` 脚本会先构建所用到的 workspace
+> 包，保证 dist 始终最新；若单独改了某个包，也可手动 `pnpm --filter <pkg> build`。
 
 ## 许可证
 
