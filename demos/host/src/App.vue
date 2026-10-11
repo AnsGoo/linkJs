@@ -26,7 +26,8 @@ const RemoteHelloWorld = getRemote('remoteApp/HelloWorld')!;
     <div class="wrapper">
       <HelloWorld msg="I am host app!" />
       <div>
-        <RemoteApp msg="I am remote app" />
+        <!-- createRemoteApp 会把 attrs 透传给子应用 mount；远端 HelloWorld 有必填 props，需一并传 -->
+        <RemoteApp msg="I am remote app" :age="20" name="remote-host" sex="male" tst="physics" />
       </div>
       <div>
         <!-- 远程组件（路线 A）：msg 的类型来自远程 d.ts，写错类型会报错 -->

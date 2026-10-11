@@ -443,6 +443,9 @@ const DevtoolsPanel = defineComponent({
             {renderSnapshot(snapshot.value, filter.value, copy, close)}
             <div class="toolbar">
               <input
+                id="linkjs-devtools-filter"
+                name="linkjs-devtools-filter"
+                aria-label="过滤 LinkJS 面板内容"
                 placeholder="过滤…"
                 value={filter.value}
                 onInput={(e: Event) => {
