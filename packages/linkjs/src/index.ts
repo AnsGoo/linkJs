@@ -13,7 +13,7 @@ import {
 
 import { loadOverride, overrideRemote } from './override';
 import { expose, shared } from './expose';
-import { loadShare, registerShare, getShare } from './share';
+import { loadShare, loadShareSync, registerShare, getShare } from './share';
 import type { ShareOption } from './share';
 import type { RmoteConfig } from './loader';
 import type { LoadAppOptions } from './loader/app';
@@ -166,6 +166,7 @@ export {
   registerShare,
   getShare,
   loadShare,
+  loadShareSync,
   loadOverride,
   overrideRemote,
   subscribeRemoteUpdate,

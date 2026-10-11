@@ -33,7 +33,7 @@
 - [x] **A5 `getPublicPath`**：CDN 动态基址自解析。`[中 / 小]`
 - [ ] **A6 `import:false` / `shareKey` / `packageName` 别名**：只提供不消费、以别名共享同一实例。`[中 / 中]`
 - [ ] **A7 `treeShaking` shared**：按需共享子依赖。`[中 / 中]`
-- [ ] **A8 `loadShareSync`**：同步取已加载实例（首屏用）。`[中 / 小]`
+- [x] **A8 `loadShareSync`**：同步取已加载实例（首屏用）。`[中 / 小]`
 - [x] **A9 多 shareScope 声明式配置**（manifest / 构建期），现仅运行时。`[中 / 小]`
 - [x] **A10 remote 多源列表 + 健康检查 / 灰度**。`[中 / 中]`
 

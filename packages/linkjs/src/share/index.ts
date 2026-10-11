@@ -281,6 +281,85 @@ async function loadShare(
 }
 
 /**
+ * 同步获取共享模块（**首屏用**）。
+ *
+ * 解析顺序：
+ * 1. **已加载实例优先**：命中直接返回（不发起异步加载）；
+ * 2. 否则尝试候选中的**同步工厂**（`() => Module`）：同步求值、写入缓存并返回；
+ * 3. 若只能异步加载（`() => Promise<Module>`）则**抛出错误**，提示改用 `loadShare`。
+ *
+ * 无可用声明返回 `null`；版本要求 / `strictVersion` 语义与 `loadShare` 一致。
+ */
+function loadShareSync(
+  name: string,
+  options?: {
+    version?: string;
+    scope?: string;
+    requiredVersion?: string | false;
+    strictVersion?: boolean;
+  },
+): RemoteModule | null {
+  const instance = getInstance();
+  const { scope = 'global', version } = options || {};
+
+  const shares = instance.shares.get(scope);
+  const available: ShareOption[] = shares?.get(name) || [];
+  if (available.length === 0) {
+    return null;
+  }
+
+  const requirement = options?.requiredVersion ?? available.find((info) => info.requiredVersion !== undefined)?.requiredVersion;
+  const strict = options?.strictVersion ?? available.find((info) => info.strictVersion !== undefined)?.strictVersion;
+
+  let loadedModules = instance.sharedMap.get(scope);
+  if (!loadedModules) {
+    loadedModules = new Map<string, RemoteModule>();
+    instance.sharedMap.set(scope, loadedModules);
+  }
+
+  // 1) 已加载实例优先（同步取值）。
+  const loadedCandidates: Candidate[] = collectLoaded(loadedModules, name).map((item) => ({
+    ...item,
+    source: 'loaded' as const,
+  }));
+  const bestLoaded = version
+    ? VersionComparator.findBestMatch(version, loadedCandidates, [])
+    : VersionComparator.findLatestVersion(loadedCandidates);
+  if (bestLoaded) {
+    warnVersionMismatch(name, bestLoaded.version, requirement, strict);
+    return (bestLoaded as Candidate).module as RemoteModule;
+  }
+
+  // 2) 未加载：尝试同步工厂。
+  const availableCandidates = toCandidates([], available);
+  const bestAvailable = version
+    ? VersionComparator.findBestMatch(version, availableCandidates, [])
+    : VersionComparator.findLatestVersion(availableCandidates);
+  if (!bestAvailable) {
+    return null;
+  }
+  const shareInfo = (bestAvailable as Candidate).module as ShareOption;
+  warnVersionMismatch(name, bestAvailable.version, requirement, strict);
+
+  const lib = shareInfo.lib;
+  if (typeof lib !== 'function') {
+    const direct = lib as RemoteModule;
+    loadedModules.set(`${name}@${shareInfo.version || '0.0.0'}`, direct);
+    return direct;
+  }
+
+  const result = (lib as () => RemoteModule | Promise<RemoteModule>)();
+  if (result && typeof (result as Promise<RemoteModule>).then === 'function') {
+    throw new Error(
+      `[linkjs] loadShareSync("${name}") cannot resolve synchronously: the registered lib is async. Use loadShare() instead.`,
+    );
+  }
+  const mod = result as RemoteModule;
+  loadedModules.set(`${name}@${shareInfo.version || '0.0.0'}`, mod);
+  return mod;
+}
+
+/**
  * 获取已加载的共享模块（两种策略一致，只看已加载）。
  *
  * 1. 指定版本：返回满足范围的已加载最高版本，否则 null；
@@ -309,4 +388,4 @@ function getShare(
   return (best?.module as RemoteModule) || null;
 }
 
-export { registerShare, loadShare, getShare };
+export { registerShare, loadShare, loadShareSync, getShare };

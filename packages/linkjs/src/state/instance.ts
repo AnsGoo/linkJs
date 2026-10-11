@@ -6,7 +6,7 @@ import type { PublicPathResolver, RequestRewriter } from '../loader/utils';
 import type { LoadAppOptions } from '../loader/app';
 import type { LoadLibOptions } from '../loader/lib';
 import type { LoadOptions } from '../loader/options';
-import { getShare, loadShare } from '../share';
+import { getShare, loadShare, loadShareSync } from '../share';
 import { loadRuntime } from '../runtime';
 import type { InstanceMode, RemoteModule, ShareModule, ShareStrategy } from '../types';
 
@@ -143,6 +143,7 @@ export interface LinkjsInstance {
   shared(libName: string, sharedModules: Record<string, ShareModule>, options?: unknown): void;
   getShare: typeof getShare;
   loadShare: typeof loadShare;
+  loadShareSync: typeof loadShareSync;
   loadRuntime: typeof loadRuntime;
   /** 由 `ensureRuntimeMethods()` 惰性挂载，可被插件包装。 */
   loadApp?: (entry: string, options?: LoadAppOptions) => Promise<unknown>;
@@ -191,6 +192,7 @@ function createInstanceObject(): LinkjsInstance {
     },
     getShare: getShare,
     loadShare: loadShare,
+    loadShareSync: loadShareSync,
     loadRuntime: loadRuntime,
   };
 }
@@ -211,6 +213,7 @@ globalObject['$linkjs'] = {
   shared: linkInstance.shared,
   getShare: linkInstance.getShare,
   loadShare: linkInstance.loadShare,
+  loadShareSync: linkInstance.loadShareSync,
   loadRuntime: linkInstance.loadRuntime,
   getShared: linkInstance.getShare,
   loadShared: linkInstance.loadShare,

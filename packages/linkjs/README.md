@@ -170,6 +170,21 @@ createInstance({
 
 选择逻辑：`resolvePublicPath`（`loadApp`/`loadLib` 入口基址）与 `preloadRemote`（manifest 地址）在缺省 host 时都先做源选择。健康结果按 `healthCheck.interval` 缓存；可用 `selectRemoteSource(info, name, { skipHealthCheck, random })` 手动选择（`clearHealthCache()` 清缓存）。`manifest.json` 同样可声明 `sources`。
 
+### 首屏同步取共享依赖（`loadShareSync`）
+
+首屏渲染需要**同步**拿到已加载的共享实例时使用（避免 await）：
+
+```typescript
+import { loadShareSync } from 'linkjs';
+
+const vue = loadShareSync('vue'); // 已加载则直接返回，否则尝试同步工厂
+if (!vue) {
+  // 尚未加载：改用异步 loadShare('vue')
+}
+```
+
+解析顺序：已加载实例优先 → 候选的同步工厂（`() => Module`）同步求值并缓存 → 若只能异步加载（`() => Promise<Module>`）则抛错。无声明返回 `null`；版本范围 / `strictVersion` 与 `loadShare` 一致。
+
 ## 工作原理
 
 1. **模块暴露**：子应用通过 `expose` 函数暴露模块，内部会触发 `LIB_EXPOSE` 事件。
