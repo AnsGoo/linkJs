@@ -108,6 +108,10 @@ interface ShareInfo {
   requiredVersion?: string | false;
   /** 版本不满足 `requiredVersion` 时是否抛错（默认仅告警）。 */
   strictVersion?: boolean;
+  /** 注册来源实体：`host`（宿主）或远程名（app/lib）。 */
+  provider?: string;
+  /** 加载地址（bundle/URL），未知时省略。 */
+  source?: string;
 }
 
 export type ShareOption = Omit<ShareInfo, 'status'>;

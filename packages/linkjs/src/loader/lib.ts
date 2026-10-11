@@ -12,6 +12,7 @@ import {
   rewriteRequestUrl,
   useGetRemote,
   useHandleExpose,
+  withShareProvider,
   type ExtOption,
   type RemoteCache,
 } from './utils';
@@ -75,7 +76,7 @@ async function loadRemoteLib<M = unknown>(
   if (sharedEntry) {
     const sharedUrl = rewriteRequestUrl(new URL(sharedEntry, host).href, appName);
     try {
-      await import(/* @vite-ignore */ sharedUrl);
+      await withShareProvider(appName, () => import(/* @vite-ignore */ sharedUrl));
     } catch (error) {
       console.warn(`[linkjs] Failed to load shared entry "${sharedUrl}":`, error);
     }
@@ -95,7 +96,7 @@ async function loadRemoteLib<M = unknown>(
       reject(error);
     };
 
-    import(/* @vite-ignore */ jsUrl)
+    withShareProvider(appName, () => import(/* @vite-ignore */ jsUrl))
       .then(async () => {
         await runHook('afterLoadEntry', remoteInfo);
         extOption.timeoutId = setTimeout(() => {

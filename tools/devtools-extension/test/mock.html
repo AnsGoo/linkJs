@@ -30,7 +30,10 @@
               },
             },
           ],
-          shares: [{ scope: 'global', name: 'vue', versions: [{ version: '3.5.0', loaded: true }] }],
+          shares: [
+            { scope: 'global', name: 'vue', versions: [{ version: '3.5.0', loaded: true, provider: 'host' }] },
+            { scope: 'global', name: 'pinia', versions: [{ version: '3.0.0', loaded: true, provider: 'remote-lib' }] },
+          ],
           conflicts: [{ scope: 'global', name: 'vue-router', requiredVersion: '^6.0.0', provided: ['5.4.0'] }],
           plugins: ['linkjs-retry'],
           availablePlugins: [

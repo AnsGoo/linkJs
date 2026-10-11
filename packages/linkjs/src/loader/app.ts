@@ -16,6 +16,7 @@ import {
   rewriteRequestUrl,
   useGetRemote,
   useHandleExpose,
+  withShareProvider,
   type ExtOption,
   type LoadScriptOptions,
   type RemoteCache,
@@ -182,7 +183,7 @@ async function loadApp<M = unknown>(
       });
     });
 
-    Promise.all(scriptPromises)
+    withShareProvider(appName, () => Promise.all(scriptPromises))
       .then(async () => {
         endScripts();
         await runHook('afterLoadEntry', remoteInfo);

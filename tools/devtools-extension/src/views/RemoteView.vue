@@ -43,10 +43,40 @@ const hostRows = computed(() => {
   return rows;
 });
 
+// 依赖来源：提供方实体（host / remote 名）+ 加载地址（宿主 origin 或远程 host）。
+const shareIndex = computed(() => {
+  const map = new Map<string, Array<{ provider: string; version: string; source?: string }>>();
+  for (const s of props.snapshot.shares || []) {
+    map.set(
+      s.name,
+      (s.versions || []).map((v) => ({ provider: v.provider || 'host', version: v.version, source: v.source })),
+    );
+  }
+  return map;
+});
+
+function addrOf(provider: string): string {
+  if (provider === 'host') return props.snapshot.instance?.origin || '宿主（本地）';
+  const r = (props.snapshot.remotes || []).find((x) => x.name === provider);
+  return r?.host || provider;
+}
+
+interface DepSource {
+  provider: string;
+  address: string;
+}
+function depSource(name: string): DepSource | null {
+  const list = shareIndex.value.get(name);
+  if (!list || !list.length) return null;
+  const providers = [...new Set(list.map((x) => x.provider))];
+  return { provider: providers.map((p) => (p === 'host' ? 'HOST' : p)).join(' + '), address: providers.map(addrOf).join('  ') };
+}
+
 const hostShares = computed(() =>
   (props.snapshot.shares || []).map((s) => ({
     name: s.name,
     detail: `${s.scope}: ${s.versions.map((v) => v.version).join(', ')}`,
+    source: depSource(s.name),
   })),
 );
 
@@ -57,6 +87,18 @@ const hostTopoEdges = computed<Array<[string, string]>>(() => {
     for (const dep of Object.keys(r.shared || {})) edges.push([r.name, dep]);
   }
   return edges;
+});
+
+const hostTopoLabels = computed<Record<string, string>>(() => {
+  const labels: Record<string, string> = { host: 'HOST' };
+  for (const r of props.snapshot.remotes || []) {
+    labels[r.name] = r.name;
+    for (const dep of Object.keys(r.shared || {})) {
+      const s = depSource(dep);
+      labels[dep] = s ? `${dep} (${s.provider})` : dep;
+    }
+  }
+  return labels;
 });
 
 // --- Remote（远程）---
@@ -90,6 +132,7 @@ interface ShareRow {
   name: string;
   summary: string;
   sub: string[];
+  source: DepSource | null;
 }
 const sharedRows = computed<ShareRow[]>(() => {
   const shared = selected.value?.shared;
@@ -104,7 +147,7 @@ const sharedRows = computed<ShareRow[]>(() => {
     if (cfg.eager) parts.push('eager');
     if (cfg.strictVersion) parts.push('strict');
     const deps = Array.isArray(cfg.dependencies) ? cfg.dependencies.map((d) => String(d)) : [];
-    return { name, summary: parts.join(' · ') || '—', sub: deps };
+    return { name, summary: parts.join(' · ') || '—', sub: deps, source: depSource(name) };
   });
 });
 
@@ -117,6 +160,17 @@ const topoEdges = computed<Array<[string, string]>>(() => {
     for (const sub of row.sub) edges.push([row.name, sub]);
   }
   return edges;
+});
+
+const topoLabels = computed<Record<string, string>>(() => {
+  const labels: Record<string, string> = {};
+  const r = selected.value;
+  if (!r) return labels;
+  labels[r.name] = r.name;
+  for (const row of sharedRows.value) {
+    labels[row.name] = row.source ? `${row.name} (${row.source.provider})` : row.name;
+  }
+  return labels;
 });
 </script>
 
@@ -158,14 +212,17 @@ const topoEdges = computed<Array<[string, string]>>(() => {
 
         <h3>提供共享依赖 ({{ hostShares.length }})</h3>
         <div v-if="!hostShares.length" class="muted">（未注册共享依赖）</div>
-        <div v-for="row in hostShares" :key="row.name" class="row">
-          <span class="k">{{ row.name }}</span>
-          <span class="v">{{ row.detail }}</span>
+        <div v-for="row in hostShares" :key="row.name" class="dep">
+          <div class="row">
+            <span class="k">{{ row.name }}</span>
+            <span class="v">{{ row.detail }}</span>
+          </div>
+          <div v-if="row.source" class="dep-source">来源：{{ row.source.provider }} · {{ row.source.address }}</div>
         </div>
 
         <h3>依赖拓扑（HOST → 远程 → 共享依赖）</h3>
         <div v-if="!hostTopoEdges.length" class="muted">（无远程）</div>
-        <TopologyGraph v-else root="host" :edges="hostTopoEdges" />
+        <TopologyGraph v-else root="host" :edges="hostTopoEdges" :labels="hostTopoLabels" />
       </template>
 
       <!-- 远程详情 -->
@@ -203,14 +260,17 @@ const topoEdges = computed<Array<[string, string]>>(() => {
 
         <h3>共享依赖 ({{ sharedRows.length }})</h3>
         <div v-if="!sharedRows.length" class="muted">（该远程未声明共享依赖）</div>
-        <div v-for="row in sharedRows" :key="row.name" class="row">
-          <span class="k">{{ row.name }}</span>
-          <span class="v">{{ row.summary }}</span>
+        <div v-for="row in sharedRows" :key="row.name" class="dep">
+          <div class="row">
+            <span class="k">{{ row.name }}</span>
+            <span class="v">{{ row.summary }}</span>
+          </div>
+          <div v-if="row.source" class="dep-source">来源：{{ row.source.provider }} · {{ row.source.address }}</div>
         </div>
 
         <template v-if="sharedRows.length">
           <h3>依赖拓扑</h3>
-          <TopologyGraph :root="selected.name" :edges="topoEdges" />
+          <TopologyGraph :root="selected.name" :edges="topoEdges" :labels="topoLabels" />
         </template>
       </template>
 

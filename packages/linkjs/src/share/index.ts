@@ -29,10 +29,13 @@ function registerShare(options: Record<string, ShareOption>) {
   // 构建插件注入的共享依赖版本（见 unplugin-linkjs 的 linkjsSharedVersions）。
   const injected = (globalThis as { __LINKJS_SHARED_VERSIONS__?: Record<string, string> })
     .__LINKJS_SHARED_VERSIONS__;
+  // 提供方：优先选项自带，其次环境注入（远程加载期间由 loader 设置），缺省视为宿主。
+  const ambient = (globalThis as { __LINKJS_SHARE_PROVIDER__?: string }).__LINKJS_SHARE_PROVIDER__;
   for (const name in options) {
     const raw = options[name];
     // 未声明 version 时用构建期注入的版本补齐（DevTools / 版本诊断使用）。
-    const option: ShareOption = raw.version || !injected?.[name] ? raw : { ...raw, version: injected[name] };
+    const base: ShareOption = raw.version || !injected?.[name] ? raw : { ...raw, version: injected[name] };
+    const option: ShareOption = base.provider ? base : { ...base, provider: ambient || 'host' };
     const scope = option.scope || 'global';
     let scopeMap = instance.shares.get(scope);
     if (!scopeMap) {

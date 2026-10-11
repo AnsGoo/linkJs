@@ -262,6 +262,23 @@ export interface ExtOption {
   modelName?: string;
 }
 
+/**
+ * 在加载某个远程期间把「共享注册来源」标记为 `provider`，
+ * 使该远程 bundle 内触发的 `registerShare` 记录正确的来源实体（否则默认视为宿主）。
+ */
+function withShareProvider<T>(provider: string, fn: () => Promise<T>): Promise<T> {
+  const g = globalThis as { __LINKJS_SHARE_PROVIDER__?: string };
+  const prev = g.__LINKJS_SHARE_PROVIDER__;
+  g.__LINKJS_SHARE_PROVIDER__ = provider;
+  return fn().finally(() => {
+    if (prev === undefined) {
+      delete g.__LINKJS_SHARE_PROVIDER__;
+    } else {
+      g.__LINKJS_SHARE_PROVIDER__ = prev;
+    }
+  });
+}
+
 function useHandleExpose<M = unknown>(
   remoteCache: RemoteCache,
   resolve: (value: M | null) => void,
@@ -288,5 +305,5 @@ function useHandleExpose<M = unknown>(
   return handler;
 }
 
-export { loadCss, preloadModule, loadScript, rewriteRequestUrl, getRemoteInfo, resolveEntryConfig, resolveShareScopes, resolvePublicPath, useGetRemote, useHandleExpose };
+export { loadCss, preloadModule, loadScript, rewriteRequestUrl, getRemoteInfo, resolveEntryConfig, resolveShareScopes, resolvePublicPath, useGetRemote, useHandleExpose, withShareProvider };
 export type { LoadScriptOptions, ResourceSecurityOptions, RemoteCache };

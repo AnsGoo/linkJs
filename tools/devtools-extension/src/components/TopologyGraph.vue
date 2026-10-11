@@ -6,7 +6,11 @@ const props = defineProps<{
   root: string;
   /** 有向边：[from, to]。 */
   edges: Array<[string, string]>;
+  /** 节点展示名覆盖（缺省用节点 id）。 */
+  labels?: Record<string, string>;
 }>();
+
+const labelOf = (name: string) => props.labels?.[name] ?? name;
 
 interface Placed {
   name: string;
@@ -101,7 +105,7 @@ const layout = computed(() => {
       />
       <g v-for="n in layout.nodes" :key="n.name" :transform="`translate(${n.x}, ${n.y})`">
         <rect class="topo-node" :class="{ root: n.root }" :width="140" :height="30" rx="7" />
-        <text class="topo-label" x="70" y="19" text-anchor="middle">{{ n.name }}</text>
+        <text class="topo-label" x="70" y="19" text-anchor="middle">{{ labelOf(n.name) }}</text>
       </g>
     </svg>
   </div>

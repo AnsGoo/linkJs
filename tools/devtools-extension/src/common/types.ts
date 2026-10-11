@@ -24,6 +24,10 @@ export interface ShareVersionSnapshot {
   requiredVersion?: string | false;
   strictVersion?: boolean;
   eager?: boolean;
+  /** 注册来源实体：`host` 或远程名。 */
+  provider?: string;
+  /** 加载地址（bundle/URL）。 */
+  source?: string;
 }
 
 export interface Snapshot {

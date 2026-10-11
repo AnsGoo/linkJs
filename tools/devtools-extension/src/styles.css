@@ -40,6 +40,9 @@ h3 { margin: 14px 0 4px; font-size: 11px; text-transform: uppercase; letter-spac
 .pill { padding: 0 6px; border-radius: 8px; font-size: 10px; line-height: 16px; background: #33334a; color: #cdd0dc; white-space: nowrap; }
 .pill.loaded { background: #1f6f4a; color: #d8ffe9; }
 .pill.error { background: #7a2530; color: #ffd9dd; }
+.dep { border-bottom: 1px solid #2a2a3a; }
+.dep .row { border-bottom: none; }
+.dep-source { color: #8b90a4; font-size: 11px; padding: 0 0 4px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .diag { padding: 4px 0; border-bottom: 1px solid #2a2a3a; }
 .diag .code { color: #ffb4a2; font-family: ui-monospace, monospace; }
 .diag.error .code { color: #ff6b6b; }
