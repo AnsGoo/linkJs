@@ -1,8 +1,9 @@
 import { getInstance } from '..';
 import { LIB_EXPOSE } from '../event-bus/constant';
 import { getShadowRoot } from '../sandbox/shadow';
-import type { RegistryOption, RemoteEntry, RemoteInfo } from '../state/instance';
+import type { RegistryOption, RemoteEntry, RemoteInfo, RemoteSource } from '../state/instance';
 import type { RemoteModule } from '../types';
+import { selectRemoteSource } from './source';
 
 /** 已加载远程模块的运行时缓存（`appName -> 暴露对象`）。 */
 type RemoteCache = Map<string, RemoteModule>;
@@ -71,17 +72,28 @@ function toAbsoluteBase(value: string): string {
  * 返回值为可直接用于 `new URL(entry, base)` 的基址；相对值会按当前页面解析。
  */
 async function resolvePublicPath(remoteInfo: RegistryOption, appName: string, explicitHost?: string): Promise<string> {
+  if (explicitHost) {
+    return toAbsoluteBase(explicitHost);
+  }
+
   const defaultPublicPath = typeof location !== 'undefined' ? `${location.protocol}//${location.host}` : '';
   const ctx: PublicPathContext = { appName, remoteInfo, host: explicitHost, defaultPublicPath };
 
   let resolved: string | undefined;
-  if (explicitHost) {
-    resolved = explicitHost;
-  } else if (remoteInfo.getPublicPath) {
+  let selectedSource: RemoteSource | undefined;
+
+  if (remoteInfo.getPublicPath) {
     resolved = await remoteInfo.getPublicPath(ctx);
   }
   if (!resolved && remoteInfo.publicPath) {
     resolved = remoteInfo.publicPath;
+  }
+  // 多源列表：先做健康检查 / 灰度选择，再取该源的 CDN 基址。
+  if (!resolved && remoteInfo.sources?.length) {
+    selectedSource = await selectRemoteSource(remoteInfo, appName);
+    if (selectedSource?.publicPath) {
+      resolved = selectedSource.publicPath;
+    }
   }
   if (!resolved) {
     const instanceResolver = getInstance().getPublicPath;
@@ -89,7 +101,8 @@ async function resolvePublicPath(remoteInfo: RegistryOption, appName: string, ex
       resolved = await instanceResolver(ctx);
     }
   }
-  return toAbsoluteBase(resolved || remoteInfo.host || defaultPublicPath);
+  resolved = resolved || selectedSource?.host || remoteInfo.host || defaultPublicPath;
+  return toAbsoluteBase(resolved);
 }
 
 /** 请求 URL 重写器（插件通过 `instance.requestRewriters` 注册）。 */

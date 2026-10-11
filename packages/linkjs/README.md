@@ -136,6 +136,40 @@ const all = globalSnapshot();
 
 `preloadRemote` 预取前会自动查询快照：命中去重键（`name` 或 `manifestUrl`）或远程已 `LOADED` 时直接复用，跳过网络；`force: true` 可强制刷新。
 
+### 多源 + 健康检查 / 灰度（`sources`）
+
+为远程声明多个候选源，运行时按策略选择（`first-healthy` 或按权重灰度），并带健康检查：
+
+```typescript
+import { createInstance } from 'linkjs';
+
+createInstance({
+  remotes: [
+    {
+      name: 'remoteApp',
+      entry: { html: 'index.html' },
+      sources: [
+        { host: 'https://primary.example.com' },
+        { host: 'https://backup.example.com' }, // 主源不健康时回退
+      ],
+      sourceStrategy: 'first-healthy', // 默认
+      healthCheck: { path: 'manifest.json', timeout: 3000, interval: 30000 },
+    },
+    {
+      name: 'canaryApp',
+      entry: { html: 'index.html' },
+      sourceStrategy: 'weighted', // 灰度：按权重随机
+      sources: [
+        { host: 'https://stable.example.com', weight: 9 },
+        { host: 'https://canary.example.com', weight: 1 },
+      ],
+    },
+  ],
+});
+```
+
+选择逻辑：`resolvePublicPath`（`loadApp`/`loadLib` 入口基址）与 `preloadRemote`（manifest 地址）在缺省 host 时都先做源选择。健康结果按 `healthCheck.interval` 缓存；可用 `selectRemoteSource(info, name, { skipHealthCheck, random })` 手动选择（`clearHealthCache()` 清缓存）。`manifest.json` 同样可声明 `sources`。
+
 ## 工作原理
 
 1. **模块暴露**：子应用通过 `expose` 函数暴露模块，内部会触发 `LIB_EXPOSE` 事件。

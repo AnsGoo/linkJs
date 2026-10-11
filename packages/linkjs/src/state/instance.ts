@@ -22,6 +22,31 @@ export interface RemoteEntry {
   expose?: string;
 }
 
+/** 单个候选源（多源列表 / 灰度）。 */
+export interface RemoteSource {
+  /** 该源的 host 基址。 */
+  host?: string;
+  /** 该源的静态 CDN 基址（优先于该源的 `host`）。 */
+  publicPath?: string;
+  /** 灰度权重（>0，默认 1）；`sourceStrategy: 'weighted'` 时生效。 */
+  weight?: number;
+  /** 任意标签（环境 / 地域 / 版本等，供自定义选择使用）。 */
+  labels?: Record<string, string>;
+}
+
+/** 多源选择策略：`first-healthy` 取首个健康源；`weighted` 在健康源中按权重灰度。 */
+export type RemoteSourceStrategy = 'first-healthy' | 'weighted';
+
+/** 源健康检查配置。 */
+export interface RemoteHealthCheck {
+  /** 健康检查路径（相对源基址），默认 `manifest.json`。 */
+  path?: string;
+  /** 单次探测超时（ms），默认 3000。 */
+  timeout?: number;
+  /** 健康结果缓存时长（ms），默认 30000；`0` 表示不缓存。 */
+  interval?: number;
+}
+
 export interface RemoteBase {
   name: string;
   entry: string | RemoteEntry;
@@ -30,6 +55,12 @@ export interface RemoteBase {
   publicPath?: string;
   /** 动态基址解析器：按运行时上下文自解析 CDN 基址（可异步）。 */
   getPublicPath?: PublicPathResolver;
+  /** 多源候选列表（配合健康检查 / 灰度）；声明后优先于 `host`。 */
+  sources?: RemoteSource[];
+  /** 多源选择策略，默认 `first-healthy`。 */
+  sourceStrategy?: RemoteSourceStrategy;
+  /** 源健康检查配置（声明 `sources` 时生效）。 */
+  healthCheck?: RemoteHealthCheck;
   /** 展示名（来自远程 manifest 的 `name`），缺省回退 `name`。 */
   displayName?: string;
   /** 远程类型：应用（走 HTML 入口）或库（走 JS 入口）。 */

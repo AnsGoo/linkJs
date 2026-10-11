@@ -153,6 +153,53 @@ test('loadApp resolves entry assets from the remote publicPath (CDN)', async () 
   expect(css?.href).toBe('https://cdn.example.com/style.css');
 });
 
+test('loadApp selects a healthy source from a multi-source list', async () => {
+  const created: FakeElement[] = [];
+  const htmlScript = (src: string) => ({ getAttribute: (name: string) => (name === 'src' ? src : null) });
+
+  globalThis.DOMParser = class {
+    parseFromString() {
+      return {
+        querySelectorAll: (selector: string) => (selector === 'script[src]' ? [htmlScript('/main.js')] : []),
+      };
+    }
+  } as any;
+  globalThis.fetch = vi.fn(async (url: string) => {
+    if (String(url).startsWith('http://a.example')) {
+      return { ok: false, status: 503, statusText: 'down' };
+    }
+    return { ok: true, text: async () => '<html></html>' };
+  }) as any;
+  globalThis.document = {
+    head: { appendChild: () => {} },
+    body: {
+      appendChild: (el: FakeElement) => {
+        created.push(el);
+        queueMicrotask(() => el.onload?.());
+      },
+    },
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    createElement: (tag: string) => createElement(tag),
+  } as any;
+
+  linkInstance.remotes.set('remote', {
+    name: 'remote',
+    entry: 'index.html',
+    type: 'app',
+    status: LOAD_STATUS.UNLOADED,
+    sources: [{ host: 'http://a.example' }, { host: 'http://b.example' }],
+    healthCheck: { interval: 0 },
+  } as any);
+
+  const promise = loadApp('remote', {});
+  await new Promise((r) => setTimeout(r, 30));
+  linkInstance.eventBus.emit(LIB_EXPOSE, { libName: 'remote', lib: { default: 'COMP' } });
+  await promise;
+
+  expect(created.find((el) => el.tagName === 'script')?.src).toBe('http://b.example/main.js');
+});
+
 test('loadApp with sandbox reverts globals on unloadRemote', async () => {
   globalThis.DOMParser = class {
     parseFromString() {

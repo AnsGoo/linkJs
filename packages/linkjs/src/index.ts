@@ -25,6 +25,7 @@ import { subscribeRemoteUpdate } from './hmr';
 import { loadRuntime } from './runtime';
 import { preloadRemote } from './preload';
 import { remoteSnapshot, globalSnapshot } from './snapshot';
+import { selectRemoteSource, checkRemoteHealth, clearHealthCache } from './loader/source';
 import {
   buildSnapshot,
   clearDiagnostics,
@@ -172,6 +173,9 @@ export {
   preloadRemote,
   remoteSnapshot,
   globalSnapshot,
+  selectRemoteSource,
+  checkRemoteHealth,
+  clearHealthCache,
   getSnapshot,
   getDiagnostics,
   clearDiagnostics,
@@ -180,7 +184,7 @@ export {
   uninstallDevtoolsUI,
 };
 
-export type { RegistryOption } from './state';
+export type { RegistryOption, RemoteSource, RemoteSourceStrategy, RemoteHealthCheck } from './state';
 export type { RemoteUpdatePayload } from './hmr';
 export type { LoadAppOptions, LoadLibOptions, LoadOptions } from './loader/options';
 export { registerPlugin, getPlugins } from './plugins';

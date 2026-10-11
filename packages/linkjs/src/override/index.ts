@@ -103,6 +103,9 @@ async function loadOverride(option: OverrideEntry) {
   if (typeof remoteInfo.publicPath === 'string' && remoteInfo.publicPath) {
     remote.publicPath = remoteInfo.publicPath;
   }
+  if (Array.isArray(remoteInfo.sources) && remoteInfo.sources.length) {
+    remote.sources = remoteInfo.sources;
+  }
   remote.status = LOAD_STATUS.LOADED;
   console.log(`[linkjs] Loaded override: [${name}] in ${host}`);
   return remoteInfo;

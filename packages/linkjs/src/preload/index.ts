@@ -1,6 +1,8 @@
 import { getRemoteInfo } from '../loader';
+import { selectRemoteSource } from '../loader/source';
 import { LOAD_STATUS } from '../event-bus/constant';
 import { runHook } from '../plugins';
+import type { RemoteSource } from '../state/instance';
 
 /** 资源清单（与 unplugin 生成的 manifest `assets` 对齐）。 */
 export interface ManifestAsset {
@@ -31,6 +33,8 @@ export interface RemoteManifest {
   shareScope?: string[];
   /** 远程资源的静态 CDN 基址（供宿主解析资源位置）。 */
   publicPath?: string;
+  /** 多源候选列表（健康检查 / 灰度）。 */
+  sources?: RemoteSource[];
   shared?: Record<string, unknown>;
   /** 产物 SRI 完整性（manifest path -> `sha384-...`）。 */
   integrity?: Record<string, string>;
@@ -97,12 +101,18 @@ function clearPrefetchCache(): void {
   prefetchVersion += 1;
 }
 
-function resolveManifestUrl(options: PreloadRemoteOptions): string {
+async function resolveManifestUrl(options: PreloadRemoteOptions): Promise<string> {
   if (options.manifestUrl) {
     return options.manifestUrl;
   }
   const info = options.name ? getRemoteInfo(options.name) : undefined;
-  const host = options.host || info?.host;
+  let host = options.host;
+  if (!host && info && options.name && info.sources?.length) {
+    // 多源：先按健康检查 / 灰度选出源，再取其基址。
+    const source = await selectRemoteSource(info, options.name);
+    host = source?.publicPath || source?.host;
+  }
+  host = host || info?.host;
   if (!host) {
     throw new Error('[linkjs] preloadRemote requires `manifestUrl`, `host`, or a registered remote `name`');
   }
@@ -154,7 +164,7 @@ function addPreloadLink(rel: string, href: string, remoteName?: string, as?: str
 async function preloadRemote(options: PreloadRemoteOptions): Promise<RemoteManifest> {
   await runHook('beforePreloadRemote', options);
 
-  const url = resolveManifestUrl(options);
+  const url = await resolveManifestUrl(options);
   const key = prefetchKey(options, url);
 
   if (!options.force) {
@@ -189,6 +199,9 @@ async function preloadRemote(options: PreloadRemoteOptions): Promise<RemoteManif
       }
       if (typeof manifest.publicPath === 'string' && manifest.publicPath) {
         info.publicPath = manifest.publicPath;
+      }
+      if (Array.isArray(manifest.sources) && manifest.sources.length) {
+        info.sources = manifest.sources;
       }
     }
   }

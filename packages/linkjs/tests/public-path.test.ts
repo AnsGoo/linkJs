@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { linkInstance } from '../src/state/instance';
 import { resolvePublicPath } from '../src/loader/utils';
 
@@ -49,5 +49,16 @@ describe('resolvePublicPath', () => {
 
   it('defaults to the current page origin', async () => {
     expect(await resolvePublicPath({ name: 'r', entry: '' }, 'r')).toBe('https://host.app');
+  });
+
+  it('uses the selected healthy source as the base', async () => {
+    (globalThis as any).fetch = vi.fn(async (url: string) => ({ ok: String(url).includes('b.example') }));
+    const info = {
+      name: 'r',
+      entry: '',
+      sources: [{ host: 'http://a.example' }, { host: 'http://b.example' }],
+      healthCheck: { interval: 0 },
+    };
+    expect(await resolvePublicPath(info, 'r')).toBe('http://b.example');
   });
 });
