@@ -21,6 +21,7 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
     adaptiveRuntime = [],
     shareScope,
     publicPath,
+    mode = 'production',
   } = options;
   const sharedPkgs = Object.keys(shared);
   // 真实包名 -> 共享依赖名称（例如 @vue/runtime-dom -> vue）
@@ -315,7 +316,10 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
 
         // 自动分析共享依赖之间的子依赖关系（基于 package.json 依赖闭包）
         const analyzedSharedDeps = analyzeDependencies(shared);
-        generateManifestFile(outDir, exposes, shared, analyzedSharedDeps, shareScope, publicPath);
+        generateManifestFile(outDir, exposes, shared, analyzedSharedDeps, shareScope, publicPath, mode);
+
+        // d.ts 内容哈希（内容寻址 + 宿主类型变更去重）。
+        const sha384 = (data: string | Buffer) => `sha384-${createHash('sha384').update(data).digest('base64')}`;
 
         const isDeclarationFile = (key: string) => /\.d\.(ts|mts|cts)$/.test(key);
         const toManifestPath = (fileName: string) => path.join(baseDir, fileName);
@@ -334,13 +338,23 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
         };
 
         const exposeAssets: NonNullable<ManifestJson['exposes']> = [];
+        // d.ts 入口路径与内容哈希（供宿主类型转发 / 变更检测）。
+        let typesHash: string | undefined;
+        const setTypes = (key: string, item: any) => {
+          if (entry.types) {
+            return;
+          }
+          entry.types = path.join(baseDir, key);
+          const source = typeof item?.code === 'string' ? item.code : typeof item?.source === 'string' ? item.source : item?.source ? Buffer.from(item.source) : '';
+          typesHash = sha384(source);
+        };
         // 构建产物里的 CSS 资源（Vite 下 cssCodeSplit:false 通常只有一个）。
         const allCssAssets = bundleKeys.filter((key) => key.endsWith('.css') && !key.endsWith('.map'));
         bundleKeys.forEach((key) => {
           const bundleItem = bundle[key];
           if (bundleItem.type === 'chunk' && bundleItem.isEntry) {
             if (isDeclarationFile(key)) {
-              if (!entry.types) entry.types = path.join(baseDir, key);
+              setTypes(key, bundleItem);
             } else {
               if (!entry.js) entry.js = path.join(baseDir, key);
               const assets = collectAssets(bundleItem);
@@ -359,6 +373,8 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
               if (!entry.css) entry.css = path.join(baseDir, key);
             } else if (key.endsWith('.html')) {
               if (!entry.html) entry.html = path.join(baseDir, key);
+            } else if (isDeclarationFile(key)) {
+              setTypes(key, bundleItem);
             }
           }
         });
@@ -385,7 +401,6 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
         const dependencies = Array.from(entrySharedDeps).filter((dep) => dep in analyzedSharedDeps);
 
         // 生成各产物（js/css/html）的 SRI 完整性，写进 manifest 供宿主预加载/校验。
-        const sha384 = (data: string | Buffer) => `sha384-${createHash('sha384').update(data).digest('base64')}`;
         const integrity: Record<string, string> = {};
         bundleKeys.forEach((key) => {
           if (key.endsWith('.map') || isDeclarationFile(key)) {
@@ -400,7 +415,10 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
           }
         });
 
-        updateManifestFile(outDir, { entry, dependencies, exposes: exposeAssets, integrity }, analyzedSharedDeps);
+        const metaData: NonNullable<ManifestJson['metaData']> | undefined = entry.types
+          ? { types: entry.types, typesHash }
+          : undefined;
+        updateManifestFile(outDir, { entry, dependencies, exposes: exposeAssets, integrity, metaData, mode }, analyzedSharedDeps);
 
         // 生成依赖拓扑图（含共享依赖的子共享依赖）
         generateDependencyGraph(outDir, dependencyGraph, bundle, analyzedSharedDeps, dependencies);

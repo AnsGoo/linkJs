@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { mkdtempSync, readFileSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { generateManifestFile, resolveShareScopes } from '../src/build-manifest';
+import { generateManifestFile, updateManifestFile, resolveShareScopes } from '../src/build-manifest';
 
 describe('resolveShareScopes', () => {
   it('prefers the explicit declaration (deduped)', () => {
@@ -37,6 +37,35 @@ describe('generateManifestFile', () => {
       generateManifestFile(outDir, [], { vue: { scope: 'ui' } });
       const manifest = JSON.parse(readFileSync(join(outDir, 'manifest.json'), 'utf-8'));
       expect(manifest.shareScope).toEqual(['ui']);
+    } finally {
+      rmSync(outDir, { recursive: true, force: true });
+    }
+  });
+
+  it('writes mode (default production) and honors an override', () => {
+    const outDir = mkdtempSync(join(tmpdir(), 'linkjs-manifest-'));
+    try {
+      generateManifestFile(outDir, [], {});
+      expect(JSON.parse(readFileSync(join(outDir, 'manifest.json'), 'utf-8')).mode).toBe('production');
+
+      generateManifestFile(outDir, [], {}, {}, undefined, undefined, 'development');
+      expect(JSON.parse(readFileSync(join(outDir, 'manifest.json'), 'utf-8')).mode).toBe('development');
+    } finally {
+      rmSync(outDir, { recursive: true, force: true });
+    }
+  });
+
+  it('writes metaData (types/typesHash) via updateManifestFile', () => {
+    const outDir = mkdtempSync(join(tmpdir(), 'linkjs-manifest-'));
+    try {
+      generateManifestFile(outDir, [], {});
+      updateManifestFile(outDir, {
+        entry: { types: '/mf/lib.d.ts' },
+        metaData: { types: '/mf/lib.d.ts', typesHash: 'sha384-x' },
+      });
+      const manifest = JSON.parse(readFileSync(join(outDir, 'manifest.json'), 'utf-8'));
+      expect(manifest.entry.types).toBe('/mf/lib.d.ts');
+      expect(manifest.metaData).toEqual({ types: '/mf/lib.d.ts', typesHash: 'sha384-x' });
     } finally {
       rmSync(outDir, { recursive: true, force: true });
     }

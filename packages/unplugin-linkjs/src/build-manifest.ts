@@ -66,6 +66,7 @@ function generateManifestFile(
   sharedDeps: Record<string, string[]> = {},
   shareScope?: string[],
   publicPath?: string,
+  mode: 'development' | 'production' = 'production',
 ) {
   const packageJsonPath = resolve(process.cwd(), 'package.json');
 
@@ -118,6 +119,7 @@ function generateManifestFile(
       name: packageJson.name || '',
       version: packageJson.version || '',
       description: packageJson.description || '',
+      mode,
       entry: {},
       expose: [...new Set(exposes)],
       shareScope: resolveShareScopes(shared, shareScope),
@@ -143,7 +145,11 @@ function generateManifestFile(
   }
 }
 
-function updateManifestFile(outDir: string, content?: Partial<Pick<ManifestJson, 'expose' | 'entry' | 'dependencies' | 'exposes' | 'integrity'>>, sharedDeps: Record<string, string[]> = {}) {
+function updateManifestFile(
+  outDir: string,
+  content?: Partial<Pick<ManifestJson, 'expose' | 'entry' | 'dependencies' | 'exposes' | 'integrity' | 'metaData' | 'mode'>>,
+  sharedDeps: Record<string, string[]> = {},
+) {
   const manifestJsonPath = resolve(outDir, 'manifest.json');
 
   if (!existsSync(manifestJsonPath)) {
@@ -155,7 +161,7 @@ function updateManifestFile(outDir: string, content?: Partial<Pick<ManifestJson,
     const manifestJsonContent = readFileSync(manifestJsonPath, 'utf-8');
     const manifestJson = JSON.parse(manifestJsonContent);
 
-    const { expose = [], entry = {}, dependencies = [], exposes, integrity } = content || {};
+    const { expose = [], entry = {}, dependencies = [], exposes, integrity, metaData, mode } = content || {};
     manifestJson.expose = Array.from(new Set([...expose, ...(manifestJson.expose || [])]));
     manifestJson.entry = { ...(manifestJson.entry || {}), ...entry };
     manifestJson.dependencies = dependencies;
@@ -165,6 +171,12 @@ function updateManifestFile(outDir: string, content?: Partial<Pick<ManifestJson,
     }
     if (integrity) {
       manifestJson.integrity = integrity;
+    }
+    if (metaData) {
+      manifestJson.metaData = { ...(manifestJson.metaData || {}), ...metaData };
+    }
+    if (mode) {
+      manifestJson.mode = mode;
     }
 
     // 更新 shared 依赖的 dependencies 字段

@@ -14,6 +14,19 @@ export interface ManifestJson {
   name: string;
   version: string;
   description: string;
+  /**
+   * 生产者模式：决定宿主是否为该远程建立类型变更长连接。
+   * 构建产物为 `production`；远端 dev server 产出 `development`。
+   */
+  mode?: 'development' | 'production';
+  /** 类型转发元信息（宿主 `consumeTypes` 消费）。 */
+  metaData?: {
+    /** 扁平自包含的 `.d.ts` 路径（相对 outDir）。 */
+    types?: string;
+    /** `.d.ts` 内容哈希（内容寻址 + 宿主去重）。 */
+    typesHash?: string;
+    [key: string]: unknown;
+  };
   entry: {
     js?: string;
     css?: string;
@@ -68,6 +81,8 @@ export interface UnpluginLinkjsOptions {
   shareScope?: string[];
   /** 远程资源的静态 CDN 基址（写入 manifest `publicPath`，供宿主分辨率资源）。 */
   publicPath?: string;
+  /** 写入 manifest 的 `mode`；缺省 `production`（dev server 侧单列 `development`）。 */
+  mode?: 'development' | 'production';
   /**
    * 路线 B：需要自适应 runtime 的框架级依赖（如 `['vue', 'vue-router', 'pinia']`）。
    * dev 下这些依赖改写为 `$linkjs.loadRuntime(name, () => import(name))`：
