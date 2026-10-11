@@ -12,6 +12,7 @@
 | `getDiagnostics()` / `clearDiagnostics()` / `onDiagnostic(cb)` | 诊断读取 / 清空 / 订阅 |
 | `getLoadMetrics()` / `clearLoadMetrics()` | logger 插件收集的加载指标 |
 | `getPerfEntries()` / `clearPerfEntries()` | 各阶段性能标记 |
+| `getEvents()` / `clearEvents()` | 事件总线记录（`LIB_EXPOSE` / `SHARED_EXPOSE` / `REMOTE_UPDATE`） |
 | `installDevtoolsUI()` / `uninstallDevtoolsUI()` | 手动挂载/卸载页内 DevTools |
 
 ```ts
@@ -30,6 +31,7 @@ LinkjsSnapshot
 ├─ availablePlugins: { name, description, enabled }[]
 ├─ metrics: LoadMetric[]                      // 远程加载指标（logger）
 ├─ perf: PerfEntry[]                          // 各阶段耗时（fetch/scripts/total/share）
+├─ events: { type, time, summary }[]          // 事件总线记录（libExpose/sharedExpose/remoteUpdate）
 └─ diagnostics: Diagnostic[]
 ```
 
@@ -47,7 +49,7 @@ interface Diagnostic { level: 'warn' | 'error'; code: string; message: string; t
 
 | 全局 | 内容 |
 | --- | --- |
-| `globalThis.__LINKJS__` | `getSnapshot` / `remotes()` / `shares()` / `conflicts()` / `metrics()` / `perf()` / `getDiagnostics` / `clearDiagnostics` / `onDiagnostic`，以及操作：`load(entry, opts)` / `preload(opts)` / `clearCache(name?)` / `unload(name?)` |
+| `globalThis.__LINKJS__` | `getSnapshot` / `remotes()` / `shares()` / `conflicts()` / `metrics()` / `perf()` / `events()` / `clearEvents` / `getDiagnostics` / `clearDiagnostics` / `onDiagnostic`，以及操作：`load(entry, opts)` / `preload(opts)` / `clearCache(name?)` / `unload(name?)` / `loadLib(entry, opts)` / `unloadLib(entry?)` / `getRemote(entry)` / `getShare(name, opts?)` / `loadShare(name, opts?)` |
 | `globalThis.$linkjs.debug` | 同上 |
 
 ```js
@@ -59,8 +61,9 @@ __LINKJS__.clearCache('remote');
 ## 5. 页内 DevTools 侧边栏
 
 - **形态**：默认右侧收起为竖排 “LinkJS” 标签（可见、不占位）；点击展开为停靠侧边栏并给 `body` 加同侧内边距**推开内容**（不悬浮）。
-- **分区**：远程应用 / 共享依赖 / **共享冲突** / 插件 / **指标** / **性能** / **诊断**，展开时每秒刷新。
+- **分区**：远程应用 / 共享依赖 / **共享冲突** / 插件 / **指标** / **性能** / **事件** / **诊断**，展开时每秒刷新。
 - **交互**：点击标签展开、「收起」折叠；**文本过滤**；**复制 JSON**；**拖拽调整宽度**；快捷键 `Alt/Option + Shift + L`。
+- **操作按钮**：远程应用行提供「预取」（`preload`）与「卸载」（`unload` / `unloadLib`）。
 - **多实例**：标题显示 `instance.id`（如 `linkjs-gpb3e1`）以便区分。
 - **提示**：有 `error` 诊断时标签显示红点；插件显示 `已启用 / 可用`。
 - **选项**：`createInstance({ devtools: true | false | { position: 'right' | 'left' } })`。

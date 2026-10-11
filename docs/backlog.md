@@ -47,11 +47,19 @@
 
 ## C. 可观测 / DevTools
 
-- [ ] **C1 面板展示 logger 指标**（加载耗时 / 成功失败）+ 错误时间线。`[中 / 小]`
-- [ ] **C2 共享版本冲突面板**（谁需要 ^X / 谁提供 Y）。`[中 / 小]`
-- [ ] **C3 面板：复制 JSON、过滤、可调整宽度、多实例区分**。`[低 / 小]`
-- [ ] **C4 `__LINKJS__` 补齐操作入口**（remotes/shares 操作）+ Chrome DevTools 扩展。`[中 / 大]`
-- [ ] **C5 性能标记**：`performance.mark/measure` 记录各阶段耗时。`[低 / 小]`
+- [x] **C1 面板展示 logger 指标**（加载耗时 / 成功失败）+ 错误时间线。`[中 / 小]`（面板「加载指标」+「诊断」区；`ui.tsx`）
+- [x] **C2 共享版本冲突面板**（谁需要 ^X / 谁提供 Y）。`[中 / 小]`（`buildSnapshot().conflicts` + 面板「共享冲突」区）
+- [x] **C3 面板：复制 JSON、过滤、可调整宽度、多实例区分**。`[低 / 小]`（`ui.tsx`）
+- [ ] **C4a `__LINKJS__` 操作入口 + Chrome DevTools 扩展**。`[中 / 大]`
+  - [x] 基础操作（`load` / `preload` / `clearCache` / `unload`）+ 页内面板
+  - [x] Chrome 扩展（只读快照，`tools/devtools-extension/`）
+  - [ ] 补齐 share/remote 操作（`loadLib` / `unloadLib` / `getRemote` / `getShare` / `loadShare`）+ 面板操作按钮
+  - [ ] 扩展对齐页内面板（分区 / 过滤 / 操作）
+- [x] **C5 性能标记**：`performance.mark/measure` 记录各阶段耗时。`[低 / 小]`（`src/perf` + 面板「性能」区）
+- [ ] **C6 事件总线实时面板**：`LIB_EXPOSE` / `SHARED_EXPOSE` / `REMOTE_UPDATE` 事件流。`[中 / 小]`
+- [ ] **C7 指标聚合**：成功率 / 耗时 p50·p95 / 按 remote 分组。`[低 / 小]`
+- [ ] **C8 诊断增强**：时间戳 + 资源级错误码（脚本/CSS 加载失败、SRI、CSP nonce）。`[中 / 小]`
+- [ ] **C9 面板操作**：remote「卸载 / 重载 / 预取」按钮（依赖 C4a 操作入口）。`[低 / 小]`
 
 ## D. 隔离 / 安全
 
