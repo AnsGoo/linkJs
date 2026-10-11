@@ -86,13 +86,22 @@ function depSource(name: string): DepSource | null {
   return { provider: providers.map(providerLabel).join(' + '), address: providers.map(addrOf).join('  ') };
 }
 
-const hostShares = computed(() =>
-  (props.snapshot.shares || []).map((s) => ({
-    name: s.name,
-    detail: `${s.scope}: ${s.versions.map((v) => v.version).join(', ')}`,
-    source: depSource(s.name),
-  })),
-);
+interface ProvidedRow {
+  name: string;
+  detail: string;
+}
+/** 某实体（host / 远程名）实际注册（提供）的共享依赖及版本。 */
+function providedRows(provider: string): ProvidedRow[] {
+  const rows: ProvidedRow[] = [];
+  for (const s of props.snapshot.shares || []) {
+    const vs = (s.versions || []).filter((v) => (v.provider || 'host') === provider);
+    if (!vs.length) continue;
+    rows.push({ name: s.name, detail: `${s.scope}: ${vs.map((v) => v.version).join(', ')}` });
+  }
+  return rows;
+}
+const hostProvided = computed(() => providedRows('host'));
+const remoteProvided = computed<ProvidedRow[]>(() => (selected.value ? providedRows(selected.value.name) : []));
 
 const hostTopoEdges = computed<Array<[string, string]>>(() => {
   const edges: Array<[string, string]> = [];
@@ -227,14 +236,11 @@ const topoLabels = computed<Record<string, string>>(() => {
           <span class="v">{{ row.value }}</span>
         </div>
 
-        <h3>提供共享依赖 ({{ hostShares.length }})</h3>
-        <div v-if="!hostShares.length" class="muted">（未注册共享依赖）</div>
-        <div v-for="row in hostShares" :key="row.name" class="dep">
-          <div class="row">
-            <span class="k">{{ row.name }}</span>
-            <span class="v">{{ row.detail }}</span>
-          </div>
-          <div v-if="row.source" class="dep-source">来源：{{ row.source.provider }} · {{ row.source.address }}</div>
+        <h3>HOST 提供的共享依赖 ({{ hostProvided.length }})</h3>
+        <div v-if="!hostProvided.length" class="muted">（未提供）</div>
+        <div v-for="row in hostProvided" :key="row.name" class="row">
+          <span class="k">{{ row.name }}</span>
+          <span class="v">{{ row.detail }}</span>
         </div>
 
         <h3>依赖拓扑（HOST → 远程 → 共享依赖）</h3>
@@ -275,7 +281,7 @@ const topoLabels = computed<Record<string, string>>(() => {
           </span>
         </div>
 
-        <h3>共享依赖 ({{ sharedRows.length }})</h3>
+        <h3>声明的共享依赖 ({{ sharedRows.length }})</h3>
         <div v-if="!sharedRows.length" class="muted">（该远程未声明共享依赖）</div>
         <div v-for="row in sharedRows" :key="row.name" class="dep">
           <div class="row">
@@ -283,6 +289,13 @@ const topoLabels = computed<Record<string, string>>(() => {
             <span class="v">{{ row.summary }}</span>
           </div>
           <div v-if="row.source" class="dep-source">来源：{{ row.source.provider }} · {{ row.source.address }}</div>
+        </div>
+
+        <h3>本远程提供的共享依赖 ({{ remoteProvided.length }})</h3>
+        <div v-if="!remoteProvided.length" class="muted">（未提供，直接使用宿主/其他远程提供的实例）</div>
+        <div v-for="row in remoteProvided" :key="row.name" class="row">
+          <span class="k">{{ row.name }}</span>
+          <span class="v">{{ row.detail }}</span>
         </div>
 
         <template v-if="sharedRows.length">
