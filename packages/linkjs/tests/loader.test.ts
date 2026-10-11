@@ -1,6 +1,6 @@
 import { expect, test, beforeEach, vi } from 'vitest';
 import { linkInstance } from '../src/state/instance';
-import { loadApp, clearRemoteCache, unloadRemote } from '../src/loader';
+import { loadApp, loadRemote, clearRemoteCache, unloadRemote } from '../src/loader';
 import { registerPlugin } from '../src/plugins';
 import { LIB_EXPOSE, LOAD_STATUS } from '../src/event-bus/constant';
 
@@ -240,6 +240,59 @@ test('loadApp maintains remote status: loading -> loaded -> unloaded', async () 
 
   unloadRemote('remote');
   expect(linkInstance.remotes.get('remote')?.status).toBe(LOAD_STATUS.UNLOADED);
+});
+
+test('loadRemote routes by remote type and accepts unified LoadOptions', async () => {
+  const created: FakeElement[] = [];
+  const htmlScript = (src: string) => ({ getAttribute: (name: string) => (name === 'src' ? src : null) });
+
+  globalThis.DOMParser = class {
+    parseFromString() {
+      return {
+        querySelectorAll: (selector: string) => (selector === 'script[src]' ? [htmlScript('/main.js')] : []),
+      };
+    }
+  } as any;
+  globalThis.fetch = vi.fn(async () => ({ ok: true, text: async () => '<html></html>' })) as any;
+  globalThis.document = {
+    head: { appendChild: () => {} },
+    body: {
+      appendChild: (el: FakeElement) => {
+        created.push(el);
+        queueMicrotask(() => el.onload?.());
+      },
+    },
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    createElement: (tag: string) => createElement(tag),
+  } as any;
+
+  linkInstance.remotes.set('remote', {
+    name: 'remote',
+    entry: 'index.html',
+    type: 'app',
+    status: LOAD_STATUS.UNLOADED,
+  } as any);
+
+  // 同时传入 app 的 entry 与 lib 的 entryName：统一选项类型应被接受并正确路由到 loadApp。
+  const promise = loadRemote('remote', { host: 'http://localhost:8081', entry: 'index.html', entryName: 'ignored.js' });
+  await new Promise((r) => setTimeout(r, 30));
+  linkInstance.eventBus.emit(LIB_EXPOSE, { libName: 'remote', lib: { default: 'COMP' } });
+
+  expect(await promise).toBe('COMP');
+  expect(created.find((el) => el.tagName === 'script')?.src).toBe('http://localhost:8081/main.js');
+});
+
+test('loadRemote rejects for unknown remote and unsupported type', async () => {
+  await expect(loadRemote('missing')).rejects.toThrow(/not found/);
+
+  linkInstance.remotes.set('weird', {
+    name: 'weird',
+    entry: 'x',
+    status: LOAD_STATUS.UNLOADED,
+    type: 'other',
+  } as any);
+  await expect(loadRemote('weird')).rejects.toThrow(/not supported/);
 });
 
 test('loadApp fires plugin lifecycle hooks in order', async () => {

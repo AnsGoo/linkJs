@@ -1,5 +1,6 @@
 import { describe, expect, test, vi } from 'vitest';
-import { makeEventBus } from '../src/event-bus';
+import { makeEventBus, type LinkjsEvents } from '../src/event-bus';
+import { LIB_EXPOSE, REMOTE_UPDATE } from '../src/event-bus/constant';
 
 describe('makeEventBus', () => {
   test('on/emit delivers args', () => {
@@ -52,6 +53,20 @@ describe('makeEventBus', () => {
     bus.emit('x');
     bus.emit('y');
     expect(fn).not.toHaveBeenCalled();
+  });
+
+  test('typed bus (LinkjsEvents) delivers the declared payloads', () => {
+    const bus = makeEventBus<LinkjsEvents>();
+    const onExpose = vi.fn();
+    const onUpdate = vi.fn();
+    bus.on(LIB_EXPOSE, onExpose);
+    bus.on(REMOTE_UPDATE, onUpdate);
+
+    bus.emit(LIB_EXPOSE, { libName: 'app', lib: { default: 1 } });
+    bus.emit(REMOTE_UPDATE, { appName: 'app', key: 'Hello' });
+
+    expect(onExpose).toHaveBeenCalledWith({ libName: 'app', lib: { default: 1 } });
+    expect(onUpdate).toHaveBeenCalledWith({ appName: 'app', key: 'Hello' });
   });
 
   test('listeners added during emit do not run in the same dispatch', () => {
