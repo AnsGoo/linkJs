@@ -226,6 +226,14 @@
 
 ---
 
+## P18 Logger 插件（加载日志 / 指标）
+
+- [x] `loggerPlugin({ log, prefix, collect })`：包装加载方法记录每次加载的耗时/结果（含重试的各次尝试），并经 `afterLoadShare`/`afterPreloadRemote` 记录共享与预加载事件。
+- [x] `getLoadMetrics()` / `clearLoadMetrics()`；内置目录加入 `linkjs-logger`。
+- 测试：`packages/linkjs/tests/logger.test.ts`（4 用例）；demo 注册 3 个插件，DevTools 显示 `插件 (3/3)`。
+
+---
+
 ## 执行记录（本轮）
 
 | 阶段 | 状态 | 说明 |

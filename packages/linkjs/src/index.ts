@@ -175,6 +175,8 @@ export { retryPlugin } from './plugins/retry';
 export type { RetryPluginOptions } from './plugins/retry';
 export { fallbackPlugin } from './plugins/fallback';
 export type { FallbackPluginOptions } from './plugins/fallback';
+export { loggerPlugin, getLoadMetrics, clearLoadMetrics } from './plugins/logger';
+export type { LoggerPluginOptions, LoadMetric, LogEvent } from './plugins/logger';
 export { availablePlugins } from './plugins/catalog';
 export type { AvailablePlugin } from './plugins/catalog';
 export type { EventBus, EventHandler, LinkjsEvents } from './event-bus';
