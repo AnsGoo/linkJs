@@ -13,7 +13,8 @@ async function refreshActionState(tabId) {
   }
   let has = false;
   try {
-    const [result] = await chrome.scripting.executeScript({ target: { tabId }, func: DETECT });
+    // 关键：在页面主世界执行，才能读到页面设置的 window.__LINKJS__（隔离世界读不到）。
+    const [result] = await chrome.scripting.executeScript({ target: { tabId }, func: DETECT, world: 'MAIN' });
     has = Boolean(result && result.result);
   } catch {
     has = false;

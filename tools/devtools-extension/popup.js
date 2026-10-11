@@ -17,7 +17,8 @@ function readSnapshotInPage() {
     return { __state: 'missing' };
   }
   try {
-    return api.getSnapshot();
+    // JSON 往返，确保返回值可序列化（快照里可能含 Error / 非纯对象）。
+    return JSON.parse(JSON.stringify(api.getSnapshot()));
   } catch (e) {
     return { __state: 'error', message: String((e && e.message) || e) };
   }
