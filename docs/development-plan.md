@@ -190,13 +190,13 @@
 
 ---
 
-## P14 页内 DevTools 面板（借鉴 Vue DevTools）
+## P14 页内 DevTools 侧边栏（借鉴 Vue DevTools）
 
-- [x] 开发模式**自动挂载**右下角小图标（Shadow DOM 隔离样式），点击展开可观测面板。
-- [x] 面板展示 remotes / shares / plugins / diagnostics；展开时每秒刷新，出现 error 诊断时图标显示红点。
-- [x] `createInstance({ devtools })` 可控（`false` 关闭、可配位置）；亦可 `installDevtoolsUI()` / `uninstallDevtoolsUI()`。
-- [x] 面板实现通过动态 `import()` 懒加载（独立 chunk），生产构建不加载。
-- 实测：host(dev) 挂载成功，面板显示 remotes `remote/remote-lib=loaded`、shares `vue/pinia/vue-router`。
+- [x] 开发模式**自动挂载**可折叠侧边栏（Vue 组件 + Shadow DOM 隔离样式）：收起时露出竖排 "LinkJS" 标签，点击展开。
+- [x] 面板展示 remotes / shares / plugins / diagnostics；展开时每秒刷新，出现 error 诊断时标签显示红点。
+- [x] `createInstance({ devtools })` 可控（`false` 关闭、`position: 'right'|'left'`）；亦可 `installDevtoolsUI()` / `uninstallDevtoolsUI()`。
+- [x] 面板以 Vue 实现，核心运行时动态 `import()` 懒加载（`vue` 为外部依赖），生产构建不加载。
+- 实测：host(dev) 折叠/展开正常，显示 remotes `remote/remote-lib=loaded`、shares `vue=3.5.43 / pinia=3.0.4 / vue-router=5.4.0`。
 
 ---
 

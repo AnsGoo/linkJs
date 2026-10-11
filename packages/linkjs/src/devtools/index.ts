@@ -173,8 +173,8 @@ function installDevtools(instance: any): void {
 export interface DevtoolsOptions {
   /** 是否启用页内面板；缺省时开发模式自动启用。 */
   enabled?: boolean;
-  /** 面板位置，默认右下角。 */
-  position?: 'bottom-right' | 'bottom-left';
+  /** 侧边栏停靠位置，默认右侧。 */
+  position?: 'right' | 'left';
 }
 
 /**
