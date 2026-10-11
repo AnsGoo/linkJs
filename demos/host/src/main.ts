@@ -55,14 +55,13 @@ preloadRemote({
   /* remote-lib 未启动时忽略 */
 });
 
-// 读取远端 manifest，获取展示名（RemoteApp1）等信息。
-preloadRemote({
-  name: 'remote',
-  host: 'http://localhost:8080',
-  manifestUrl: 'http://localhost:8080/manifest.json',
-}).catch(() => {
-  /* remote 未启动时忽略 */
-});
+// 读取远端 manifest，获取展示名（RemoteApp1）等信息；在加载前 await，保证日志/标签一致。
+const prepareRemoteMeta = () =>
+  preloadRemote({
+    name: 'remote',
+    host: 'http://localhost:8080',
+    manifestUrl: 'http://localhost:8080/manifest.json',
+  }).catch(() => undefined);
 
 // 加载远程模块的函数
 function loadRemoteModule() {
@@ -85,6 +84,8 @@ function loadRemoteModule() {
     });
 }
 
-overrideRemote().finally(() => {
-  loadRemoteModule();
-});
+overrideRemote()
+  .then(prepareRemoteMeta)
+  .finally(() => {
+    loadRemoteModule();
+  });

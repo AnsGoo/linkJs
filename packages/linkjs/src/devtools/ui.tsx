@@ -99,6 +99,30 @@ function renderSnapshot(snapshot: LinkjsSnapshot, filter: string, onCopy: () => 
     return [displayByApp.get(app) || app, ...rest].join('/');
   };
 
+  // 性能标签按当前 displayName 动态生成（避免“标签在加载瞬间被冻结”导致与展示名不一致）。
+  const perfLabel = (name: string) => {
+    if (name.startsWith('linkjs:load:app:')) {
+      const [app, ...phaseParts] = name.slice('linkjs:load:app:'.length).split(':');
+      const dn = displayByApp.get(app) || app;
+      const phase = phaseParts.join(':');
+      if (phase === 'fetch') {
+        return `拉取入口 HTML「${dn}」`;
+      }
+      if (phase === 'scripts') {
+        return `加载远程脚本「${dn}」`;
+      }
+      return `加载应用「${dn}」`;
+    }
+    if (name.startsWith('linkjs:load:lib:')) {
+      const app = name.slice('linkjs:load:lib:'.length);
+      return `加载库「${displayByApp.get(app) || app}」`;
+    }
+    if (name.startsWith('linkjs:share:')) {
+      return `加载共享依赖「${name.slice('linkjs:share:'.length)}」`;
+    }
+    return name;
+  };
+
   const remotes = snapshot.remotes.filter((remote) => match(`${remote.name} ${remote.displayName ?? ''} ${remote.type ?? ''} ${remote.status ?? ''} ${remote.host ?? ''}`));
   const shareRows = snapshot.shares.flatMap((share) =>
     share.versions
@@ -199,7 +223,7 @@ function renderSnapshot(snapshot: LinkjsSnapshot, filter: string, onCopy: () => 
         perf.map((entry, index) => (
           <div key={`${entry.name}:${index}`} class="row">
             <span class="k" title={entry.name}>
-              {entry.label ?? entry.name}
+              {perfLabel(entry.name)}
             </span>
             <span class="v">{ms(entry.durationMs)}</span>
           </div>
