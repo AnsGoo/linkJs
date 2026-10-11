@@ -1,12 +1,12 @@
 'use strict';
 
-// 在“被检查页面”的上下文里读取 LinkJS 快照并渲染（分区 / 过滤 / 操作）。
-// 依赖页面已加载 linkjs（其会暴露全局 __LINKJS__）。
+// LinkJS DevTools 面板（扩展版）：移植页内面板（packages/linkjs/src/devtools/ui.tsx）的
+// 分区 / 标签 / 过滤 / 复制 / 错误红点 / 远程操作。数据经 inspectedWindow.eval 从页面读取。
 
-const statusEl = document.getElementById('status');
+const titleEl = document.getElementById('title');
+const instanceIdEl = document.getElementById('instance-id');
 const sectionsEl = document.getElementById('sections');
 const filterEl = document.getElementById('filter');
-const refreshBtn = document.getElementById('refresh');
 const copyBtn = document.getElementById('copy');
 
 let snapshot = null;
@@ -29,13 +29,13 @@ function evalInPage(expr, cb) {
   });
 }
 
-/** 在页面里调用 __LINKJS__ 的操作方法，稍后刷新。 */
+/** 在页面里调用 __LINKJS__ 操作，稍后刷新。 */
 function call(op, arg) {
   const expr =
     arg === undefined
       ? `window.__LINKJS__ && window.__LINKJS__.${op} && window.__LINKJS__.${op}()`
       : `window.__LINKJS__ && window.__LINKJS__.${op} && window.__LINKJS__.${op}(${JSON.stringify(arg)})`;
-  evalInPage(expr, () => setTimeout(render, 200));
+  evalInPage(expr, () => setTimeout(render, 250));
 }
 
 function ms(value) {
@@ -62,7 +62,7 @@ function h(tag, attrs, children) {
       if (key === 'class') node.className = attrs[key];
       else if (key === 'onClick') node.addEventListener('click', attrs[key]);
       else if (key === 'title') node.title = attrs[key];
-      else node.setAttribute(key, attrs[key]);
+      else if (attrs[key] != null && attrs[key] !== false) node.setAttribute(key, attrs[key]);
     }
   }
   for (const child of [].concat(children || [])) {
@@ -80,8 +80,17 @@ function miniButton(label, title, onClick) {
   return h('button', { class: 'mini', title, onClick }, label);
 }
 
-function row(keyText, valueChildren, title) {
-  return h('div', { class: 'row' }, [h('span', { class: 'k', title: title || keyText }, keyText), h('span', { class: 'actions' }, valueChildren)]);
+/** 普通行：左 key + 右值。 */
+function row(keyText, valueNode, title) {
+  return h('div', { class: 'row' }, [h('span', { class: 'k', title: title || keyText }, keyText), valueNode]);
+}
+
+/** 带操作按钮的行：左 key + 右侧 actions（状态 + 按钮）。 */
+function actionRow(keyText, actionChildren, title) {
+  return h('div', { class: 'row' }, [
+    h('span', { class: 'k', title: title || keyText }, keyText),
+    h('span', { class: 'actions' }, actionChildren),
+  ]);
 }
 
 function section(title, rows) {
@@ -99,19 +108,38 @@ function renderSections(snap) {
     parts[0] = displayByApp.get(parts[0]) || parts[0];
     return parts.join('/');
   };
+  // 性能标签按当前 displayName 动态生成（与页内面板一致）。
+  const perfLabel = (name) => {
+    if (name.startsWith('linkjs:load:app:')) {
+      const [app, ...phaseParts] = name.slice('linkjs:load:app:'.length).split(':');
+      const dn = displayByApp.get(app) || app;
+      const phase = phaseParts.join(':');
+      if (phase === 'fetch') return `拉取入口 HTML「${dn}」`;
+      if (phase === 'scripts') return `加载远程脚本「${dn}」`;
+      return `加载应用「${dn}」`;
+    }
+    if (name.startsWith('linkjs:load:lib:')) {
+      const app = name.slice('linkjs:load:lib:'.length);
+      return `加载库「${displayByApp.get(app) || app}」`;
+    }
+    if (name.startsWith('linkjs:share:')) {
+      return `加载共享依赖「${name.slice('linkjs:share:'.length)}」`;
+    }
+    return name;
+  };
 
   const nodes = [];
 
-  // 远程应用（带操作按钮）
+  // 远程应用（含操作按钮）
   const remoteRows = (snap.remotes || [])
     .filter((r) => match(`${r.name} ${r.displayName || ''} ${r.type || ''} ${r.status || ''} ${r.host || ''}`))
     .map((r) =>
-      row(
+      actionRow(
         `${r.displayName || r.name}${r.displayName && r.displayName !== r.name ? ` (${r.name})` : ''}${r.type ? ` · ${r.type}` : ''}`,
         [
           pill(r.status || '-', r.status === 'loaded' ? 'loaded' : ''),
           miniButton('预取', '按 manifest 预取资源', () => call('preload', { name: r.name })),
-          miniButton('卸载', r.type === 'lib' ? '卸载远程库' : '卸载远程应用', () =>
+          miniButton('卸载', r.type === 'lib' ? '卸载远程库（清缓存 / 移除资源）' : '卸载远程应用（清缓存 / 移除资源）', () =>
             r.type === 'lib' ? call('unloadLib', r.name) : call('unload', r.name),
           ),
         ],
@@ -125,9 +153,10 @@ function renderSections(snap) {
     share.versions
       .filter((v) => match(`${share.name} ${share.scope} ${v.version}`))
       .map((v) =>
-        row(`${share.name}${share.scope !== 'global' ? ` @${share.scope}` : ''}`, [
+        row(
+          `${share.name}${share.scope !== 'global' ? ` @${share.scope}` : ''}`,
           pill(`${v.version}${v.loaded ? ' ✓' : ''}`, v.loaded ? 'loaded' : ''),
-        ]),
+        ),
       ),
   );
   nodes.push(...section('共享依赖', shareRows));
@@ -135,21 +164,24 @@ function renderSections(snap) {
   // 共享冲突
   const conflictRows = (snap.conflicts || [])
     .filter((c) => match(`${c.name} ${c.requiredVersion}`))
-    .map((c) => row(c.name, [pill(`需要 ${c.requiredVersion} / 提供 ${(c.provided || []).join(', ') || '无'}`, 'error')]));
-  nodes.push(...section(`共享冲突 (${conflictRows.length})`, conflictRows));
+    .map((c) => row(c.name, pill(`需要 ${c.requiredVersion} / 提供 ${(c.provided || []).join(', ') || '无'}`, 'error')));
+  if (conflictRows.length) {
+    nodes.push(...section(`共享冲突 (${conflictRows.length})`, conflictRows));
+  }
 
   // 插件
-  const pluginRows = (snap.availablePlugins || [])
+  const allPlugins = snap.availablePlugins || [];
+  const pluginRows = allPlugins
     .filter((p) => show(p.name))
-    .map((p) => row(p.name, [pill(p.enabled ? '已启用' : '可用', p.enabled ? 'loaded' : '')], p.description));
-  nodes.push(...section(`插件 (${(snap.availablePlugins || []).filter((p) => p.enabled).length}/${(snap.availablePlugins || []).length})`, pluginRows));
+    .map((p) => row(p.name, pill(p.enabled ? '已启用' : '可用', p.enabled ? 'loaded' : ''), p.description));
+  nodes.push(...section(`插件 (${allPlugins.filter((p) => p.enabled).length}/${allPlugins.length})`, pluginRows));
 
   // 加载指标
   const metricRows = (snap.metrics || [])
     .filter((m) => match(`${m.entry} ${m.status} ${m.host || ''}`))
     .slice(-12)
     .reverse()
-    .map((m) => row(`加载${kindLabel(m.kind)}「${prettyEntry(m.entry)}」`, [pill(ms(m.durationMs), m.status === 'error' ? 'error' : 'loaded')]));
+    .map((m) => row(`加载${kindLabel(m.kind)}「${prettyEntry(m.entry)}」`, pill(ms(m.durationMs), m.status === 'error' ? 'error' : 'loaded')));
   nodes.push(...section('加载指标', metricRows));
 
   // 性能
@@ -157,7 +189,7 @@ function renderSections(snap) {
     .filter((p) => show(p.name))
     .slice(-12)
     .reverse()
-    .map((p) => row(p.name, [h('span', { class: 'pill' }, ms(p.durationMs))]));
+    .map((p) => row(perfLabel(p.name), h('span', { class: 'v' }, ms(p.durationMs)), p.name));
   nodes.push(...section('性能', perfRows));
 
   // 事件
@@ -165,7 +197,7 @@ function renderSections(snap) {
     .filter((e) => match(`${e.type} ${e.summary}`))
     .slice(-20)
     .reverse()
-    .map((e) => row(e.summary, [pill(timeStr(e.time))], e.type));
+    .map((e) => row(e.summary, pill(timeStr(e.time)), e.type));
   nodes.push(...section('事件', eventRows));
 
   // 诊断
@@ -173,35 +205,50 @@ function renderSections(snap) {
     .filter((d) => match(`${d.code} ${d.message}`))
     .slice(-20)
     .reverse()
-    .map((d) => row(`${d.code} ${d.message}`, [pill(timeStr(d.time), d.level === 'error' ? 'error' : '')]));
+    .map((d) => {
+      const line = h('div', { class: 'diag' + (d.level === 'error' ? ' error' : '') }, [
+        h('span', { class: 'code' }, d.code),
+        document.createTextNode(' ' + d.message),
+        ' ',
+        pill(timeStr(d.time)),
+      ]);
+      return line;
+    });
   nodes.push(...section('诊断', diagRows));
 
+  nodes.push(h('div', { class: 'hint' }, '拖拽 DevTools 面板边缘可调整宽度 · 操作按钮直接作用于被检查页面'));
+
   sectionsEl.replaceChildren(...nodes);
+
+  // 错误红点
+  const hasError = (snap.diagnostics || []).some((d) => d.level === 'error');
+  titleEl.classList.toggle('has-error', hasError);
 }
 
 function render() {
   evalInPage(SNAPSHOT_EXPR, (snap, error) => {
     if (error) {
-      statusEl.textContent = 'eval error';
+      instanceIdEl.textContent = '';
+      sectionsEl.replaceChildren(h('div', { class: 'muted' }, 'eval error: ' + error));
       return;
     }
     if (!snap || snap.__state === 'missing') {
-      statusEl.textContent = '未检测到 linkjs（window.__LINKJS__ 不存在）';
-      sectionsEl.replaceChildren();
+      instanceIdEl.textContent = '';
+      titleEl.classList.remove('has-error');
       snapshot = null;
+      sectionsEl.replaceChildren(h('div', { class: 'muted' }, '未检测到 linkjs（页面需在开发模式下初始化 createInstance，暴露 window.__LINKJS__）'));
       return;
     }
     if (snap.__state === 'error') {
-      statusEl.textContent = '读取失败：' + snap.message;
+      sectionsEl.replaceChildren(h('div', { class: 'muted' }, '读取失败：' + snap.message));
       return;
     }
     snapshot = snap;
-    statusEl.textContent = `已连接 · ${snap.instance && snap.instance.id ? snap.instance.id : ''}`;
+    instanceIdEl.textContent = (snap.instance && snap.instance.id) || '';
     renderSections(snap);
   });
 }
 
-refreshBtn.addEventListener('click', render);
 filterEl.addEventListener('input', () => {
   if (snapshot) renderSections(snapshot);
 });

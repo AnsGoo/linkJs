@@ -4,36 +4,53 @@
     <meta charset="utf-8" />
     <title>LinkJS</title>
     <style>
-      body { margin: 0; font: 12px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #e6e6f0; background: #1e1e2e; }
-      header { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid #2a2a3a; position: sticky; top: 0; background: #1e1e2e; z-index: 2; }
-      header strong { color: #cdd0dc; }
-      header .id { color: #6b7085; font-weight: 400; }
-      header .muted { color: #777c8f; }
-      header input { flex: 1; min-width: 120px; background: #15151f; border: 1px solid #33334a; color: #e6e6f0; border-radius: 6px; padding: 3px 8px; font-size: 12px; }
-      header button { background: transparent; border: 1px solid #3a3a52; color: #cdd0dc; border-radius: 6px; cursor: pointer; padding: 2px 8px; }
-      main { padding: 8px 12px 24px; }
+      :root { color-scheme: dark; }
+      html, body { margin: 0; height: 100%; }
+      body {
+        font: 12px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        background: #1e1e2e; color: #e6e6f0;
+      }
+      .content { padding: 12px 14px; }
+      header.content { position: sticky; top: 0; z-index: 2; background: #1e1e2e; border-bottom: 1px solid #2a2a3a; padding-bottom: 10px; }
+      h2 { margin: 0 0 8px; font-size: 13px; display: flex; justify-content: space-between; align-items: center; gap: 8px; color: #cdd0dc; }
+      h2 .title { display: flex; align-items: center; gap: 6px; }
+      h2 .id { color: #6b7085; font-weight: 400; font-size: 11px; }
+      h2 .dot { width: 8px; height: 8px; border-radius: 50%; background: #e5484d; display: none; }
+      h2.has-error .dot { display: inline-block; }
       h3 { margin: 14px 0 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #8b90a4; }
       .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 3px 0; border-bottom: 1px solid #2a2a3a; }
+      .row:last-child { border-bottom: none; }
       .row .k { color: #aab; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .row .v { color: #e6e6f0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
       .row .actions { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
       .pill { padding: 0 6px; border-radius: 8px; font-size: 10px; line-height: 16px; background: #33334a; color: #cdd0dc; white-space: nowrap; }
       .pill.loaded { background: #1f6f4a; color: #d8ffe9; }
       .pill.error { background: #7a2530; color: #ffd9dd; }
-      .mini { background: transparent; border: 1px solid #3a3a52; color: #cdd0dc; border-radius: 6px; cursor: pointer; font-size: 11px; padding: 1px 7px; }
+      .diag { padding: 4px 0; border-bottom: 1px solid #2a2a3a; }
+      .diag .code { color: #ffb4a2; font-family: ui-monospace, monospace; }
+      .diag.error .code { color: #ff6b6b; }
       .muted { color: #777c8f; }
-      .empty { padding: 12px; }
+      .toolbar { display: flex; gap: 6px; margin: 6px 0 2px; }
+      .toolbar input { flex: 1; min-width: 0; background: #15151f; border: 1px solid #33334a; color: #e6e6f0; border-radius: 6px; padding: 3px 8px; font-size: 12px; }
+      button.mini { background: transparent; border: 1px solid #3a3a52; color: #cdd0dc; border-radius: 6px; cursor: pointer; font-size: 11px; padding: 2px 8px; white-space: nowrap; }
+      button.mini:hover { border-color: #647eff; }
+      .hint { color: #565b70; font-size: 10px; margin-top: 12px; }
     </style>
   </head>
   <body>
-    <header>
-      <strong>LinkJS</strong>
-      <span class="muted" id="status">connecting…</span>
-      <span style="flex: 1"></span>
-      <input id="filter" placeholder="过滤…" />
-      <button id="copy">复制 JSON</button>
-      <button id="refresh">刷新</button>
+    <header class="content">
+      <h2 id="title">
+        <span class="title">
+          <span class="dot" title="存在 error 诊断"></span>
+          LinkJS DevTools <span class="id" id="instance-id"></span>
+        </span>
+        <span><button class="mini" id="copy">复制 JSON</button></span>
+      </h2>
+      <div class="toolbar">
+        <input id="filter" placeholder="过滤…" />
+      </div>
     </header>
-    <main id="sections"></main>
+    <main class="content" id="sections"></main>
     <script src="panel.js"></script>
   </body>
 </html>
