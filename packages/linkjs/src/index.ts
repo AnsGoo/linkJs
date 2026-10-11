@@ -1,12 +1,23 @@
 import { linkInstance } from './state';
 import { __LINKJS_INSTANCE__, __LINKJS_OVERRIDES__ } from './constant';
-import { clearRemoteCache, getRemote, loadApp, loadLib, loadRemote, registerRemote, unloadRemote, unloadLib } from './loader';
+import {
+  clearRemoteCache,
+  getRemote,
+  loadApp as runLoadApp,
+  loadLib as runLoadLib,
+  loadRemote as runLoadRemote,
+  registerRemote,
+  unloadRemote,
+  unloadLib,
+} from './loader';
 
 import { loadOverride, overrideRemote } from './override';
 import { expose, shared } from './expose';
 import { loadShare, registerShare, getShare } from './share';
 import type { ShareOption } from './share';
 import type { RmoteConfig } from './loader';
+import type { LoadAppOptions } from './loader/app';
+import type { LoadLibOptions } from './loader/lib';
 import { registerPlugin, runInitHooks, type RuntimePlugin } from './plugins';
 import { subscribeRemoteUpdate } from './hmr';
 import { loadRuntime } from './runtime';
@@ -33,6 +44,44 @@ function getSnapshot() {
 
 // 安装 DevTools 便于排查（全局 __LINKJS__ 与 $linkjs.debug）。
 installDevtools(linkInstance);
+
+// 运行时加载方法挂到实例，便于插件（如 retry）通过 `apply(instance)` 包装/扩展。
+// 用惰性设置，避免循环导入期 linkInstance 尚未就绪。
+function ensureRuntimeMethods(): void {
+  const inst = getInstance();
+  if (!inst) {
+    return;
+  }
+  if (!inst.loadApp) {
+    inst.loadApp = runLoadApp;
+  }
+  if (!inst.loadLib) {
+    inst.loadLib = runLoadLib;
+  }
+  if (!inst.loadRemote) {
+    inst.loadRemote = runLoadRemote;
+  }
+  const g = globalThis as { $linkjs?: Record<string, unknown> };
+  if (g.$linkjs) {
+    g.$linkjs.loadApp = loadApp;
+    g.$linkjs.loadLib = loadLib;
+    g.$linkjs.loadRemote = loadRemote;
+  }
+}
+
+/** 远程加载（经实例方法分发，可被插件包装）。 */
+function loadApp<M = unknown>(entry: string, options?: LoadAppOptions): Promise<M | null> {
+  ensureRuntimeMethods();
+  return getInstance().loadApp(entry, options) as Promise<M | null>;
+}
+function loadLib<M = unknown>(entry: string, options?: LoadLibOptions): Promise<M | null> {
+  ensureRuntimeMethods();
+  return getInstance().loadLib(entry, options) as Promise<M | null>;
+}
+function loadRemote<M = unknown>(entry: string, options?: LoadAppOptions & LoadLibOptions): Promise<M | null> {
+  ensureRuntimeMethods();
+  return getInstance().loadRemote(entry, options) as Promise<M | null>;
+}
 
 type InstanceMode = 'development' | 'production';
 
@@ -70,6 +119,8 @@ function createInstance(options: UserOption) {
     registerRemote(remote);
   });
   registerShare(shares);
+  // 先就绪实例方法，插件（如 retry）的 apply 才能包装到加载方法。
+  ensureRuntimeMethods();
   if (plugin) {
     registerPlugin(plugin);
   }
@@ -120,6 +171,8 @@ export type { LoadAppOptions } from './loader/app';
 export type { LoadLibOptions } from './loader/lib';
 export { registerPlugin, getPlugins } from './plugins';
 export type { RuntimePlugin } from './plugins';
+export { retryPlugin } from './plugins/retry';
+export type { RetryPluginOptions } from './plugins/retry';
 export type { EventBus, EventHandler, LinkjsEvents } from './event-bus';
 export type { PreloadRemoteOptions, RemoteManifest, ManifestAsset } from './preload';
 export type { Diagnostic, LinkjsSnapshot, RemoteSnapshot, ShareSnapshot, ShareVersionSnapshot, DevtoolsOptions } from './devtools';

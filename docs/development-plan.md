@@ -208,6 +208,15 @@
 
 ---
 
+## P16 Retry / Fallback 运行时插件
+
+- [x] 运行时加载方法挂到实例（`instance.loadApp/loadLib/loadRemote`）；导出的函数经实例分发，插件可用 `apply(instance)` 包装/扩展。
+- [x] `retryPlugin({ fallbackHosts, fallback, retries, onRetry, onError })`：加载失败时按候补 host 依次重试（CDN 多源 / 灰度 / 降级域名）。
+- [x] 惰性 `ensureRuntimeMethods()` 避免循环导入期实例未就绪；同步暴露 `$linkjs.loadApp/loadLib/loadRemote`。
+- 测试：`packages/linkjs/tests/retry.test.ts`（4 用例）。
+
+---
+
 ## 执行记录（本轮）
 
 | 阶段 | 状态 | 说明 |
