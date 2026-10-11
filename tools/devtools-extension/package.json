@@ -5,7 +5,7 @@
   "type": "module",
   "description": "LinkJS DevTools Chrome extension (Vue + Vite build).",
   "scripts": {
-    "build": "vite build",
+    "build": "node scripts/gen-icons.mjs && vite build",
     "dev": "vite build --watch",
     "icons": "node scripts/gen-icons.mjs"
   },

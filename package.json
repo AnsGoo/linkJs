@@ -14,6 +14,8 @@
   },
   "scripts": {
     "build": "pnpm -r --filter \"./packages/*\" --filter \"runtime-registry\" build",
+    "build:ext": "pnpm --filter linkjs-devtools-extension build",
+    "dev:ext": "pnpm --filter linkjs-devtools-extension dev",
     "prepare": "pnpm run build",
     "test": "pnpm -r --filter \"./packages/*\" run test",
     "typecheck": "pnpm -r --filter \"./packages/*\" run typecheck",
