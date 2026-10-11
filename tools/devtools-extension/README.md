@@ -1,38 +1,67 @@
 # LinkJS DevTools Extension
 
-Chrome 扩展，用于查看并操作被检查页面里 linkjs 的运行时状态。提供两种入口：
+Chrome 扩展（**Vue 3 + Vite** 编写）：在 Chrome DevTools 里提供 “LinkJS” 面板，并在工具栏提供可点图标（仅在加载了 linkjs 的页面高亮可点）。
 
-1. **工具栏弹窗**（`action` popup）：**只在加载了 linkjs 的页面启用（高亮可点）**，其他页面图标置灰不可点。点击图标即弹出面板。
-2. **DevTools 面板**：在开发者工具里新增 “LinkJS” 标签（内容依赖被检查页面有 `window.__LINKJS__`）。
-
-## 面板内容（与页内面板 `packages/linkjs/src/devtools/ui.tsx` 对齐）
-
-- 分区：远程应用 / 共享依赖 / 共享冲突 / 插件 / 加载指标 / 性能 / 事件 / 诊断；
-- 顶部：`instance.id`、错误红点、`复制 JSON`、文本过滤；
-- 远程行操作：**预取**（`preload`）、**卸载**（`unload` / `unloadLib`）；
-- 标签按 `displayName` 动态生成（性能/指标与展示名一致）。
-
-## 安装与使用
-
-1. Chrome 打开 `chrome://extensions` → 打开右上角「开发者模式」；
-2. 「加载已解压的扩展程序」→ 选择本目录 `tools/devtools-extension`；
-3. 打开一个**开发模式**下运行 linkjs 的页面（`createInstance(...)`，dev 会自动暴露 `window.__LINKJS__`）：
-   - 工具栏 **LinkJS** 图标此时会**高亮可点**，点击弹出面板；
-   - 或 `F12` 打开 DevTools，切到 **LinkJS** 标签（找不到就点 `»` 溢出菜单）；
-4. 其他未加载 linkjs 的页面：图标**置灰不可点**，DevTools 面板显示「未检测到 linkjs」。
-
-> 修改扩展代码后，在 `chrome://extensions` 点该扩展卡片的**刷新（↻）**即可生效。
-
-## 权限说明
-
-- `scripting` + `host_permissions: ["<all_urls>"]`：用于在切换标签时探测 `window.__LINKJS__`（决定图标是否启用），以及弹窗/操作在页面上下文中读取快照、调用 `preload/unload`。**不采集也不外发任何数据**。
-- 面板只读取 `window.__LINKJS__.getSnapshot()`；操作按钮即调用 `__LINKJS__.preload / unload / unloadLib`。
+> 该扩展从仓库里读取 linkjs 运行时快照（`window.__LINKJS__.getSnapshot()`），展示远程应用 / 共享依赖 / 冲突 / 插件 / 指标 / 性能 / 事件 / 诊断，并可对远程执行 `preload / unload`。
 
 ## 结构
 
-- `manifest.json`：MV3，`devtools_page` + `action` popup + `background` service worker；
-- `background.js`：按标签页探测 `__LINKJS__`，`chrome.action.enable/disable` + 徽标；
-- `view.js` / `view.css`：共享渲染（页面面板与弹窗共用）；
-- `popup.html` / `popup.js`：工具栏弹窗（`chrome.scripting` 读取/操作当前标签页）；
-- `panel.html` / `panel.js`：DevTools 面板（`devtools.inspectedWindow.eval`）；
-- `devtools.html` / `devtools.js`：注册 “LinkJS” DevTools 面板。
+```
+tools/devtools-extension/
+├─ panel.html / popup.html      # Vite 入口（会被构建到 dist 根）
+├─ src/
+│  ├─ panel.ts / popup.ts       # 两个入口的数据源（devtools.eval / chrome.scripting）
+│  ├─ App.vue                   # 左侧图标栏(Home/Remote) + 顶栏 + 内容
+│  ├─ views/HomeView.vue        # Home：全部分区
+│  ├─ views/RemoteView.vue      # Remote：列出 remote，点击看元数据
+│  ├─ components/Icon.vue
+│  ├─ lib/{types,format}.ts
+│  └─ styles.css
+├─ public/                      # 原样拷贝到 dist 根
+│  ├─ manifest.json             # MV3：devtools_page + action(popup) + background
+│  ├─ background.js             # 按页面探测 __LINKJS__，切换彩色/灰色图标
+│  ├─ devtools.html / devtools.js
+│  └─ icons/                    # 彩色/灰色两套 PNG（scripts/gen-icons.mjs 生成）
+├─ scripts/gen-icons.mjs        # 无依赖生成图标
+└─ vite.config.ts
+```
+
+## 构建
+
+```bash
+# 在仓库根目录
+pnpm install
+pnpm --filter linkjs-devtools-extension build      # 产出 dist/
+# 或监听构建
+pnpm --filter linkjs-devtools-extension dev
+# 重新生成图标（一般无需）
+pnpm --filter linkjs-devtools-extension icons
+```
+
+## 安装 / 使用
+
+1. `chrome://extensions` → 打开「开发者模式」；
+2. 「加载已解压的扩展程序」→ 选择 **`tools/devtools-extension/dist`**（注意是 `dist`）；
+3. 打开一个**开发模式**下运行 linkjs 的页面（`createInstance(...)`，dev 会暴露 `window.__LINKJS__`）：
+   - 工具栏 **LinkJS** 图标变彩色可点，点击弹出面板；其他页面为灰色不可点；
+   - `F12` → DevTools 顶部 **LinkJS** 标签（找不到点 `»`）。
+4. 改代码后重新 `build`，再到 `chrome://extensions` 点该扩展的**刷新（↻）**。
+
+## 面板
+
+- 左侧竖向图标栏：**Home**（全部分区）/ **Remote**（列出所有已加载 remote，App+Lib；点击查看元数据与入口、SRI，并可 `预取 / 卸载`）。
+- 顶栏：实例 `id`、错误红点、过滤、复制 JSON。
+
+## 权限
+
+- `scripting` + `host_permissions: ["<all_urls>"]`：仅用于按标签页探测/读取 `window.__LINKJS__` 并执行 `preload/unload`；不采集、不外发数据。
+
+## 预览开发
+
+`test/mock.html` 提供一个设置了假 `window.__LINKJS__` 的页面，可离线验证探测/渲染：
+
+```bash
+pnpm --filter linkjs-devtools-extension build
+python3 -m http.server 4322 --directory tools/devtools-extension
+# 浏览器打开 http://localhost:4322/test/mock.html
+```

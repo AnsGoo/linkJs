@@ -1,0 +1,20 @@
+{
+  "name": "linkjs-devtools-extension",
+  "version": "0.4.0",
+  "private": true,
+  "type": "module",
+  "description": "LinkJS DevTools Chrome extension (Vue + Vite build).",
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch",
+    "icons": "node scripts/gen-icons.mjs"
+  },
+  "dependencies": {
+    "vue": "^3.5.43"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.9",
+    "typescript": "~5.9.3",
+    "vite": "beta"
+  }
+}

@@ -6,7 +6,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const outDir = resolve(here, '..', 'icons');
+const outDir = resolve(here, '..', 'public', 'icons');
 mkdirSync(outDir, { recursive: true });
 
 const CRC_TABLE = (() => {

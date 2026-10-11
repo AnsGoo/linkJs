@@ -14,3 +14,6 @@ lib/
 # .vscode/*
 !.vscode/extensions.json
 .idea
+
+# devtools-extension build output
+tools/devtools-extension/dist

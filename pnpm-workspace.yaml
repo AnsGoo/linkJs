@@ -4,6 +4,7 @@ prefer-workspace-packages: true
 packages:
   - 'packages/*'
   - 'demos/*'
+  - 'tools/*'
 allowBuilds:
   esbuild: true
 # 原 package.json 的 pnpm.overrides 在 pnpm 10+ 不再被读取，迁移到此处。

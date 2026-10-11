@@ -47,7 +47,6 @@ h3 { margin: 14px 0 4px; font-size: 11px; text-transform: uppercase; letter-spac
 button.mini { background: transparent; border: 1px solid #3a3a52; color: #cdd0dc; border-radius: 6px; cursor: pointer; font-size: 11px; padding: 2px 8px; white-space: nowrap; }
 button.mini:hover { border-color: #647eff; }
 
-/* Remote 列表项 */
 .remote-item { width: 100%; display: flex; align-items: center; gap: 8px; padding: 8px 10px; margin: 4px 0;
   background: #15151f; border: 1px solid #2a2a3a; border-radius: 8px; color: #e6e6f0; cursor: pointer;
   text-align: left; font: inherit; }
