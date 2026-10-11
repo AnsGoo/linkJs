@@ -30,7 +30,7 @@
 - [x] `loaded-first`（现存行为）：优先已加载实例；无可用已加载时才加载。
 - [x] `version-first`：在「已加载 + 可用」候选中选满足条件的最高版本，必要时升级加载。
 - [x] `getShare` 只看已加载（两种策略一致）。
-- [x] 更新 `packages/linkjs/devepment/version-compare.md`。
+- [x] 更新 `packages/linkjs/development/version-compare.md`。
 
 ### 1.4 测试
 - [x] `registerShare` 单例/多版本。
@@ -122,6 +122,39 @@
 - [x] 根 `package.json` 增加 `build`/`test`/`typecheck` 脚本。
 - [x] `unplugin-linkjs` 增加 vitest（dependency-graph / build-shared / transform）。
 - [x] lint/typecheck 全绿（本轮范围内）。
+
+---
+
+## P9 运行时插件与服务化（本轮增量）
+
+### 9.1 运行时插件生命周期补全
+- [x] 支持注册**多个**插件（`registerPlugin(plugin | plugin[])`，同名去重，按注册顺序执行）。
+- [x] 补全并接入全部钩子：`beforeInit`/`afterInit`（`createInstance`）、`beforeLoadRemote`/`afterLoadRemote`/`errorLoadRemote`、`beforeLoadShare`/`afterLoadShare`、`beforeLoadEntry`/`afterLoadEntry`。
+- [x] app/lib 对称：`loadApp` 与 `loadLib` 均触发上述钩子；`beforeLoadRemote` 的返回值串联改写 `remoteInfo`。
+- [x] 钩子容错（异常记录后继续）；导出 `RuntimePlugin`/`registerPlugin`/`getPlugins`。
+- 测试：`packages/linkjs/tests/plugins.test.ts`（8 用例）。
+
+### 9.2 构建产物与工程化
+- [x] dist 漂移根治：所有包 `exports` 只指向 dist；移除 tsdown 的 `exports.devExports`（改 `exports: false`），避免构建时回写 `development` 条件。
+- [x] demo `dev`/`build` 先构建所用 workspace 包；根 `build` 纳入 `runtime-registry`；根 `prepare` 安装后构建。
+- [x] `pnpm.overrides` 迁移到 `pnpm-workspace.yaml`；新增 `.npmrc` 关闭 run 前自动安装。
+- [x] `packages/linkjs` 元数据修正；`devepment/` → `development/`。
+- [x] `share-runtime` 修正描述与 ESM（`createRequire` / `import.meta.url`）。
+
+### 9.3 测试与 CI
+- [x] 修复会失败的 e2e 模板（host/remote）。
+- [x] 新增 `.github/workflows/ci.yml`：install → build → typecheck → test → lint。
+
+---
+
+## P10 运行时健壮性补充（本轮增量）
+
+- [x] **event-bus**：新增 `once`、`off(name)`（清空该事件全部监听）、`clear()`；提供 `LinkjsEvents` 类型化事件表与 `EventBus` 泛型。
+- [x] **远程状态**：`remote.status` 全流程维护——开始加载置 `loading`、成功 `loaded`、失败/卸载 `unloaded`。
+- [x] **`unloadLib`**：清理库缓存、HMR 索引与带 `data-linkjs-remote` 标记的资源。
+- [x] **`createRemoteApp` 状态**：支持 `loading` / `error` 占位组件与 `onError` 回调。
+- [x] **CSP / SRI**（运行时侧）：`loadScript` / `loadCss` 透传远程 HTML 中的 `integrity` / `crossorigin` / `nonce`。
+- 测试：`tests/event-bus.test.ts`（6 用例）、`tests/loader.test.ts` 状态流转用例。
 
 ---
 

@@ -1,7 +1,7 @@
 import { expect, test, beforeEach, vi } from 'vitest';
 import { linkInstance } from '../src/state/instance';
 import { loadApp, clearRemoteCache, unloadRemote } from '../src/loader';
-import { LIB_EXPOSE } from '../src/event-bus/constant';
+import { LIB_EXPOSE, LOAD_STATUS } from '../src/event-bus/constant';
 
 interface FakeElement {
   tagName: string;
@@ -149,4 +149,41 @@ test('loadApp rejects when script fails and ignoreScriptError is false', async (
   } as any;
 
   await expect(loadApp('remote', { host: 'http://localhost:8081', timeout: 500 })).rejects.toThrow(/Failed to load script/);
+});
+
+test('loadApp maintains remote status: loading -> loaded -> unloaded', async () => {
+  globalThis.DOMParser = class {
+    parseFromString() {
+      return {
+        querySelectorAll: (selector: string) =>
+          selector === 'script[src]' ? [{ getAttribute: (n: string) => (n === 'src' ? '/main.js' : null) }] : [],
+      };
+    }
+  } as any;
+  globalThis.fetch = vi.fn(async () => ({ ok: true, text: async () => '<html></html>' })) as any;
+  globalThis.document = {
+    head: { appendChild: () => {} },
+    body: { appendChild: (el: FakeElement) => queueMicrotask(() => el.onload?.()) },
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    createElement: (tag: string) => createElement(tag),
+  } as any;
+
+  linkInstance.remotes.set('remote', {
+    name: 'remote',
+    entry: 'http://localhost:8081/index.html',
+    type: 'app',
+    status: LOAD_STATUS.UNLOADED,
+  } as any);
+
+  const promise = loadApp('remote', { host: 'http://localhost:8081' });
+  await new Promise((r) => setTimeout(r, 30));
+  expect(linkInstance.remotes.get('remote')?.status).toBe(LOAD_STATUS.LOADING);
+
+  linkInstance.eventBus.emit(LIB_EXPOSE, { libName: 'remote', lib: { default: 'COMP' } });
+  await promise;
+  expect(linkInstance.remotes.get('remote')?.status).toBe(LOAD_STATUS.LOADED);
+
+  unloadRemote('remote');
+  expect(linkInstance.remotes.get('remote')?.status).toBe(LOAD_STATUS.UNLOADED);
 });

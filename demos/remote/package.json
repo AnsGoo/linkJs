@@ -4,10 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": {
-      "development": "./src/lib.ts",
-      "default": "./mf/lib.js"
-    },
+    ".": "./mf/lib.js",
     "./package.json": "./package.json",
     "./style.css": "./mf/style.css"
   },

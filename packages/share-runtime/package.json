@@ -1,9 +1,10 @@
 {
   "name": "share-runtime",
   "version": "1.0.0",
-  "description": "A plugin for automatically generating manifest.json files when building JS packages with tsdown, rollup, etc.",
+  "description": "Standalone CLI to bundle dependencies as CDN-ready ESM packages (experimental; NOT part of the linkjs runtime).",
   "license": "ISC",
   "author": "",
+  "type": "module",
   "exports": {
     ".": "./lib/index.mjs",
     "./package.json": "./package.json"

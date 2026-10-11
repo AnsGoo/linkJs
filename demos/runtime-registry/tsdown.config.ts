@@ -5,9 +5,7 @@ export default defineConfig({
   entry: 'src/index.ts',
   outDir: 'dist',
   sourcemap: true,
-  exports: {
-    devExports: 'development',
-  },
+  exports: false,
   plugins: [],
   // ...config options
 });

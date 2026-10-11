@@ -1,16 +1,16 @@
 {
   "name": "linkjs",
   "version": "0.0.0",
-  "description": "A starter for creating a TypeScript package.",
-  "homepage": "https://github.com/author/library#readme",
+  "description": "LinkJS runtime: module loading, shared-dependency management, and remote exposure for micro-frontends.",
+  "homepage": "https://github.com/AnsGoo/linkJs#readme",
   "bugs": {
-    "url": "https://github.com/author/library/issues"
+    "url": "https://github.com/AnsGoo/linkJs/issues"
   },
   "license": "MIT",
-  "author": "Author Name <author.name@mail.com>",
+  "author": "AnsGoo",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/author/library.git"
+    "url": "git+https://github.com/AnsGoo/linkJs.git"
   },
   "files": [
     "dist"
@@ -18,14 +18,8 @@
   "type": "module",
   "types": "./dist/index.d.mts",
   "exports": {
-    ".": {
-      "development": "./src/index.ts",
-      "default": "./dist/index.mjs"
-    },
-    "./vue": {
-      "development": "./src/vue.ts",
-      "default": "./dist/vue.mjs"
-    },
+    ".": "./dist/index.mjs",
+    "./vue": "./dist/vue.mjs",
     "./package.json": "./package.json"
   },
   "publishConfig": {

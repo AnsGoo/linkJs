@@ -14,10 +14,7 @@
     "url": "https://github.com/author/library/issues"
   },
   "exports": {
-    ".": {
-      "development": "./src/lib.ts",
-      "default": "./mf/lib.js"
-    },
+    ".": "./mf/lib.js",
     "./package.json": "./package.json"
   },
   "types": "./dist/index.d.ts",

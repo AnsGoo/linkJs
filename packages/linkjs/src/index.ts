@@ -1,13 +1,13 @@
 import { linkInstance } from './state';
 import { __LINKJS_INSTANCE__, __LINKJS_OVERRIDES__ } from './constant';
-import { clearRemoteCache, getRemote, loadApp, loadLib, loadRemote, registerRemote, unloadRemote } from './loader';
+import { clearRemoteCache, getRemote, loadApp, loadLib, loadRemote, registerRemote, unloadRemote, unloadLib } from './loader';
 
 import { loadOverride, overrideRemote } from './override';
 import { expose, shared } from './expose';
 import { loadShare, registerShare, getShare } from './share';
 import type { ShareOption } from './share';
 import type { RmoteConfig } from './loader';
-import { registerPlugin, type RuntimePlugin } from './plugins';
+import { registerPlugin, runInitHooks, type RuntimePlugin } from './plugins';
 import { subscribeRemoteUpdate } from './hmr';
 import { loadRuntime } from './runtime';
 
@@ -21,7 +21,7 @@ interface UserOption {
   shareStrategy?: 'version-first' | 'loaded-first';
   remotes?: Array<RmoteConfig>;
   shares?: Record<string, ShareOption>;
-  plugin?: RuntimePlugin;
+  plugin?: RuntimePlugin | RuntimePlugin[];
   /** 宿主构建模式，决定子应用框架 runtime 走共享（dev）还是本地（prod）。默认自动探测。 */
   mode?: InstanceMode;
 }
@@ -54,6 +54,7 @@ function createInstance(options: UserOption) {
   }
   linkInstance.shareStrategy = shareStrategy;
   linkInstance.mode = detectMode(mode);
+  runInitHooks(options, linkInstance);
   return linkInstance;
 }
 
@@ -66,6 +67,7 @@ export {
   getRemote,
   clearRemoteCache,
   unloadRemote,
+  unloadLib,
   loadLib,
   loadRemote,
   registerShare,
@@ -81,6 +83,9 @@ export type { RegistryOption } from './state';
 export type { RemoteUpdatePayload } from './hmr';
 export type { LoadAppOptions } from './loader/app';
 export type { LoadLibOptions } from './loader/lib';
+export { registerPlugin, getPlugins } from './plugins';
+export type { RuntimePlugin } from './plugins';
+export type { EventBus, EventHandler, LinkjsEvents } from './event-bus';
 
 export {
   captureSnapshot,

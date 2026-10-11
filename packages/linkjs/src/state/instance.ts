@@ -26,7 +26,7 @@ export interface RemoteBase {
   shared?: Record<string, Omit<ShareInfo, 'name' | 'lib' | 'status'>>;
   version?: string;
   expose?: Record<string, any>;
-  status: keyof typeof LOAD_STATUS;
+  status: (typeof LOAD_STATUS)[keyof typeof LOAD_STATUS];
 }
 
 export interface RemoteApp extends RemoteBase {
@@ -69,7 +69,7 @@ if (!linkInstance) {
     shares: new Map<string, Map<string, ShareInfo>>(),
     sharedMap: new Map<string, Map<string, Module>>(),
     remotes: new Map<string, RemoteInfo>(),
-    plugin: {} as RuntimePlugin,
+    plugins: [] as RuntimePlugin[],
     shareStrategy: 'version-first',
     // 宿主构建模式：决定子应用框架 runtime 走共享还是本地（路线 B）。
     mode: 'production' as 'development' | 'production',

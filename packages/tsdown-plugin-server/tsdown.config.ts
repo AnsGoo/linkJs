@@ -7,8 +7,6 @@ export default defineConfig({
   dtsDir: 'dist',
   entry: 'src/index.ts',
   outDir: 'dist',
-  exports: {
-    devExports: 'development',
-  },
+  exports: false,
   // ...config options
 });

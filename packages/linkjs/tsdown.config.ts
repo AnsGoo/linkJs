@@ -5,9 +5,7 @@ export default defineConfig({
   entry: { index: 'src/index.ts', vue: 'src/vue.ts' },
   outDir: 'dist',
   sourcemap: true,
-  exports: {
-    devExports: 'development',
-  },
+  exports: false,
   plugins: [],
   // ...config options
 });

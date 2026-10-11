@@ -2,7 +2,7 @@ import type Module from 'module';
 import { getInstance } from '..';
 import { LIB_EXPOSE, LOAD_STATUS, REMOTE_UPDATE } from '../event-bus/constant';
 import { getRemoteInfo, useGetRemote } from './utils';
-import { useLoadRemoteLib } from './lib';
+import { useLoadRemoteLib, type LoadLibOptions } from './lib';
 import { useLoadApp, type LoadAppOptions } from './app';
 import { deactivateAllSandboxes, deactivateSandbox } from '../sandbox';
 import { clearAppHmr, setupHmrIndexing } from '../hmr';
@@ -39,9 +39,28 @@ function ensureRemoteUpdates(): void {
   });
 }
 
+/** 更新远程应用的加载状态（若已注册）。 */
+function setRemoteStatus(appName: string, status: (typeof LOAD_STATUS)[keyof typeof LOAD_STATUS]): void {
+  const remote = getInstance().remotes.get(appName) as { status?: string } | undefined;
+  if (remote) {
+    remote.status = status;
+  }
+}
+
 function loadApp(entry: string, options?: LoadAppOptions): Promise<Module | null> {
   ensureRemoteUpdates();
-  return useLoadApp(remoteCache)(entry, options) as Promise<Module | null>;
+  const appName = entry.split('/')[0];
+  setRemoteStatus(appName, LOAD_STATUS.LOADING);
+  return useLoadApp(remoteCache)(entry, options).then(
+    (result) => {
+      setRemoteStatus(appName, LOAD_STATUS.LOADED);
+      return result;
+    },
+    (error) => {
+      setRemoteStatus(appName, LOAD_STATUS.UNLOADED);
+      throw error;
+    },
+  ) as Promise<Module | null>;
 }
 
 function getRemote<Module>(entry: string) {
@@ -72,8 +91,10 @@ function unloadRemote(appName?: string): void {
   clearAppHmr(appName);
   if (appName) {
     deactivateSandbox(appName);
+    setRemoteStatus(appName, LOAD_STATUS.UNLOADED);
   } else {
     deactivateAllSandboxes();
+    getInstance().remotes.forEach((_remote: unknown, name: string) => setRemoteStatus(name, LOAD_STATUS.UNLOADED));
   }
   if (typeof document === 'undefined') {
     return;
@@ -82,9 +103,38 @@ function unloadRemote(appName?: string): void {
   document.querySelectorAll(selector).forEach((el) => el.remove());
 }
 
-function loadLib(entry: string, options?: { host?: string; entryName?: string }): Promise<Module | null> {
+function loadLib(entry: string, options?: LoadLibOptions): Promise<Module | null> {
   ensureRemoteUpdates();
-  return useLoadRemoteLib(remoteCache)(entry, options);
+  const appName = entry.split('/')[0];
+  setRemoteStatus(appName, LOAD_STATUS.LOADING);
+  return useLoadRemoteLib(remoteCache)(entry, options).then(
+    (result) => {
+      setRemoteStatus(appName, LOAD_STATUS.LOADED);
+      return result;
+    },
+    (error) => {
+      setRemoteStatus(appName, LOAD_STATUS.UNLOADED);
+      throw error;
+    },
+  );
+}
+
+/**
+ * 卸载远程库：清除缓存与 HMR 索引，并移除带 `data-linkjs-remote` 标记的资源。
+ * 库以动态 `import()` 加载，已执行的模块无法真正回收，业务侧仍需自行清理组件副作用。
+ */
+function unloadLib(entry?: string): void {
+  const appName = entry?.split('/')[0];
+  clearRemoteCache(appName);
+  clearAppHmr(appName);
+  if (appName) {
+    setRemoteStatus(appName, LOAD_STATUS.UNLOADED);
+  }
+  if (typeof document === 'undefined') {
+    return;
+  }
+  const selector = appName ? `[data-linkjs-remote="${appName}"]` : '[data-linkjs-remote]';
+  document.querySelectorAll(selector).forEach((el) => el.remove());
 }
 
 function loadRemote(
@@ -122,4 +172,4 @@ function registerRemote(option: RmoteConfig) {
   });
 }
 
-export { loadApp, getRemote, clearRemoteCache, unloadRemote, loadLib, registerRemote, getRemoteInfo, loadRemote };
+export { loadApp, getRemote, clearRemoteCache, unloadRemote, unloadLib, loadLib, registerRemote, getRemoteInfo, loadRemote };

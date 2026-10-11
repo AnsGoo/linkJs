@@ -1,4 +1,5 @@
 import {
+  Fragment,
   Teleport,
   defineComponent,
   getCurrentScope,
@@ -46,6 +47,15 @@ interface MountableModule {
   unmount?: () => void;
 }
 
+export interface CreateRemoteAppOptions extends LoadAppOptions {
+  /** 加载中展示的组件。 */
+  loading?: Component;
+  /** 加载失败展示的组件，会收到 `{ error }`。 */
+  error?: Component;
+  /** 加载失败回调。 */
+  onError?: (error: unknown) => void;
+}
+
 /**
  * 宿主容器组件（路线 B）：提供一个 DOM 节点，让子应用用**自己的 runtime**
  * 挂载/卸载。子应用入口需 expose `{ mount, unmount }`。
@@ -55,14 +65,17 @@ interface MountableModule {
  *
  * 传入 `options.shadow = true` 时，在宿主节点上创建 ShadowRoot，子应用连同其样式
  * 都挂进影子树，实现浏览器原生的 CSS 隔离（dev/build、跨构建器行为一致）。
+ * 传入 `options.loading` / `options.error` 可分别渲染加载中与失败占位。
  */
-function createRemoteApp(entry: string, options?: LoadAppOptions) {
+function createRemoteApp(entry: string, options?: CreateRemoteAppOptions) {
   const appName = entry.split('/')[0];
   return defineComponent({
     name: 'LinkjsRemoteApp',
     inheritAttrs: false,
     setup(_props, { attrs }) {
       const el = ref<HTMLElement>();
+      const status = ref<'loading' | 'loaded' | 'error'>('loading');
+      const err = shallowRef<unknown>(null);
       let mod: MountableModule | null = null;
       let iso: ShadowIsolation | null = null;
       let mounted = false;
@@ -71,6 +84,7 @@ function createRemoteApp(entry: string, options?: LoadAppOptions) {
         if (!el.value) {
           return;
         }
+        status.value = 'loading';
         if (options?.shadow) {
           iso = createShadowIsolation(el.value, appName);
         }
@@ -79,6 +93,12 @@ function createRemoteApp(entry: string, options?: LoadAppOptions) {
           const target = iso ? iso.mountPoint : el.value;
           mod?.mount?.(target, { ...attrs });
           mounted = true;
+          status.value = 'loaded';
+        } catch (error) {
+          err.value = error;
+          status.value = 'error';
+          console.error(`[linkjs] Failed to mount remote "${entry}":`, error);
+          options?.onError?.(error);
         } finally {
           iso?.stopCapture();
         }
@@ -104,7 +124,16 @@ function createRemoteApp(entry: string, options?: LoadAppOptions) {
         doUnmount();
       });
 
-      return () => h('div', { ref: el });
+      return () => {
+        const children = [h('div', { ref: el })];
+        if (status.value === 'loading' && options?.loading) {
+          children.unshift(h(options.loading));
+        }
+        if (status.value === 'error' && options?.error) {
+          children.unshift(h(options.error, { error: err.value }));
+        }
+        return h(Fragment, null, children);
+      };
     },
   });
 }

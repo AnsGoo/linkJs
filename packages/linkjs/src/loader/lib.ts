@@ -1,6 +1,7 @@
 import { getInstance, loadShare } from '..';
 import { LIB_EXPOSE } from '../event-bus/constant';
 import { beginStyleCapture, endStyleCapture, ensureShadowTarget } from '../sandbox/shadow';
+import { runBeforeLoadRemote, runHook } from '../plugins';
 import { getRemoteInfo, useGetRemote, useHandleExpose, type ExtOption } from './utils';
 
 export interface LoadLibOptions {
@@ -28,11 +29,7 @@ async function loadRemoteLib<Module>(
 
   const linkInstance = getInstance();
   const extOption: ExtOption = { modelName };
-  const plugin = linkInstance.plugin;
-  let remoteInfo = getRemoteInfo(appName) as any;
-  if (plugin?.beforeLoadRemote) {
-    remoteInfo = await plugin.beforeLoadRemote({ ...remoteInfo });
-  }
+  const remoteInfo = (await runBeforeLoadRemote({ ...(getRemoteInfo(appName) as any) })) as any;
 
   const host = options?.host || remoteInfo?.host || `${location.protocol}//${location.host}`;
   const entryName = options?.entryName || remoteInfo?.entry?.js;
@@ -48,7 +45,13 @@ async function loadRemoteLib<Module>(
 
   // 预加载该远程声明的共享依赖
   const shared = remoteInfo?.shared || {};
-  await Promise.all(Object.keys(shared).map((dep) => loadShare(dep).catch(() => null)));
+  await Promise.all(
+    Object.keys(shared).map(async (dep) => {
+      await runHook('beforeLoadShare', dep);
+      const mod = await loadShare(dep).catch(() => null);
+      await runHook('afterLoadShare', dep, mod);
+    }),
+  );
 
   // 加载共享依赖入口文件，注册远程提供的共享依赖。
   // 共享入口是可选产物，缺失或加载失败时不应阻塞主模块加载。
@@ -62,6 +65,8 @@ async function loadRemoteLib<Module>(
     }
   }
 
+  await runHook('beforeLoadEntry', remoteInfo);
+
   return new Promise<Module | null>((resolve, reject) => {
     const handleLibExpose = useHandleExpose(remoteCache, resolve, appName, extOption);
     linkInstance.eventBus.on(LIB_EXPOSE, handleLibExpose);
@@ -71,14 +76,12 @@ async function loadRemoteLib<Module>(
       if (extOption.timeoutId) {
         clearTimeout(extOption.timeoutId);
       }
-      if (plugin?.errorLoadRemote) {
-        plugin.errorLoadRemote(resolve, reject);
-      }
       reject(error);
     };
 
     import(/* @vite-ignore */ jsUrl)
-      .then(() => {
+      .then(async () => {
+        await runHook('afterLoadEntry', remoteInfo);
         extOption.timeoutId = setTimeout(() => {
           fail(new Error(`Timeout waiting for module ${appName} to expose`));
         }, timeout);
@@ -89,12 +92,14 @@ async function loadRemoteLib<Module>(
       if (options?.shadow) {
         endStyleCapture();
       }
+      void runHook('afterLoadRemote', remoteInfo, result);
       return result;
     },
     (error) => {
       if (options?.shadow) {
         endStyleCapture();
       }
+      void runHook('errorLoadRemote', error, remoteInfo);
       throw error;
     },
   );

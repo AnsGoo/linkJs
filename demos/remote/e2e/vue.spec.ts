@@ -1,8 +1,7 @@
 import { test, expect } from '@playwright/test';
 
-// See here how to get started:
-// https://playwright.dev/docs/intro
-test('visits the app root url', async ({ page }) => {
+// 独立运行远程应用时，App 会以 msg="I am remote app" 渲染 HelloWorld。
+test('renders the remote app', async ({ page }) => {
   await page.goto('/');
-  await expect(page.locator('h1')).toHaveText('You did it!');
+  await expect(page.getByText(/I am remote app/).first()).toBeVisible();
 });

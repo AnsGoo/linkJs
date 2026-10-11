@@ -1,6 +1,10 @@
 import { build } from 'rolldown';
 import { mkdirSync, existsSync, readFileSync } from 'fs';
 import { resolve } from 'path';
+import { createRequire } from 'module';
+import { pathToFileURL } from 'url';
+
+const nodeRequire = createRequire(import.meta.url);
 
 interface BuildOptions {
   lib: string;
@@ -37,7 +41,7 @@ function getLibConfig(libName: string): LibConfig | null {
   }
 
   try {
-    const mainEntry = require.resolve(libName);
+    const mainEntry = nodeRequire.resolve(libName);
     const libDir = resolve(mainEntry, '..');
     console.info(`resolve success${libName}: \n`, mainEntry);
     const possibleInputs = [mainEntry];
@@ -187,7 +191,7 @@ export async function buildAll() {
 }
 
 // 如果直接运行此文件
-if (require.main === module) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const lib = process.argv[2];
 
   if (lib === '--all') {

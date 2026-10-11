@@ -2,11 +2,18 @@ import { getInstance } from '..';
 import { LIB_EXPOSE } from '../event-bus/constant';
 import { getShadowRoot } from '../sandbox/shadow';
 
+/** 资源标签的安全属性（Subresource Integrity / CSP nonce）。 */
+interface ResourceSecurityOptions {
+  integrity?: string;
+  crossOrigin?: string;
+  nonce?: string;
+}
+
 /**
  * 注入 CSS 样式表。`remoteName` 会写到 `data-linkjs-remote`，便于卸载时回收。
  * 若该远程已启用 Shadow DOM 隔离，则直接注入其影子树。
  */
-function loadCss(url: string, remoteName?: string): Promise<void> {
+function loadCss(url: string, remoteName?: string, security: ResourceSecurityOptions = {}): Promise<void> {
   return new Promise((resolve) => {
     if (document.querySelector(`link[rel="stylesheet"][href="${url}"]`)) {
       resolve();
@@ -15,6 +22,15 @@ function loadCss(url: string, remoteName?: string): Promise<void> {
     const link = document.createElement('link');
     link.rel = 'stylesheet';
     link.href = url;
+    if (security.integrity) {
+      link.integrity = security.integrity;
+    }
+    if (security.crossOrigin) {
+      link.crossOrigin = security.crossOrigin;
+    }
+    if (security.nonce) {
+      link.nonce = security.nonce;
+    }
     if (remoteName) {
       link.dataset.linkjsRemote = remoteName;
     }
@@ -44,7 +60,7 @@ function preloadModule(url: string, remoteName?: string): void {
   document.head.appendChild(link);
 }
 
-interface LoadScriptOptions {
+interface LoadScriptOptions extends ResourceSecurityOptions {
   /** 加载失败时是否忽略（默认 false，即 reject） */
   ignoreError?: boolean;
   /** 归属的远程应用名，写到 data-linkjs-remote 便于卸载 */
@@ -54,6 +70,7 @@ interface LoadScriptOptions {
 /**
  * 以 `<script type="module">` 方式加载远程脚本。
  * 默认加载失败会 reject，便于上层感知并重试/报错。
+ * 支持透传 `integrity` / `crossOrigin` / `nonce`（SRI / CSP）。
  */
 function loadScript(url: string, options?: LoadScriptOptions): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -64,6 +81,15 @@ function loadScript(url: string, options?: LoadScriptOptions): Promise<void> {
     const script = document.createElement('script');
     script.src = url;
     script.type = 'module';
+    if (options?.integrity) {
+      script.integrity = options.integrity;
+    }
+    if (options?.crossOrigin) {
+      script.crossOrigin = options.crossOrigin;
+    }
+    if (options?.nonce) {
+      script.nonce = options.nonce;
+    }
     if (options?.remoteName) {
       script.dataset.linkjsRemote = options.remoteName;
     }
@@ -148,3 +174,4 @@ function handleLibExpose<Module>(
 }
 
 export { loadCss, preloadModule, loadScript, getRemoteInfo, useGetRemote, useHandleExpose };
+export type { LoadScriptOptions, ResourceSecurityOptions };

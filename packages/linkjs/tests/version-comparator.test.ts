@@ -1,4 +1,4 @@
-import { describe, expect, test, beforeEach } from 'vitest';
+import { describe, expect, test } from 'vitest';
 import { VersionComparator } from '../src/share/version-comparator';
 
 describe('VersionComparator', () => {

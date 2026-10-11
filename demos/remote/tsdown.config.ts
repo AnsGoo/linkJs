@@ -18,9 +18,7 @@ export default defineConfig({
   },
   sourcemap: true,
   outDir: 'mf',
-  exports: {
-    devExports: 'development',
-  },
+  exports: false,
   external: [],
   noExternal: ['vue', 'pinia', 'vue-router'],
   plugins: [

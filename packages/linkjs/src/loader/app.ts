@@ -3,7 +3,8 @@ import { LIB_EXPOSE } from '../event-bus/constant';
 import { activateSandbox } from '../sandbox';
 import { installVueHmrRuntimeShim } from '../hmr';
 import { beginStyleCapture, endStyleCapture, ensureShadowTarget } from '../sandbox/shadow';
-import { loadCss, loadScript, preloadModule, useGetRemote, useHandleExpose, type ExtOption } from './utils';
+import { runBeforeLoadRemote, runHook } from '../plugins';
+import { loadCss, loadScript, preloadModule, useGetRemote, useHandleExpose, type ExtOption, type LoadScriptOptions } from './utils';
 
 export interface LoadAppOptions {
   /** 远程应用基地址，例如 http://localhost:8081 */
@@ -40,11 +41,11 @@ async function fetchHtml(url: string, retries: number): Promise<string> {
   throw lastError;
 }
 
-async function loadScriptWithRetry(url: string, retries: number, ignoreError?: boolean, remoteName?: string): Promise<void> {
+async function loadScriptWithRetry(url: string, retries: number, options: LoadScriptOptions = {}): Promise<void> {
   let lastError: unknown;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      await loadScript(url, { ignoreError, remoteName });
+      await loadScript(url, options);
       return;
     } catch (error) {
       lastError = error;
@@ -69,7 +70,8 @@ async function loadApp<Module>(
   }
 
   const linkInstance = getInstance();
-  const remoteInfo = linkInstance.remotes.get(appName) as any;
+  // 插件可改写 remoteInfo（host/entry/shared 等）
+  const remoteInfo = (await runBeforeLoadRemote({ ...(linkInstance.remotes.get(appName) as any) })) as any;
 
   const host = options?.host || remoteInfo?.host || `${location.protocol}//${location.host}`;
   const entryPath = options?.entry || remoteInfo?.entry?.html || '';
@@ -88,9 +90,17 @@ async function loadApp<Module>(
   }
 
   // 预加载共享依赖（等待完成，避免与子应用加载竞态）
-  await Promise.all(Object.keys(preload).map((libName) => loadShare(libName).catch(() => null)));
+  await Promise.all(
+    Object.keys(preload).map(async (libName) => {
+      await runHook('beforeLoadShare', libName);
+      const mod = await loadShare(libName).catch(() => null);
+      await runHook('afterLoadShare', libName, mod);
+    }),
+  );
 
   const html = await fetchHtml(htmlUrl, retries);
+
+  await runHook('beforeLoadEntry', remoteInfo);
 
   return new Promise<Module | null>((resolve, reject) => {
     const handleLibExpose = useHandleExpose(remoteCache, resolve, appName, extOption);
@@ -118,7 +128,11 @@ async function loadApp<Module>(
     doc.querySelectorAll('link[rel="stylesheet"]').forEach((link) => {
       const href = link.getAttribute('href');
       if (href) {
-        loadCss(new URL(href, htmlUrl).href, appName);
+        loadCss(new URL(href, htmlUrl).href, appName, {
+          integrity: link.getAttribute('integrity') || undefined,
+          crossOrigin: link.getAttribute('crossorigin') || undefined,
+          nonce: link.getAttribute('nonce') || undefined,
+        });
       }
     });
 
@@ -142,11 +156,18 @@ async function loadApp<Module>(
       if (!src) {
         return Promise.resolve();
       }
-      return loadScriptWithRetry(new URL(src, htmlUrl).href, retries, options?.ignoreScriptError, appName);
+      return loadScriptWithRetry(new URL(src, htmlUrl).href, retries, {
+        ignoreError: options?.ignoreScriptError,
+        remoteName: appName,
+        integrity: script.getAttribute('integrity') || undefined,
+        crossOrigin: script.getAttribute('crossorigin') || undefined,
+        nonce: script.getAttribute('nonce') || undefined,
+      });
     });
 
     Promise.all(scriptPromises)
-      .then(() => {
+      .then(async () => {
+        await runHook('afterLoadEntry', remoteInfo);
         // 脚本加载完成，等待子模块触发 LIB_EXPOSE 事件
         extOption.timeoutId = setTimeout(() => {
           rejectWith(new Error(`Timeout waiting for module ${appName} to expose`));
@@ -162,12 +183,14 @@ async function loadApp<Module>(
       if (options?.shadow) {
         endStyleCapture();
       }
+      void runHook('afterLoadRemote', remoteInfo, result);
       return result;
     },
     (error) => {
       if (options?.shadow) {
         endStyleCapture();
       }
+      void runHook('errorLoadRemote', error, remoteInfo);
       throw error;
     },
   );
