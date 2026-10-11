@@ -2,7 +2,7 @@ import { linkInstance } from './state';
 import { __LINKJS_INSTANCE__, __LINKJS_OVERRIDES__ } from './constant';
 import {
   clearRemoteCache,
-  getRemote,
+  getRemote as runGetRemote,
   loadApp as runLoadApp,
   loadLib as runLoadLib,
   loadRemote as runLoadRemote,
@@ -36,6 +36,23 @@ import {
   uninstallDevtoolsUI,
   type DevtoolsOptions,
 } from './devtools';
+
+/**
+ * 远程模块类型注册表。
+ *
+ * 由 `unplugin-linkjs` 的 `consumeTypes` 生成的声明文件增强（module augmentation）：
+ *
+ * ```ts
+ * declare module 'linkjs' {
+ *   interface LinkjsRemoteTypes {
+ *     'remoteApp/HelloWorld': typeof import('remoteApp')['HelloWorld'];
+ *   }
+ * }
+ * ```
+ *
+ * 未接入时为空接口，`getRemote/loadLib/loadRemote` 自动回落到通用泛型签名。
+ */
+export interface LinkjsRemoteTypes {}
 
 function getInstance() {
   return linkInstance;
@@ -78,18 +95,39 @@ function ensureRuntimeMethods(): void {
   }
 }
 
+/**
+ * 获取已加载的远程模块。
+ *
+ * 命中 `LinkjsRemoteTypes` 注册表时按字符串字面量推导类型；否则回退通用泛型 `M`。
+ */
+function getRemote<K extends keyof LinkjsRemoteTypes & string>(entry: K): LinkjsRemoteTypes[K] | null;
+function getRemote<M = unknown>(entry: string): M | null;
+function getRemote(entry: string): unknown {
+  return runGetRemote(entry);
+}
+
 /** 远程加载（经实例方法分发，可被插件包装）。 */
 function loadApp<M = unknown>(entry: string, options?: LoadAppOptions): Promise<M | null> {
   ensureRuntimeMethods();
   return getInstance().loadApp!(entry, options) as Promise<M | null>;
 }
-function loadLib<M = unknown>(entry: string, options?: LoadLibOptions): Promise<M | null> {
+function loadLib<K extends keyof LinkjsRemoteTypes & string>(
+  entry: K,
+  options?: LoadLibOptions,
+): Promise<LinkjsRemoteTypes[K] | null>;
+function loadLib<M = unknown>(entry: string, options?: LoadLibOptions): Promise<M | null>;
+function loadLib(entry: string, options?: LoadLibOptions): Promise<unknown> {
   ensureRuntimeMethods();
-  return getInstance().loadLib!(entry, options) as Promise<M | null>;
+  return getInstance().loadLib!(entry, options);
 }
-function loadRemote<M = unknown>(entry: string, options?: LoadOptions): Promise<M | null> {
+function loadRemote<K extends keyof LinkjsRemoteTypes & string>(
+  entry: K,
+  options?: LoadOptions,
+): Promise<LinkjsRemoteTypes[K] | null>;
+function loadRemote<M = unknown>(entry: string, options?: LoadOptions): Promise<M | null>;
+function loadRemote(entry: string, options?: LoadOptions): Promise<unknown> {
   ensureRuntimeMethods();
-  return getInstance().loadRemote!(entry, options) as Promise<M | null>;
+  return getInstance().loadRemote!(entry, options);
 }
 
 type InstanceMode = 'development' | 'production';

@@ -1,5 +1,5 @@
 import { expect, test, vi, beforeEach } from 'vitest';
-import { getInstance, expose } from '../src';
+import { getInstance, expose, getRemote, loadLib, loadRemote } from '../src';
 import { LIB_EXPOSE } from '../src/event-bus/constant';
 
 // 模拟 DOM API
@@ -45,6 +45,14 @@ test('getInstance should return the linkjs instance', () => {
   expect(instance.eventBus).toBeDefined();
   expect(instance.apps).toBeInstanceOf(Map);
   expect(instance.libs).toBeInstanceOf(Map);
+});
+
+test('typed remote APIs exist and getRemote returns null for uncached entries', () => {
+  expect(typeof getRemote).toBe('function');
+  expect(typeof loadLib).toBe('function');
+  expect(typeof loadRemote).toBe('function');
+  // `LinkjsRemoteTypes` 为空时回落到通用签名；未缓存返回 null。
+  expect(getRemote('missing/Entry')).toBeNull();
 });
 
 test('expose should emit LIB_EXPOSE event', () => {
