@@ -1,4 +1,5 @@
 import { beforeEach, expect, test, vi } from 'vitest';
+import '../src/index';
 import { linkInstance } from '../src/state/instance';
 import { registerShare } from '../src/share';
 import { registerRemote } from '../src/loader';
@@ -7,10 +8,13 @@ import { retryPlugin } from '../src/plugins/retry';
 import {
   buildSnapshot,
   clearDiagnostics,
+  clearEvents,
   getDiagnostics,
+  getEvents,
   onDiagnostic,
   recordDiagnostic,
 } from '../src/devtools';
+import { LIB_EXPOSE, REMOTE_UPDATE } from '../src/event-bus/constant';
 
 beforeEach(() => {
   linkInstance.shares.clear();
@@ -18,6 +22,7 @@ beforeEach(() => {
   linkInstance.remotes.clear();
   linkInstance.plugins = [];
   clearDiagnostics();
+  clearEvents();
   vi.restoreAllMocks();
 });
 
@@ -57,6 +62,16 @@ test('buildSnapshot detects share version conflicts and exposes metrics/perf/id'
   expect(Array.isArray(snapshot.metrics)).toBe(true);
   expect(Array.isArray(snapshot.perf)).toBe(true);
   expect(snapshot.instance.id).toMatch(/^linkjs-/);
+});
+
+test('records key event-bus events into the snapshot', () => {
+  linkInstance.eventBus.emit(LIB_EXPOSE, { libName: 'remoteApp', lib: { HelloWorld: 1 } });
+  linkInstance.eventBus.emit(REMOTE_UPDATE, { appName: 'remoteApp', key: 'HelloWorld' });
+
+  const events = getEvents();
+  expect(events.some((e) => e.type === 'libExpose' && e.summary.includes('remoteApp'))).toBe(true);
+  expect(events.some((e) => e.type === 'remoteUpdate' && e.summary === 'remoteApp/HelloWorld')).toBe(true);
+  expect(buildSnapshot(linkInstance).events.length).toBeGreaterThanOrEqual(2);
 });
 
 test('recordDiagnostic stores, prints, and notifies subscribers', () => {

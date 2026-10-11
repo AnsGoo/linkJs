@@ -29,7 +29,9 @@ import { selectRemoteSource, checkRemoteHealth, clearHealthCache } from './loade
 import {
   buildSnapshot,
   clearDiagnostics,
+  clearEvents,
   getDiagnostics,
+  getEvents,
   installDevtools,
   maybeInstallDevtoolsUI,
   onDiagnostic,
@@ -69,6 +71,11 @@ installDevtools(linkInstance, {
   unload: unloadRemote,
   load: (entry, options) => loadRemote(entry, options as LoadOptions),
   preload: preloadRemote as (options: unknown) => Promise<unknown>,
+  loadLib: (entry, options) => runLoadLib(entry, options as LoadLibOptions),
+  unloadLib,
+  getRemote: (entry) => runGetRemote(entry),
+  getShare,
+  loadShare,
 });
 
 // 运行时加载方法挂到实例，便于插件（如 retry）通过 `apply(instance)` 包装/扩展。
@@ -219,6 +226,8 @@ export {
   getDiagnostics,
   clearDiagnostics,
   onDiagnostic,
+  getEvents,
+  clearEvents,
   installDevtoolsUI,
   uninstallDevtoolsUI,
 };
@@ -244,7 +253,7 @@ export type { EventBus, EventHandler, LinkjsEvents } from './event-bus';
 export type { PreloadRemoteOptions, RemoteManifest, ManifestAsset, PrefetchRecord } from './preload';
 export { clearPrefetchCache } from './preload';
 export type { RemoteSnapshotEntry, GlobalSnapshot, RemoteLoadStatus } from './snapshot';
-export type { Diagnostic, LinkjsSnapshot, RemoteSnapshot, ShareSnapshot, ShareVersionSnapshot, ShareConflict, PluginSnapshot, DevtoolsOptions, DevtoolsOps } from './devtools';
+export type { Diagnostic, LinkjsSnapshot, RemoteSnapshot, ShareSnapshot, ShareVersionSnapshot, ShareConflict, PluginSnapshot, DevtoolsOptions, DevtoolsOps, EventSnapshot } from './devtools';
 export { getPerfEntries, clearPerfEntries } from './perf';
 export type { PerfEntry } from './perf';
 

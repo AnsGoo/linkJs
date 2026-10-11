@@ -53,6 +53,7 @@ const CSS = `
 .row:last-child { border-bottom: none; }
 .row .k { color: #aab; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row .v { color: #e6e6f0; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.row .actions { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
 .pill { padding: 0 6px; border-radius: 8px; font-size: 10px; line-height: 16px; background: #33334a; color: #cdd0dc; white-space: nowrap; }
 .pill.loaded { background: #1f6f4a; color: #d8ffe9; }
 .pill.error { background: #7a2530; color: #ffd9dd; }
@@ -91,6 +92,11 @@ function renderSnapshot(snapshot: LinkjsSnapshot, filter: string, onCopy: () => 
   const q = filter.trim().toLowerCase();
   const match = (text: string) => !q || text.toLowerCase().includes(q);
   const show = (key: string) => !q || key.toLowerCase().includes(q);
+
+  // 全局操作入口（由 installDevtools 注入到 window.__LINKJS__）。
+  const ops = (globalThis as any).__LINKJS__ as
+    | undefined
+    | { preload?: (o: unknown) => Promise<unknown>; unload?: (n?: string) => void; unloadLib?: (e?: string) => void };
 
   // 注册名 -> 远程 manifest 包名（展示名）
   const displayByApp = new Map(snapshot.remotes.map((remote) => [remote.name, remote.displayName || remote.name]));
@@ -138,6 +144,10 @@ function renderSnapshot(snapshot: LinkjsSnapshot, filter: string, onCopy: () => 
   const plugins = snapshot.availablePlugins.filter((p) => show(p.name));
   const metrics = snapshot.metrics.filter((m) => match(`${m.entry} ${m.status} ${m.host ?? ''}`)).slice(-12).reverse();
   const perf = snapshot.perf.filter((p) => show(p.name)).slice(-12).reverse();
+  const events = snapshot.events
+    .filter((e) => match(`${e.type} ${e.summary}`))
+    .slice(-20)
+    .reverse();
   const diagnostics = snapshot.diagnostics
     .filter((d) => match(`${d.code} ${d.message}`))
     .slice(-20)
@@ -168,7 +178,19 @@ function renderSnapshot(snapshot: LinkjsSnapshot, filter: string, onCopy: () => 
             <span class="k" title={`${remote.name}${remote.host ? ` @${remote.host}` : ''}`}>
               {`${remote.displayName || remote.name}${remote.displayName && remote.displayName !== remote.name ? ` (${remote.name})` : ''}${remote.type ? ` · ${remote.type}` : ''}`}
             </span>
-            <span class={`pill ${remote.status === 'loaded' ? 'loaded' : ''}`}>{remote.status || '-'}</span>
+            <span class="actions">
+              <span class={`pill ${remote.status === 'loaded' ? 'loaded' : ''}`}>{remote.status || '-'}</span>
+              <button class="mini" title="按 manifest 预取资源" onClick={() => void ops?.preload?.({ name: remote.name })}>
+                预取
+              </button>
+              <button
+                class="mini"
+                title={remote.type === 'lib' ? '卸载远程库（清缓存 / 移除资源）' : '卸载远程应用（清缓存 / 移除资源）'}
+                onClick={() => (remote.type === 'lib' ? ops?.unloadLib?.(remote.name) : ops?.unload?.(remote.name))}
+              >
+                卸载
+              </button>
+            </span>
           </div>
         ))
       )}
@@ -226,6 +248,20 @@ function renderSnapshot(snapshot: LinkjsSnapshot, filter: string, onCopy: () => 
               {perfLabel(entry.name)}
             </span>
             <span class="v">{ms(entry.durationMs)}</span>
+          </div>
+        ))
+      )}
+
+      <h3>事件</h3>
+      {events.length === 0 ? (
+        <div class="muted">（无）</div>
+      ) : (
+        events.map((event, index) => (
+          <div key={`${event.time}:${index}`} class="row">
+            <span class="k" title={event.type}>
+              {event.summary}
+            </span>
+            <span class="pill">{new Date(event.time).toLocaleTimeString()}</span>
           </div>
         ))
       )}

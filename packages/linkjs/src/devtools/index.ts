@@ -7,6 +7,7 @@
  *   便于 DevTools 扩展或控制台排查。
  */
 
+import { LIB_EXPOSE, SHARED_EXPOSE, REMOTE_UPDATE } from '../event-bus/constant';
 import { availablePlugins } from '../plugins/catalog';
 import { getLoadMetrics, type LoadMetric } from '../plugins/logger';
 import { getPerfEntries, type PerfEntry } from '../perf';
@@ -57,6 +58,13 @@ export interface ShareConflict {
   provided: string[];
 }
 
+/** 事件总线记录（`LIB_EXPOSE` / `SHARED_EXPOSE` / `REMOTE_UPDATE`）。 */
+export interface EventSnapshot {
+  type: string;
+  time: number;
+  summary: string;
+}
+
 export interface LinkjsSnapshot {
   instance: {
     id: string;
@@ -77,6 +85,8 @@ export interface LinkjsSnapshot {
   metrics: LoadMetric[];
   /** 各阶段性能标记。 */
   perf: PerfEntry[];
+  /** 事件总线记录（实时面板）。 */
+  events: EventSnapshot[];
   diagnostics: Diagnostic[];
 }
 
@@ -136,6 +146,64 @@ function onDiagnostic(listener: (diagnostic: Diagnostic) => void): () => void {
   const listeners = store().listeners;
   listeners.add(listener);
   return () => listeners.delete(listener);
+}
+
+// ---- 事件总线记录（面板「事件」区）----
+
+const MAX_EVENTS = 200;
+
+interface EventStore {
+  items: EventSnapshot[];
+}
+
+// 与 diagnostics 一样用 global 兜底存储，避免打包拆分导致多副本。
+function eventStore(): EventStore {
+  const g = globalThis as { __linkjs_events__?: EventStore };
+  return (g.__linkjs_events__ ??= { items: [] });
+}
+
+/** 记录一条事件总线事件。 */
+function recordEvent(input: Omit<EventSnapshot, 'time'> & { time?: number }): EventSnapshot {
+  const bucket = eventStore();
+  const event: EventSnapshot = { ...input, time: input.time ?? Date.now() };
+  bucket.items.push(event);
+  if (bucket.items.length > MAX_EVENTS) {
+    bucket.items.splice(0, bucket.items.length - MAX_EVENTS);
+  }
+  return event;
+}
+
+/** 读取事件记录（按时间正序）。 */
+function getEvents(): EventSnapshot[] {
+  return [...eventStore().items];
+}
+
+/** 清空事件记录。 */
+function clearEvents(): void {
+  eventStore().items.length = 0;
+}
+
+let eventsWired = false;
+
+/** 订阅实例事件总线，记录关键事件（幂等）。 */
+function ensureEventLog(instance: LinkjsInstance): void {
+  if (eventsWired || !instance?.eventBus) {
+    return;
+  }
+  eventsWired = true;
+  const bus = instance.eventBus;
+  bus.on(LIB_EXPOSE, (payload) => {
+    const keys = payload.lib ? Object.keys(payload.lib).join(', ') : '';
+    recordEvent({ type: 'libExpose', summary: keys ? `${payload.libName}: { ${keys} }` : payload.libName });
+  });
+  bus.on(SHARED_EXPOSE, (payload) => {
+    const shared = payload.shared as Record<string, unknown> | undefined;
+    const keys = shared && typeof shared === 'object' ? Object.keys(shared).join(', ') : '';
+    recordEvent({ type: 'sharedExpose', summary: keys ? `${payload.libName}: { ${keys} }` : payload.libName });
+  });
+  bus.on(REMOTE_UPDATE, (payload) => {
+    recordEvent({ type: 'remoteUpdate', summary: payload.key ? `${payload.appName}/${payload.key}` : payload.appName });
+  });
 }
 
 /** 汇总当前 linkjs 实例的可观测状态。 */
@@ -228,6 +296,7 @@ function buildSnapshot(instance: LinkjsInstance): LinkjsSnapshot {
     availablePlugins: available,
     metrics: getLoadMetrics(),
     perf: getPerfEntries(),
+    events: getEvents(),
     diagnostics: getDiagnostics(),
   };
 }
@@ -238,10 +307,21 @@ export interface DevtoolsOps {
   unload?: (name?: string) => void;
   load?: (entry: string, options?: unknown) => Promise<unknown>;
   preload?: (options: unknown) => Promise<unknown>;
+  /** 加载远程库（`loadLib`）。 */
+  loadLib?: (entry: string, options?: any) => Promise<unknown>;
+  /** 卸载远程库（`unloadLib`）。 */
+  unloadLib?: (entry?: string) => void;
+  /** 读取已加载的远程模块（`getRemote`）。 */
+  getRemote?: (entry: string) => unknown;
+  /** 读取已加载的共享依赖（`getShare`）。 */
+  getShare?: (name: string, options?: any) => unknown;
+  /** 加载共享依赖（`loadShare`）。 */
+  loadShare?: (name: string, options?: any) => Promise<unknown>;
 }
 
 /** 暴露 DevTools 接口：全局 `__LINKJS__` 与 `$linkjs.debug`。 */
 function installDevtools(instance: LinkjsInstance, ops: DevtoolsOps = {}): void {
+  ensureEventLog(instance);
   const api = {
     // 只读
     getSnapshot: () => buildSnapshot(instance),
@@ -250,6 +330,8 @@ function installDevtools(instance: LinkjsInstance, ops: DevtoolsOps = {}): void 
     conflicts: () => buildSnapshot(instance).conflicts,
     metrics: () => buildSnapshot(instance).metrics,
     perf: () => buildSnapshot(instance).perf,
+    events: getEvents,
+    clearEvents,
     getDiagnostics,
     clearDiagnostics,
     onDiagnostic,
@@ -258,6 +340,11 @@ function installDevtools(instance: LinkjsInstance, ops: DevtoolsOps = {}): void 
     unload: ops.unload,
     load: ops.load,
     preload: ops.preload,
+    loadLib: ops.loadLib,
+    unloadLib: ops.unloadLib,
+    getRemote: ops.getRemote,
+    getShare: ops.getShare,
+    loadShare: ops.loadShare,
   };
   const g = globalThis as any;
   g.__LINKJS__ = api;
@@ -312,6 +399,9 @@ export {
   getDiagnostics,
   clearDiagnostics,
   onDiagnostic,
+  recordEvent,
+  getEvents,
+  clearEvents,
   buildSnapshot,
   installDevtools,
   maybeInstallDevtoolsUI,
