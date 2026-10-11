@@ -12,6 +12,9 @@ export default defineConfig({
   outputOptions: {
     chunkFileNames: 'chunks/[name].mjs',
   },
+  deps: {
+    neverBundle: ['vue', 'vue/jsx-runtime'],
+  },
   plugins: [],
   // ...config options
 });
