@@ -4,6 +4,7 @@ withDefaults(
     msg: string;
     age: number;
     name: string;
+    sex: 'male' | 'female';
   }>(),
   {
     msg: 'I am remote app!',
@@ -15,6 +16,8 @@ withDefaults(
   <div class="greetings">
     <h1 class="green">{{ msg }} hot update1232wew</h1>
     <p>Age: {{ age }}</p>
+    <p>Name: {{ name }}</p>
+    <p>Sex: {{ sex }}</p>
     <h3>
       You’ve successfully created a project with
       <a href="https://vite.dev/" target="_blank" rel="noopener">Vite</a> +

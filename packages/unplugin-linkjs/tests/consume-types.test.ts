@@ -111,7 +111,7 @@ describe('consumeRemoteTypes', () => {
       await consumeRemoteTypes({ remotes: [{ name: 'bad' }] }, root);
       expect(warn).toHaveBeenCalled();
       warn.mockRestore();
-      expect(existsSync(join(root, 'node_modules/.linkjs/linkjs-remotes.d.ts'))).toBe(true);
+      expect(existsSync(join(root, 'linkjs-remotes.d.ts'))).toBe(true);
     });
   });
 });

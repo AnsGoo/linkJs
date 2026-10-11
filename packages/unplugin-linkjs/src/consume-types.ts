@@ -211,7 +211,7 @@ async function fetchRemoteType(
 }
 
 /** 校验（best-effort）宿主 tsconfig 是否纳入了聚合声明，未纳入则 warn。 */
-function checkTsconfigInclude(projectRoot: string, warn: (msg: string) => void): void {
+function checkTsconfigInclude(projectRoot: string, dtsFile: string, warn: (msg: string) => void): void {
   let candidates: string[];
   try {
     candidates = readdirSync(projectRoot).filter((file) => /^tsconfig.*\.json$/.test(file));
@@ -221,9 +221,11 @@ function checkTsconfigInclude(projectRoot: string, warn: (msg: string) => void):
   if (candidates.length === 0) {
     return;
   }
+  const marker = basename(dtsFile);
   for (const file of candidates) {
     try {
-      if (readFileSync(resolve(projectRoot, file), 'utf-8').includes('.linkjs')) {
+      const raw = readFileSync(resolve(projectRoot, file), 'utf-8');
+      if (raw.includes('.linkjs') || raw.includes(marker)) {
         return;
       }
     } catch {
@@ -231,7 +233,7 @@ function checkTsconfigInclude(projectRoot: string, warn: (msg: string) => void):
     }
   }
   warn(
-    `[linkjs] consumeTypes: 生成的 "${DEFAULT_OUT_DIR}/${DEFAULT_DTS_FILE}" 未被 tsconfig 纳入，` +
+    `[linkjs] consumeTypes: 生成的 "${dtsFile}" 未被 tsconfig 纳入，` +
       `请在 tsconfig 的 "include"/"files" 或源码中通过 /// <reference path> 引用它。`,
   );
 }
@@ -263,11 +265,13 @@ async function consumeRemoteTypes(
     }
   }
 
-  const file = resolve(outDir, dtsFile);
+  // 聚合声明写到项目根（而非 node_modules）：tsserver 默认不 watch node_modules，
+  // 放根目录才能让 IDE 在文件变更后即时刷新类型。缓存的 d.ts 仍在 outDir。
+  const file = resolve(projectRoot, dtsFile);
   writeFileAtomic(file, renderRemoteTypeDeclarations(infos));
 
   if (options.checkTsconfig !== false) {
-    checkTsconfigInclude(projectRoot, (msg) => console.warn(msg));
+    checkTsconfigInclude(projectRoot, dtsFile, (msg) => console.warn(msg));
   }
 
   return { file, remotes: infos };
