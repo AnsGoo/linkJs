@@ -1,6 +1,19 @@
 import { getInstance } from '..';
 import { LIB_EXPOSE } from '../event-bus/constant';
 import { getShadowRoot } from '../sandbox/shadow';
+import type { RemoteEntry, RemoteInfo } from '../state/instance';
+import type { RemoteModule } from '../types';
+
+/** 已加载远程模块的运行时缓存（`appName -> 暴露对象`）。 */
+type RemoteCache = Map<string, RemoteModule>;
+
+/** 归一化远程入口配置：字符串入口同时视作 app 的 html 与 lib 的 js。 */
+function resolveEntryConfig(entry: string | RemoteEntry | undefined): RemoteEntry {
+  if (!entry) {
+    return {};
+  }
+  return typeof entry === 'string' ? { html: entry, js: entry } : entry;
+}
 
 /** 请求 URL 重写器（插件通过 `instance.requestRewriters` 注册）。 */
 export type RequestRewriter = (url: string, ctx: { remoteName?: string }) => string | void;
@@ -130,30 +143,28 @@ function loadScript(url: string, options?: LoadScriptOptions): Promise<void> {
   });
 }
 
-function getRemoteInfo(name: string) {
+function getRemoteInfo(name: string): RemoteInfo | undefined {
   const instance = getInstance();
   return instance.remotes.get(name);
 }
 
-function useGetRemote<Module>(remoteCache: Map<string, Record<string, Module> | Module>) {
-  return (entry: string) => getRmoteFromCache<Module>(entry, remoteCache);
+function useGetRemote<M = unknown>(remoteCache: RemoteCache) {
+  return (entry: string) => getRemoteFromCache<M>(entry, remoteCache);
 }
 
-function getRmoteFromCache<Module>(entry: string, remoteCache: Map<string, Record<string, Module> | Module>) {
+function getRemoteFromCache<M = unknown>(entry: string, remoteCache: RemoteCache): M | null {
   const [appName, modelName] = entry.split('/');
-  if (remoteCache.has(appName)) {
-    console.log(`Remote module ${appName} already loaded, returning from cache`);
-    const appModule = remoteCache.get(appName);
-    if (!appModule) {
-      console.warn(`Remote module ${appName} not found in cache, please load it first: loadRemote('${appName}')`);
-      return null;
-    }
-    if (modelName) {
-      return (appModule as Record<string, Module> | undefined)?.[modelName] || null;
-    } else {
-      return (appModule as Record<string, Module> | undefined)?.['default'] || (appModule as Module) || null;
-    }
+  if (!remoteCache.has(appName)) {
+    return null;
   }
+  console.log(`Remote module ${appName} already loaded, returning from cache`);
+  const appModule = remoteCache.get(appName);
+  if (!appModule) {
+    console.warn(`Remote module ${appName} not found in cache, please load it first: loadRemote('${appName}')`);
+    return null;
+  }
+  const selected = modelName ? appModule[modelName] : (appModule['default'] ?? appModule);
+  return (selected as M) || null;
 }
 
 export interface ExtOption {
@@ -161,21 +172,21 @@ export interface ExtOption {
   modelName?: string;
 }
 
-function useHandleExpose<Module>(
-  remoteCache: Map<string, Record<string, Module> | Module>,
-  resolve: (value: Module | null) => void,
+function useHandleExpose<M = unknown>(
+  remoteCache: RemoteCache,
+  resolve: (value: M | null) => void,
   appName: string,
   options: ExtOption,
 ) {
-  return (data: { libName: string; lib: Module | Record<string, Module> }) => {
-    return handleLibExpose<Module>(data, resolve, remoteCache, appName, options);
+  return (data: { libName: string; lib: RemoteModule }) => {
+    return handleLibExpose<M>(data, resolve, remoteCache, appName, options);
   };
 }
 
-function handleLibExpose<Module>(
-  data: { libName: string; lib: Module | Record<string, Module> },
-  resolve: (value: Module | null) => void,
-  remoteCache: Map<string, Record<string, Module> | Module>,
+function handleLibExpose<M = unknown>(
+  data: { libName: string; lib: RemoteModule },
+  resolve: (value: M | null) => void,
+  remoteCache: RemoteCache,
   appName: string,
   options: ExtOption,
 ) {
@@ -189,12 +200,11 @@ function handleLibExpose<Module>(
     remoteCache.set(appName, data.lib);
     console.log(`Remote module ${appName} cached`);
     if (modelName) {
-      return resolve((data.lib as Record<string, Module>)[modelName] || null);
-    } else {
-      return resolve((data.lib as Record<string, Module>)['default'] || (data.lib as Module) || null);
+      return resolve((data.lib[modelName] as M) || null);
     }
+    return resolve((data.lib['default'] as M) || (data.lib as unknown as M) || null);
   }
 }
 
-export { loadCss, preloadModule, loadScript, rewriteRequestUrl, getRemoteInfo, useGetRemote, useHandleExpose };
-export type { LoadScriptOptions, ResourceSecurityOptions };
+export { loadCss, preloadModule, loadScript, rewriteRequestUrl, getRemoteInfo, resolveEntryConfig, useGetRemote, useHandleExpose };
+export type { LoadScriptOptions, ResourceSecurityOptions, RemoteCache };

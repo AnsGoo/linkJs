@@ -61,7 +61,7 @@
 
 ## E. 类型 / 工程质量
 
-- [ ] **E1 消除 `any`**：loader 的 `remoteInfo as any`；用真实类型替代 Node `Module`。`[高 / 中]`
+- [x] **E1 消除 `any`**：loader 的 `remoteInfo as any`；用真实类型替代 Node `Module`。`[高 / 中]`
 - [ ] **E2 event-bus 类型强约束**（实例是 `any`，泛型未真正生效）。`[中 / 小]`
 - [ ] **E3 选项类型收敛**：`LoadAppOptions & LoadLibOptions` 统一。`[低 / 小]`
 

@@ -4,7 +4,7 @@ import { LIB_EXPOSE, SHARED_EXPOSE, LOAD_STATUS } from '../event-bus/constant';
 import type { RuntimePlugin } from '../plugins';
 import { getShare, loadShare } from '../share';
 import { loadRuntime } from '../runtime';
-import type { Module } from 'module';
+import type { RemoteModule, ShareModule } from '../types';
 
 // 检查 window 对象上是否已经存在 linkjs 实例
 
@@ -47,12 +47,12 @@ export interface RemoteLib extends RemoteBase {
 
 export type RemoteInfo = RemoteApp | RemoteLib;
 
-export type RegistryOption = Omit<RemoteInfo, 'status'>;
+export type RegistryOption = Omit<RemoteBase, 'status'>;
 
 interface ShareInfo {
   name: string;
   version?: string;
-  lib: Module | (() => Promise<Module>) | (() => Module);
+  lib: ShareModule;
   status: keyof typeof LOAD_STATUS;
   scope?: string;
   singleton?: boolean;
@@ -80,8 +80,8 @@ if (!linkInstance) {
     id: `linkjs-${Math.random().toString(36).slice(2, 8)}`,
     apps: new Map(),
     libs: new Map(),
-    shares: new Map<string, Map<string, ShareInfo>>(),
-    sharedMap: new Map<string, Map<string, Module>>(),
+    shares: new Map<string, Map<string, ShareOption[]>>(),
+    sharedMap: new Map<string, Map<string, RemoteModule>>(),
     remotes: new Map<string, RemoteInfo>(),
     plugins: [] as RuntimePlugin[],
     shareStrategy: 'version-first',

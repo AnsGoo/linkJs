@@ -6,15 +6,15 @@ import { beginStyleCapture, endStyleCapture, ensureShadowTarget } from '../sandb
 import { runBeforeLoadRemote, runHook } from '../plugins';
 import { recordDiagnostic } from '../devtools';
 import { startPhase } from '../perf';
-import { loadCss, loadScript, preloadModule, rewriteRequestUrl, useGetRemote, useHandleExpose, type ExtOption, type LoadScriptOptions } from './utils';
+import { loadCss, loadScript, preloadModule, resolveEntryConfig, rewriteRequestUrl, useGetRemote, useHandleExpose, type ExtOption, type LoadScriptOptions, type RemoteCache } from './utils';
 
 export interface LoadAppOptions {
   /** 远程应用基地址，例如 http://localhost:8081 */
   host?: string;
   /** 入口 HTML 路径（相对 host），默认使用 remoteInfo.entry.html 或 host 本身 */
   entry?: string;
-  /** 需要预加载的共享依赖 */
-  preload?: Record<string, any>;
+  /** 需要预加载的共享依赖（仅取键名） */
+  preload?: Record<string, unknown>;
   /** 等待 expose 的超时时间（毫秒），默认 10000 */
   timeout?: number;
   /** 网络/脚本加载失败重试次数，默认 0 */
@@ -58,35 +58,36 @@ async function loadScriptWithRetry(url: string, retries: number, options: LoadSc
   throw lastError;
 }
 
-function useLoadApp<Module>(remoteCache: Map<string, Record<string, Module> | Module>) {
-  return (entry: string, options?: LoadAppOptions) => loadApp(remoteCache, entry, options);
+function useLoadApp<M = unknown>(remoteCache: RemoteCache) {
+  return (entry: string, options?: LoadAppOptions) => loadApp<M>(remoteCache, entry, options);
 }
 
-async function loadApp<Module>(
-  remoteCache: Map<string, Record<string, Module> | Module>,
+async function loadApp<M = unknown>(
+  remoteCache: RemoteCache,
   entry: string,
   options?: LoadAppOptions,
-): Promise<Module | null> {
+): Promise<M | null> {
   const [appName, modelName] = entry.split('/');
-  const cached = useGetRemote(remoteCache)(entry);
+  const cached = useGetRemote<M>(remoteCache)(entry);
   if (cached) {
-    return cached as Module;
+    return cached;
   }
 
   const linkInstance = getInstance();
   // 插件可改写 remoteInfo（host/entry/shared 等）
-  const remoteInfo = (await runBeforeLoadRemote({ ...(linkInstance.remotes.get(appName) as any) })) as any;
+  const registered = linkInstance.remotes.get(appName);
+  const remoteInfo = await runBeforeLoadRemote(registered ? { ...registered } : { name: appName, entry: '' });
   await runHook('afterResolve', remoteInfo);
   await runHook('beforeLoadContainer', remoteInfo);
-  const label = remoteInfo?.displayName || appName;
+  const label = remoteInfo.displayName || appName;
   const endTotal = startPhase(`linkjs:load:app:${appName}`, `加载应用「${label}」`);
 
-  const host = options?.host || remoteInfo?.host || `${location.protocol}//${location.host}`;
-  const entryPath = options?.entry || remoteInfo?.entry?.html || '';
+  const host = options?.host || remoteInfo.host || `${location.protocol}//${location.host}`;
+  const entryPath = options?.entry || resolveEntryConfig(remoteInfo.entry).html || '';
   const htmlUrl = entryPath ? new URL(entryPath, host).href : host;
   const timeout = options?.timeout ?? 10000;
   const retries = options?.retries ?? 0;
-  const preload = options?.preload || remoteInfo?.shared || {};
+  const preload = options?.preload || remoteInfo.shared || {};
 
   const extOption: ExtOption = { modelName };
 
@@ -123,8 +124,8 @@ async function loadApp<Module>(
 
   const endScripts = startPhase(`linkjs:load:app:${appName}:scripts`, `加载远程脚本「${label}」`);
 
-  return new Promise<Module | null>((resolve, reject) => {
-    const handleLibExpose = useHandleExpose(remoteCache, resolve, appName, extOption);
+  return new Promise<M | null>((resolve, reject) => {
+    const handleLibExpose = useHandleExpose<M>(remoteCache, resolve, appName, extOption);
     linkInstance.eventBus.on(LIB_EXPOSE, handleLibExpose);
 
     const rejectWith = (error: unknown) => {

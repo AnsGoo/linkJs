@@ -1,8 +1,9 @@
+import type { RemoteModule } from '../types';
 import { LIB_EXPOSE, SHARED_EXPOSE, LIB_READY, SHARED_READY, REMOTE_UPDATE } from './constant';
 
 /** linkjs 事件与负载类型（供 `EventBus` 泛型使用）。 */
 export interface LinkjsEvents {
-  [LIB_EXPOSE]: [payload: { libName: string; lib: unknown; options?: unknown }];
+  [LIB_EXPOSE]: [payload: { libName: string; lib: RemoteModule; options?: unknown }];
   [SHARED_EXPOSE]: [payload: { libName: string; shared: unknown; options?: unknown }];
   [LIB_READY]: [payload?: unknown];
   [SHARED_READY]: [payload?: unknown];

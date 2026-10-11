@@ -1,14 +1,14 @@
-import type Module from 'module';
 import { getInstance } from '..';
 import { LIB_EXPOSE, LOAD_STATUS, REMOTE_UPDATE } from '../event-bus/constant';
-import { getRemoteInfo, useGetRemote } from './utils';
+import { getRemoteInfo, useGetRemote, type RemoteCache } from './utils';
 import { useLoadRemoteLib, type LoadLibOptions } from './lib';
 import { useLoadApp, type LoadAppOptions } from './app';
 import { deactivateAllSandboxes, deactivateSandbox } from '../sandbox';
 import { clearAppHmr, setupHmrIndexing } from '../hmr';
+import type { RemoteModule } from '../types';
 
 // 缓存已加载的远程模块
-const remoteCache = new Map<string, Record<string, Module> | Module>();
+const remoteCache: RemoteCache = new Map();
 
 let remoteUpdatesReady = false;
 
@@ -26,8 +26,8 @@ function ensureRemoteUpdates(): void {
   }
   remoteUpdatesReady = true;
   setupHmrIndexing();
-  getInstance().eventBus.on(LIB_EXPOSE, (data: { libName?: string; lib?: any } | undefined) => {
-    if (!data || !data.libName || !data.lib) {
+  getInstance().eventBus.on(LIB_EXPOSE, (data: { libName: string; lib: RemoteModule; options?: unknown }) => {
+    if (!data.libName || !data.lib) {
       return;
     }
     const isUpdate = remoteCache.has(data.libName);
@@ -47,11 +47,11 @@ function setRemoteStatus(appName: string, status: (typeof LOAD_STATUS)[keyof typ
   }
 }
 
-function loadApp(entry: string, options?: LoadAppOptions): Promise<Module | null> {
+function loadApp(entry: string, options?: LoadAppOptions): Promise<RemoteModule | null> {
   ensureRemoteUpdates();
   const appName = entry.split('/')[0];
   setRemoteStatus(appName, LOAD_STATUS.LOADING);
-  return useLoadApp(remoteCache)(entry, options).then(
+  return useLoadApp<RemoteModule>(remoteCache)(entry, options).then(
     (result) => {
       setRemoteStatus(appName, LOAD_STATUS.LOADED);
       return result;
@@ -60,11 +60,11 @@ function loadApp(entry: string, options?: LoadAppOptions): Promise<Module | null
       setRemoteStatus(appName, LOAD_STATUS.UNLOADED);
       throw error;
     },
-  ) as Promise<Module | null>;
+  );
 }
 
-function getRemote<Module>(entry: string) {
-  return useGetRemote<Module>(remoteCache as any)(entry);
+function getRemote<M = unknown>(entry: string): M | null {
+  return useGetRemote<M>(remoteCache)(entry);
 }
 
 /**
@@ -103,11 +103,11 @@ function unloadRemote(appName?: string): void {
   document.querySelectorAll(selector).forEach((el) => el.remove());
 }
 
-function loadLib(entry: string, options?: LoadLibOptions): Promise<Module | null> {
+function loadLib(entry: string, options?: LoadLibOptions): Promise<RemoteModule | null> {
   ensureRemoteUpdates();
   const appName = entry.split('/')[0];
   setRemoteStatus(appName, LOAD_STATUS.LOADING);
-  return useLoadRemoteLib(remoteCache)(entry, options).then(
+  return useLoadRemoteLib<RemoteModule>(remoteCache)(entry, options).then(
     (result) => {
       setRemoteStatus(appName, LOAD_STATUS.LOADED);
       return result;
@@ -137,22 +137,20 @@ function unloadLib(entry?: string): void {
   document.querySelectorAll(selector).forEach((el) => el.remove());
 }
 
-function loadRemote(
-  entry: string,
-  options?: LoadAppOptions & { entryName?: string },
-): Promise<Module | Record<string, Module> | null> {
+function loadRemote(entry: string, options?: LoadAppOptions & { entryName?: string }): Promise<RemoteModule | null> {
   const [appName] = entry.split('/');
   const remoteInfo = getRemoteInfo(appName);
   if (!remoteInfo) {
     return Promise.reject(new Error(`Remote module ${appName} not found`));
   }
-  if (remoteInfo.type === 'lib') {
+  const remoteType: string | undefined = remoteInfo.type;
+  if (remoteType === 'lib') {
     return loadLib(entry, options);
   }
-  if (remoteInfo.type === 'app') {
+  if (remoteType === 'app') {
     return loadApp(entry, options);
   }
-  return Promise.reject(new Error(`Remote module type ${remoteInfo.type} not supported`));
+  return Promise.reject(new Error(`Remote module type ${remoteType} not supported`));
 }
 
 export interface RmoteConfig {

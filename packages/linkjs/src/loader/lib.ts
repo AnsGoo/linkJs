@@ -4,7 +4,7 @@ import { beginStyleCapture, endStyleCapture, ensureShadowTarget } from '../sandb
 import { runBeforeLoadRemote, runHook } from '../plugins';
 import { recordDiagnostic } from '../devtools';
 import { startPhase } from '../perf';
-import { getRemoteInfo, rewriteRequestUrl, useGetRemote, useHandleExpose, type ExtOption } from './utils';
+import { getRemoteInfo, resolveEntryConfig, rewriteRequestUrl, useGetRemote, useHandleExpose, type ExtOption, type RemoteCache } from './utils';
 
 export interface LoadLibOptions {
   host?: string;
@@ -16,31 +16,32 @@ export interface LoadLibOptions {
   signal?: AbortSignal;
 }
 
-export function useLoadRemoteLib<Module>(remoteCache: Map<string, Record<string, Module> | Module>) {
-  return (entry: string, options?: LoadLibOptions) => loadRemoteLib(remoteCache, entry, options);
+export function useLoadRemoteLib<M = unknown>(remoteCache: RemoteCache) {
+  return (entry: string, options?: LoadLibOptions) => loadRemoteLib<M>(remoteCache, entry, options);
 }
 
-async function loadRemoteLib<Module>(
-  remoteCache: Map<string, Record<string, Module> | Module>,
+async function loadRemoteLib<M = unknown>(
+  remoteCache: RemoteCache,
   entry: string,
   options?: LoadLibOptions,
-): Promise<Module | null> {
+): Promise<M | null> {
   const [appName, modelName] = entry.split('/');
-  const cached = useGetRemote(remoteCache)(entry);
+  const cached = useGetRemote<M>(remoteCache)(entry);
   if (cached) {
-    return cached as Module;
+    return cached;
   }
 
   const linkInstance = getInstance();
   const extOption: ExtOption = { modelName };
-  const remoteInfo = (await runBeforeLoadRemote({ ...(getRemoteInfo(appName) as any) })) as any;
+  const registered = getRemoteInfo(appName);
+  const remoteInfo = await runBeforeLoadRemote(registered ? { ...registered } : { name: appName, entry: '' });
   await runHook('afterResolve', remoteInfo);
   await runHook('beforeLoadContainer', remoteInfo);
-  const label = remoteInfo?.displayName || appName;
+  const label = remoteInfo.displayName || appName;
   const endTotal = startPhase(`linkjs:load:lib:${appName}`, `加载库「${label}」`);
 
-  const host = options?.host || remoteInfo?.host || `${location.protocol}//${location.host}`;
-  const entryName = options?.entryName || remoteInfo?.entry?.js;
+  const host = options?.host || remoteInfo.host || `${location.protocol}//${location.host}`;
+  const entryName = options?.entryName || resolveEntryConfig(remoteInfo.entry).js;
   const jsUrl = rewriteRequestUrl(`${host}${entryName}`, appName);
   const timeout = options?.timeout ?? 10000;
 
@@ -52,8 +53,8 @@ async function loadRemoteLib<Module>(
   }
 
   // 预加载该远程声明的共享依赖（支持多个共享作用域）
-  const shared = remoteInfo?.shared || {};
-  const shareScopes: (string | undefined)[] = remoteInfo?.shareScope?.length ? remoteInfo.shareScope : [undefined];
+  const shared = remoteInfo.shared || {};
+  const shareScopes: (string | undefined)[] = remoteInfo.shareScope?.length ? remoteInfo.shareScope : [undefined];
   await Promise.all(
     Object.keys(shared).flatMap((dep) =>
       shareScopes.map(async (shareScope) => {
@@ -67,7 +68,7 @@ async function loadRemoteLib<Module>(
 
   // 加载共享依赖入口文件，注册远程提供的共享依赖。
   // 共享入口是可选产物，缺失或加载失败时不应阻塞主模块加载。
-  const sharedEntry = remoteInfo?.entry?.shared;
+  const sharedEntry = resolveEntryConfig(remoteInfo.entry).shared;
   if (sharedEntry) {
     const sharedUrl = rewriteRequestUrl(`${host}${sharedEntry}`, appName);
     try {
@@ -79,8 +80,8 @@ async function loadRemoteLib<Module>(
 
   await runHook('beforeLoadEntry', remoteInfo);
 
-  return new Promise<Module | null>((resolve, reject) => {
-    const handleLibExpose = useHandleExpose(remoteCache, resolve, appName, extOption);
+  return new Promise<M | null>((resolve, reject) => {
+    const handleLibExpose = useHandleExpose<M>(remoteCache, resolve, appName, extOption);
     linkInstance.eventBus.on(LIB_EXPOSE, handleLibExpose);
 
     const fail = (error: unknown) => {

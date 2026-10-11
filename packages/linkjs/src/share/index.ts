@@ -1,6 +1,6 @@
-import type Module from 'module';
 import { getInstance } from '..';
 import type { ShareOption } from '../state/instance';
+import type { RemoteModule } from '../types';
 import { recordDiagnostic } from '../devtools';
 import { startPhase } from '../perf';
 import { VersionComparator } from './version-comparator';
@@ -87,8 +87,8 @@ function warnVersionMismatch(
   });
 }
 
-async function loadModule(shareInfo: ShareOption): Promise<Module> {
-  let libModule: Module = shareInfo.lib as Module;
+async function loadModule(shareInfo: ShareOption): Promise<RemoteModule> {
+  let libModule: RemoteModule = shareInfo.lib as RemoteModule;
   if (typeof shareInfo.lib === 'function') {
     const libload = await (shareInfo.lib as () => any)();
     libModule = libload instanceof Promise ? await libload : libload;
@@ -96,9 +96,9 @@ async function loadModule(shareInfo: ShareOption): Promise<Module> {
   return libModule;
 }
 
-function getInflightMap(instance: any): Map<string, Promise<Module>> {
+function getInflightMap(instance: any): Map<string, Promise<RemoteModule>> {
   if (!instance.shareInflight) {
-    instance.shareInflight = new Map<string, Promise<Module>>();
+    instance.shareInflight = new Map<string, Promise<RemoteModule>>();
   }
   return instance.shareInflight;
 }
@@ -111,8 +111,8 @@ function loadAndCacheModule(
   scope: string,
   name: string,
   shareInfo: ShareOption,
-  loadedModules: Map<string, Module>,
-): Promise<Module> {
+  loadedModules: Map<string, RemoteModule>,
+): Promise<RemoteModule> {
   const version = shareInfo.version || '0.0.0';
   const versionKey = `${name}@${version}`;
 
@@ -144,7 +144,7 @@ function loadAndCacheModule(
   return promise;
 }
 
-function collectLoaded(sharedMap: Map<string, Module>, name: string): VersionedModule[] {
+function collectLoaded(sharedMap: Map<string, RemoteModule>, name: string): VersionedModule[] {
   const loaded: VersionedModule[] = [];
   sharedMap.forEach((module, key) => {
     if (key.startsWith(`${name}@`)) {
@@ -171,11 +171,11 @@ async function resolveVersionFirst(
   name: string,
   version: string | undefined,
   available: ShareOption[],
-  loadedModules: Map<string, Module>,
+  loadedModules: Map<string, RemoteModule>,
   loaded: VersionedModule[],
   requirement: string | false | undefined,
   strict: boolean | undefined,
-): Promise<Module | null> {
+): Promise<RemoteModule | null> {
   const candidates = toCandidates(loaded, available);
   const best = version
     ? VersionComparator.findBestMatch(version, candidates, [])
@@ -187,7 +187,7 @@ async function resolveVersionFirst(
   const candidate = best as Candidate;
   warnVersionMismatch(name, candidate.version, requirement, strict);
   if (candidate.source === 'loaded') {
-    return candidate.module as Module;
+    return candidate.module as RemoteModule;
   }
   return loadAndCacheModule(instance, scope, name, candidate.module as ShareOption, loadedModules);
 }
@@ -201,18 +201,18 @@ async function resolveLoadedFirst(
   name: string,
   version: string | undefined,
   available: ShareOption[],
-  loadedModules: Map<string, Module>,
+  loadedModules: Map<string, RemoteModule>,
   loaded: VersionedModule[],
   requirement: string | false | undefined,
   strict: boolean | undefined,
-): Promise<Module | null> {
+): Promise<RemoteModule | null> {
   if (loaded.length > 0) {
     const bestLoaded = version
       ? VersionComparator.findBestMatch(version, loaded, [])
       : VersionComparator.findLatestVersion(loaded);
     if (bestLoaded) {
       warnVersionMismatch(name, bestLoaded.version, requirement, strict);
-      return bestLoaded.module as Module;
+      return bestLoaded.module as RemoteModule;
     }
   }
 
@@ -252,7 +252,7 @@ async function loadShare(
     requiredVersion?: string | false;
     strictVersion?: boolean;
   },
-): Promise<Module | null> {
+): Promise<RemoteModule | null> {
   const instance = getInstance();
   const { scope = 'global', version } = options || {};
 
@@ -268,7 +268,7 @@ async function loadShare(
 
   let loadedModules = instance.sharedMap.get(scope);
   if (!loadedModules) {
-    loadedModules = new Map<string, Module>();
+    loadedModules = new Map<string, RemoteModule>();
     instance.sharedMap.set(scope, loadedModules);
   }
   const loaded = collectLoaded(loadedModules, name);
@@ -292,7 +292,7 @@ function getShare(
     version?: string;
     scope?: string;
   },
-): Module | null {
+): RemoteModule | null {
   const instance = getInstance();
   const { scope = 'global', version } = options || {};
 
@@ -306,7 +306,7 @@ function getShare(
     ? VersionComparator.findBestMatch(version, loaded, [])
     : VersionComparator.findLatestVersion(loaded);
 
-  return (best?.module as Module) || null;
+  return (best?.module as RemoteModule) || null;
 }
 
 export { registerShare, loadShare, getShare };
