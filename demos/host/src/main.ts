@@ -5,11 +5,8 @@ import {
   authPlugin,
   createInstance,
   fallbackPlugin,
-  getSnapshot,
-  loadApp,
   loggerPlugin,
   overrideRemote,
-  preloadRemote,
   retryPlugin,
   timeoutPlugin,
 } from 'linkjs';
@@ -47,47 +44,11 @@ const instances = createInstance({
 });
 instances.loadRegistry(registryOptions);
 
-// 按远程库 manifest 的 assets 预取资源（JS/CSS 预热），失败不影响主流程。
-preloadRemote({
-  name: 'remote-lib',
-  host: 'http://localhost:4001',
-  manifestUrl: 'http://localhost:4001/mf/manifest.json',
-  prefetch: true,
-}).catch(() => {
-  /* remote-lib 未启动时忽略 */
+// remote-lib / remoteApp 的预加载由 vite.config 的 consumeTypes.remotes[].preload 声明：
+// unplugin-linkjs 构建期注入 __linkjs_preload__，createInstance 时自动 preloadRemote，无需在此手写。
+// remoteApp 本身也无需在此预先 loadApp：宿主组件（createRemoteApp / remoteImports 导入的组件）
+// 挂载时会各自触发 loadApp（host 同样由注入的 __linkjs_remote_hosts__ 提供）。
+
+overrideRemote().finally(() => {
+  import('./load-app');
 });
-
-// 读取远端 manifest，获取展示名（RemoteApp）等信息；在加载前 await，保证日志/标签一致。
-const prepareRemoteMeta = () =>
-  preloadRemote({
-    name: 'remoteApp',
-    host: 'http://localhost:8081',
-    manifestUrl: 'http://localhost:8081/manifest.json',
-  }).catch(() => undefined);
-
-// 加载远程模块的函数
-function loadRemoteModule() {
-  return loadApp('remoteApp', {
-    host: 'http://localhost:8081',
-    sandbox: true,
-    // 与 createRemoteApp 一致：预加载即启用 shadow，样式在捕获窗口内进入影子树
-    shadow: true,
-  })
-    .then((lib) => {
-      console.log('Remote module loaded:', lib);
-      // 可观测：打印当前 remotes/shares/诊断快照（也可在控制台用 __LINKJS__.getSnapshot()）
-      console.log('[linkjs] snapshot', getSnapshot());
-    })
-    .catch((error) => {
-      console.error('Failed to load remote module:', error);
-    })
-    .finally(() => {
-      import('./load-app');
-    });
-}
-
-overrideRemote()
-  .then(prepareRemoteMeta)
-  .finally(() => {
-    loadRemoteModule();
-  });

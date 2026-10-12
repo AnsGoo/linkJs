@@ -29,8 +29,14 @@ export default defineConfig({
         remotes: [
           // 类型走 tsdown-plugin-server(4002)：会原样提供 .d.ts 并开启 mode=development + SSE，
           // 类型变更可热更新；运行时仍从 Vite 应用服务器(8081)加载入口，故用 host 覆盖。
-          { name: 'remoteApp', manifestUrl: 'http://localhost:4002/mf/manifest.json', host: 'http://localhost:8081' },
-          { name: 'remote-lib', manifestUrl: 'http://localhost:4001/mf/manifest.json' },
+          // preload：宿主启动自动预加载（无需在 main 手动 preloadRemote）。
+          {
+            name: 'remoteApp',
+            manifestUrl: 'http://localhost:4002/mf/manifest.json',
+            host: 'http://localhost:8081',
+            preload: { manifestUrl: 'http://localhost:8081/manifest.json' },
+          },
+          { name: 'remote-lib', manifestUrl: 'http://localhost:4001/mf/manifest.json', preload: { prefetch: true } },
         ],
       },
       // 允许 `import { HelloWorld } from 'remoteApp'`（运行期解析为 createRemoteComponent 包装），
