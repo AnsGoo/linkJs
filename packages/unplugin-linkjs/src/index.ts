@@ -22,6 +22,7 @@ import {
   REMOTE_HOSTS_GLOBAL,
   selectRemoteImportNames,
 } from './runtime-bootstrap.js';
+import { linkjsVue, linkjsVueOptions } from './vue-plugin.js';
 import path from 'path';
 
 export type {
@@ -39,7 +40,7 @@ export { watchRemoteTypes, parseSseChunk } from './type-watcher.js';
 
 type TransformMode = 'build' | 'dev';
 
-export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {}) => {
+const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) => {
   const {
     extensions = ['.js', '.jsx', '.ts', '.tsx', '.vue', '.d.ts', '.mjs', '.cjs'],
     shared = {},
@@ -638,8 +639,20 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
   };
 });
 
+/**
+ * linkjs 的 unplugin 实例。
+ *
+ * 额外提供 vue 插件的 scoped-id 增强，避免不同应用相同相对路径的组件 scopeId 冲突：
+ * - `unpluginLinkjs.vueOptions(options?)`：**补充**给用户的 `vue(...)` / `VuePlugin(...)`
+ *   （推荐，保留原插件调用，只合并 options）；
+ * - `unpluginLinkjs.vue()` / `unpluginLinkjs.vue.rolldown()`：drop-in 包装（可选）。
+ */
+export const unpluginLinkjs = Object.assign(unpluginLinkjsBase, { vue: linkjsVue, vueOptions: linkjsVueOptions });
+
 const unpluginLinkjsRollowPlugin = unpluginLinkjs.rolldown;
 export { unpluginLinkjsRollowPlugin };
+export { linkjsVue, linkjsVueOptions };
+export type { LinkjsVueOptions } from './vue-plugin.js';
 export { linkjsSharedVersions, LINKJS_SHARED_VIRTUAL_ID } from './shared-versions.js';
 export type { SharedVersionsOptions } from './shared-versions.js';
 export default unpluginLinkjs;
