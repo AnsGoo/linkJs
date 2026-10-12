@@ -2,6 +2,7 @@ import { createUnplugin } from 'unplugin';
 import type { Node, ImportDeclaration } from 'oxc-parser';
 import MagicString from 'magic-string';
 import { createHash } from 'crypto';
+import { readFileSync } from 'fs';
 
 import type { ManifestAsset, ManifestJson, UnpluginLinkjsOptions } from './types.js';
 import { consumeRemoteTypes, type ConsumeTypesResult } from './consume-types.js';
@@ -9,12 +10,19 @@ import { watchRemoteTypes, type TypeWatcher } from './type-watcher.js';
 import { generateManifestFile, updateManifestFile } from './build-manifest.js';
 import { generateDependencyGraph, analyzeDependencies, extractPkgName, buildSharedPackageMap } from './dependency-graph.js';
 import { generateSharedEntryFile } from './build-shared.js';
+import {
+  REMOTE_VIRTUAL_PREFIX,
+  renderRemoteImport,
+  toRemoteImportId,
+  type RemoteImportRegistry,
+} from './remote-imports.js';
 import path from 'path';
 
 export type {
   ManifestJson,
   UnpluginLinkjsOptions,
   RemoteTypeTarget,
+  RemoteImportsOptions,
   ConsumeTypesOptions,
   ConsumeTypesAuth,
 } from './types.js';
@@ -34,6 +42,7 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
     publicPath,
     mode = 'production',
     consumeTypes,
+    remoteImports,
   } = options;
 
   // ---- consumeTypes（宿主类型转发）运行时状态 ----
@@ -41,12 +50,30 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
   let typeWatcher: TypeWatcher | undefined;
   let typeRefreshTimer: ReturnType<typeof setTimeout> | undefined;
 
+  // ---- remoteImports（`import { X } from '<remote>'` 运行时虚拟模块）----
+  const remoteImportsEnabled = remoteImports !== false;
+  const remoteImportsShadow = typeof remoteImports === 'object' && remoteImports ? remoteImports.shadow === true : false;
+  const remoteImportRegistry: RemoteImportRegistry = new Map();
+
+  /** 用最新 consumeTypes 结果刷新远程注册表（dev 下类型刷新时同步更新 exposes）。 */
+  function syncRemoteImports(result?: ConsumeTypesResult): void {
+    remoteImportRegistry.clear();
+    if (!remoteImportsEnabled || !result) {
+      return;
+    }
+    for (const info of result.remotes) {
+      remoteImportRegistry.set(info.name, { name: info.name, host: info.host, exposes: info.exposes });
+    }
+  }
+
   async function runConsumeTypes(): Promise<ConsumeTypesResult | undefined> {
     if (!consumeTypes?.remotes?.length) {
       return undefined;
     }
     try {
-      return await consumeRemoteTypes(consumeTypes);
+      const result = await consumeRemoteTypes(consumeTypes);
+      syncRemoteImports(result);
+      return result;
     } catch (error) {
       console.warn(`[linkjs] consumeTypes failed: ${String((error as { message?: string })?.message ?? error)}`);
       return undefined;
@@ -341,7 +368,34 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
     name: 'unplugin-linkjs',
     enforce: 'post',
 
+    // `import { X } from '<remote>'`：Vite 下经 alias 命中；rollup/rolldown 下由 resolveId 兜底。
+    resolveId(source: string) {
+      if (source.startsWith(REMOTE_VIRTUAL_PREFIX)) {
+        return source;
+      }
+      return remoteImportsEnabled ? toRemoteImportId(source, remoteImportRegistry) : null;
+    },
+    load(id: string) {
+      return remoteImportsEnabled ? renderRemoteImport(id, remoteImportRegistry, { shadow: remoteImportsShadow }) : null;
+    },
+
     vite: {
+      config() {
+        if (!remoteImportsEnabled) {
+          return;
+        }
+        const names = (consumeTypes?.remotes ?? []).map((remote) => remote.name);
+        if (names.length === 0) {
+          return;
+        }
+        return {
+          // 裸包名 -> 虚拟模块，避免 Vite 预构建/包解析阶段把 `<remote>` 当真实依赖。
+          resolve: {
+            alias: names.map((name) => ({ find: name, replacement: REMOTE_VIRTUAL_PREFIX + name })),
+          },
+          optimizeDeps: { exclude: names },
+        };
+      },
       transform: createTransform('dev'),
       configResolved(config: { command?: string }) {
         isServe = config.command === 'serve';
@@ -353,6 +407,27 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
         }
       },
       async configureServer(server: any) {
+        // 原样返回 `.d.ts`：Vite 的 transform 会把声明文件编译成 `export {}`，
+        // 导致宿主 consumeTypes 拉到空类型。声明文件不参与运行时，直接按文本返回。
+        server.middlewares.use((req: any, res: any, next: any) => {
+          const url = String(req.url || '').split('?')[0];
+          if (!/\.d\.(ts|mts|cts)$/.test(url)) {
+            return next();
+          }
+          const root = server.config?.root || process.cwd();
+          const file = path.resolve(root, decodeURIComponent(url).replace(/^\//, ''));
+          if (!file.startsWith(root)) {
+            return next();
+          }
+          try {
+            const content = readFileSync(file, 'utf-8');
+            res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+            res.setHeader('Cache-Control', 'no-cache');
+            res.end(content);
+          } catch {
+            next();
+          }
+        });
         const result = await runConsumeTypes();
         if (result) {
           startTypeWatchers(result);
@@ -367,8 +442,8 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
     },
 
     rolldown: {
-      buildStart() {
-        void runConsumeTypes();
+      async buildStart() {
+        await runConsumeTypes();
       },
       buildEnd() {},
       async writeBundle(options, bundle) {

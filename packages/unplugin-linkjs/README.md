@@ -101,6 +101,7 @@ await esbuild.build({
 | `publicPath`         | `string`              | –                                        | Static CDN base URL for this remote's assets (written to the manifest) |
 | `mode`               | `'development' \| 'production'` | `'production'`                | Producer mode written to the manifest (dev server serves `development`) |
 | `consumeTypes`       | `ConsumeTypesOptions` | –                                        | Host side: fetch remote `.d.ts` and generate typed `loadRemote` declarations |
+| `remoteImports`      | `boolean \| RemoteImportsOptions` | enabled when `consumeTypes.remotes` is set | Host side: allow `import { X } from '<remote>'` using runtime virtual modules |
 | `isReplaceLinkjs`    | `boolean`             | `true`                                   | Whether to replace linkjs imports  |
 | `generateSharedFile` | `boolean`             | `true`                                   | Whether to generate shared.js file |
 | `extensions`         | `string[]`            | `['.js', '.jsx', '.ts', '.tsx', '.vue']` | File extensions to process         |
@@ -197,6 +198,42 @@ Behaviour:
 - **production producer** (`manifest.mode: 'production'`): fetched once at build/dev start (immutable URL).
 - **development producer** (`manifest.mode: 'development'`, e.g. served by `tsdown-plugin-server`):
   the host subscribes to `/__linkjs/events` (SSE) and refreshes on `types-changed`.
+
+## Remote component imports (`remoteImports`)
+
+With `consumeTypes.remotes` configured, the host can import remote components directly by remote
+name (no wrapper component, no manual `createRemoteComponent`):
+
+```ts
+import { HelloWorld as RemoteHelloWorld } from 'remoteApp';
+```
+
+```html
+<RemoteHelloWorld msg="hi" :age="18" />
+```
+
+How it works:
+
+- The plugin resolves `'<remote>'` / `'<remote>/<Expose>'` to a **virtual module** whose exports are
+  `createRemoteComponent('<remote>/<Expose>')` wrappers (loading, HMR re-resolution and attrs
+  forwarding are handled internally).
+- The expose list comes from each remote `manifest.expose`; the runtime `host` is derived from the
+  `manifestUrl` origin (or the target's `host`).
+- Types come from the generated `consumeTypes` declarations, so `import { X } from 'remoteApp'`
+  is fully typed.
+
+Options:
+
+```ts
+unpluginLinkjs.vite({
+  consumeTypes: { remotes: [{ name: 'remoteApp', manifestUrl: 'http://localhost:8081/mf/manifest.json' }] },
+  // disable: remoteImports: false
+  remoteImports: { shadow: true }, // render imported components inside the remote's shadow root
+});
+```
+
+> The plugin's dev server serves `.d.ts` files as-is (Vite otherwise transforms declarations into
+> `export {}`), so `consumeTypes` receives real types during development.
 
 ## License
 

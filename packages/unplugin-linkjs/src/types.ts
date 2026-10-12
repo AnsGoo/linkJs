@@ -102,6 +102,15 @@ export interface ConsumeTypesOptions {
   fetch?: typeof fetch;
 }
 
+/** `import { X } from '<remote>'` 运行时虚拟模块的配置。 */
+export interface RemoteImportsOptions {
+  /**
+   * 生成的远程组件是否默认启用 Shadow DOM 隔离。
+   * 默认 `false`：普通 DOM，远程样式随加载注入 document。
+   */
+  shadow?: boolean;
+}
+
 export interface UnpluginLinkjsOptions {
   extensions?: string[];
   shared?: Record<
@@ -124,6 +133,13 @@ export interface UnpluginLinkjsOptions {
   mode?: 'development' | 'production';
   /** 消费远程类型（生成 `declare module '<remote>/<Expose>'` 与 linkjs 类型注册表）。 */
   consumeTypes?: ConsumeTypesOptions;
+  /**
+   * 允许宿主用 `import { <Expose> } from '<remote>'` 直接消费远程组件。
+   * 基于 `consumeTypes.remotes` 解析远端 manifest 的 exposes，生成运行时虚拟模块
+   * （内部为 `createRemoteComponent`，自动加载 + 响应式重解析）。
+   * 默认在配置了 `consumeTypes.remotes` 时开启；传 `false` 关闭。
+   */
+  remoteImports?: boolean | RemoteImportsOptions;
   /**
    * 路线 B：需要自适应 runtime 的框架级依赖（如 `['vue', 'vue-router', 'pinia']`）。
    * dev 下这些依赖改写为 `$linkjs.loadRuntime(name, () => import(name))`：

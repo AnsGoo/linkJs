@@ -11,6 +11,8 @@ const DEFAULT_TIMEOUT = 5000;
 export interface RemoteTypeInfo {
   name: string;
   manifestUrl: string;
+  /** 运行时基址（`host` 覆盖优先，否则取 manifestUrl 的 origin），供 `remoteImports` 虚拟模块使用。 */
+  host: string;
   typesUrl: string;
   /** 用于变更去重的哈希（manifest.typesHash 优先，否则内容 sha256）。 */
   typesHash: string;
@@ -201,6 +203,7 @@ async function fetchRemoteType(
   return {
     name: target.name,
     manifestUrl,
+    host: target.host ?? new URL(manifestUrl).origin,
     typesUrl,
     typesHash,
     cacheRel,
