@@ -46,6 +46,11 @@ export interface ShadowTarget {
    * Vite 会新建一个 `<style>` 元素，需要按模块路径重新匹配。
    */
   modulePaths: Set<string>;
+  /**
+   * 持有该目标的隔离计数。`createRemoteApp`（路线 B）与 `LinkjsShadowRoot`（路线 A）
+   * 可同时消费同名远程，二者共用同一影子树；只有全部释放后才拆除宿主元素。
+   */
+  refs: number;
 }
 
 const targets = new Map<string, ShadowTarget>();
@@ -239,7 +244,7 @@ function createTarget(name: string, mode: ShadowRootMode): ShadowTarget {
   const mountPoint = document.createElement('div');
   mountPoint.setAttribute(SCOPE_MOUNT_ATTR, name);
   shadow.appendChild(mountPoint);
-  return { name, host, shadow, mountPoint, modulePaths: new Set<string>() };
+  return { name, host, shadow, mountPoint, modulePaths: new Set<string>(), refs: 0 };
 }
 
 /**
@@ -282,6 +287,10 @@ export interface CreateShadowIsolationOptions {
 /**
  * 把某个远程的 Shadow 目标挂到真实容器上。若该远程此前已被 `loadApp({ shadow: true })`
  * 预加载（存在游离目标），则复用其宿主元素，从而保留预加载期间捕获的样式。
+ *
+ * 同一 name 可被多个消费者共享（例如 `createRemoteApp` 与 `LinkjsShadowRoot` 同时消费
+ * 同一远程）：宿主元素只在首次挂载时插入真实容器，之后不再搬运；引用计数归零才拆除。
+ * 各消费者应各自在 `iso.shadow` 内追加独立挂载节点，避免互相清空内容。
  */
 export function createShadowIsolation(
   container: HTMLElement,
@@ -289,7 +298,9 @@ export function createShadowIsolation(
   options: CreateShadowIsolationOptions = {},
 ): ShadowIsolation {
   const target = ensureShadowTarget(name, options.mode ?? 'open');
-  if (target.host.parentNode !== container) {
+  target.refs += 1;
+  // 只在宿主元素尚未接入真实 DOM 时插入，避免多个消费者互相搬运元素。
+  if (!target.host.isConnected && target.host.parentNode !== container) {
     container.appendChild(target.host);
   }
   beginStyleCapture(name);
@@ -310,6 +321,11 @@ export function createShadowIsolation(
       disposed = true;
       if (captureTarget === target) {
         endStyleCapture();
+      }
+      // 仍有其它消费者持有同一影子树：保留宿主元素，交给最后一个释放者拆除。
+      target.refs = Math.max(0, target.refs - 1);
+      if (target.refs > 0) {
+        return;
       }
       target.host.remove();
       targets.delete(name);

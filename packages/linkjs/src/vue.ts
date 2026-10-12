@@ -12,7 +12,7 @@ import {
   type Component,
   type ShallowRef,
 } from 'vue';
-import { getRemote, loadApp, subscribeRemoteUpdate, type LoadAppOptions } from './index';
+import { getRemote, loadApp, loadRemote, subscribeRemoteUpdate, type LoadAppOptions } from './index';
 import { createShadowIsolation, type ShadowIsolation } from './sandbox/shadow';
 
 /**
@@ -139,12 +139,48 @@ function createRemoteApp(entry: string, options?: CreateRemoteAppOptions) {
 }
 
 /**
+ * 在共享影子树内为「宿主自渲染」的内容分配一个独立挂载节点并返回其 ref。
+ *
+ * 之所以不复用 `iso.mountPoint`：`createRemoteApp`（路线 B）会用 `mod.mount()` 清空它
+ * 自己的 `iso.mountPoint`，若路线 A 也渲染到同一节点，内容会被清掉。同一 name 的多个
+ * 消费者各自拥有独立节点，共享同一影子树（样式已由加载期捕获）。
+ */
+function useShadowSlot(name: string) {
+  const host = ref<HTMLElement>();
+  const mountPoint = shallowRef<HTMLElement>();
+  let iso: ShadowIsolation | null = null;
+  let slotEl: HTMLElement | null = null;
+
+  onMounted(() => {
+    if (!host.value) {
+      return;
+    }
+    iso = createShadowIsolation(host.value, name);
+    slotEl = document.createElement('div');
+    iso.shadow.appendChild(slotEl);
+    mountPoint.value = slotEl;
+    // 样式已在 loadApp/loadLib({ shadow: true }) 的加载窗口内捕获，这里只需接管挂载点。
+    iso.stopCapture();
+  });
+  onUnmounted(() => {
+    slotEl?.remove();
+    slotEl = null;
+    iso?.dispose();
+    iso = null;
+  });
+
+  return { host, mountPoint };
+}
+
+/**
  * 把插槽内容渲染进 ShadowRoot 的容器组件，用于隔离**由宿主自身渲染**的远程内容
  * （例如 `loadLib` 返回的组件）。
  *
  * 与 `createRemoteApp` 的路线 B（子应用自挂载）不同：这里的内容仍属于宿主的 Vue 实例，
  * 只是通过 `Teleport` 把 DOM 放进影子树；样式则依赖 `loadLib({ shadow: true })` 在加载期
  * 把该远程的样式捕获进同一影子树。
+ *
+ * 注：消费单个远程组件时优先用 `createRemoteComponent`，无需手动包一层。
  */
 const LinkjsShadowRoot = defineComponent({
   name: 'LinkjsShadowRoot',
@@ -153,27 +189,73 @@ const LinkjsShadowRoot = defineComponent({
     name: { type: String, required: true },
   },
   setup(props, { slots }) {
-    const host = ref<HTMLElement>();
-    const mountPoint = shallowRef<HTMLElement>();
-    let iso: ShadowIsolation | null = null;
-
-    onMounted(() => {
-      if (!host.value) {
-        return;
-      }
-      iso = createShadowIsolation(host.value, props.name);
-      mountPoint.value = iso.mountPoint;
-      // 库样式已在 loadLib({ shadow: true }) 的加载窗口内捕获，这里只需接管挂载点。
-      iso.stopCapture();
-    });
-    onUnmounted(() => {
-      iso?.dispose();
-      iso = null;
-    });
+    const { host, mountPoint } = useShadowSlot(props.name);
 
     return () =>
       h('div', { ref: host }, mountPoint.value ? [h(Teleport as any, { to: mountPoint.value }, slots.default?.())] : []);
   },
 });
 
-export { useRemoteModule, createRemoteApp, LinkjsShadowRoot };
+export interface CreateRemoteComponentOptions extends LoadAppOptions {}
+
+/**
+ * 创建一个可直接使用的远程组件（路线 A 的推荐入口）。
+ *
+ * 内部负责：按 `entry` 加载远程（`loadRemote`，自动区分 app/lib 与 `<remote>/<Expose>`）、
+ * 订阅 `REMOTE_UPDATE` 响应式重解析、把宿主 attrs 透传给远程组件。
+ * `{ shadow: true }` 时自动把组件渲染进该远程的影子树，**无需**手动包 `LinkjsShadowRoot`。
+ *
+ * ```ts
+ * const RemoteHelloWorld = createRemoteComponent('remoteApp/HelloWorld', { shadow: true });
+ * ```
+ * ```html
+ * <RemoteHelloWorld msg="hi" :age="18" />
+ * ```
+ */
+function createRemoteComponent<K extends keyof LinkjsRemoteTypes & string>(
+  entry: K,
+  options?: CreateRemoteComponentOptions,
+): LinkjsRemoteTypes[K];
+function createRemoteComponent(entry: string, options?: CreateRemoteComponentOptions): Component;
+function createRemoteComponent(entry: string, options?: CreateRemoteComponentOptions): Component {
+  const appName = entry.split('/')[0];
+  return defineComponent({
+    name: 'LinkjsRemoteComponent',
+    inheritAttrs: false,
+    setup(_props, { attrs, slots }) {
+      const comp = shallowRef<Component | null>(null);
+      const shadow = options?.shadow ? useShadowSlot(appName) : null;
+
+      const resolve = () => {
+        comp.value = (getRemote(entry) as Component | null) ?? null;
+      };
+
+      onMounted(() => {
+        loadRemote(entry, options)
+          .then(resolve)
+          .catch((error) => {
+            console.error(`[linkjs] Failed to load remote component "${entry}":`, error);
+          });
+      });
+
+      const off = subscribeRemoteUpdate(entry, resolve);
+      onUnmounted(off);
+
+      return () => {
+        const inner = comp.value
+          ? h(comp.value, { ...attrs }, slots.default ? { default: () => slots.default!() } : undefined)
+          : null;
+        if (!shadow) {
+          return inner;
+        }
+        return h(
+          'div',
+          { ref: shadow.host },
+          shadow.mountPoint.value ? [h(Teleport as any, { to: shadow.mountPoint.value }, [inner])] : [],
+        );
+      };
+    },
+  });
+}
+
+export { useRemoteModule, createRemoteApp, createRemoteComponent, LinkjsShadowRoot };
