@@ -1,5 +1,5 @@
 import { linkInstance } from './state';
-import { __LINKJS_INSTANCE__, __LINKJS_OVERRIDES__ } from './constant';
+import { __LINKJS_INSTANCE__, __LINKJS_OVERRIDES__, __LINKJS_PRELOAD__ } from './constant';
 import {
   clearRemoteCache,
   getRemote as runGetRemote,
@@ -23,7 +23,7 @@ import type { PublicPathResolver } from './loader/utils';
 import { registerPlugin, runInitHooks, type RuntimePlugin } from './plugins';
 import { subscribeRemoteUpdate } from './hmr';
 import { loadRuntime } from './runtime';
-import { preloadRemote } from './preload';
+import { preloadRemote, type PreloadRemoteOptions } from './preload';
 import { remoteSnapshot, globalSnapshot } from './snapshot';
 import { selectRemoteSource, checkRemoteHealth, clearHealthCache } from './loader/source';
 import {
@@ -188,7 +188,29 @@ function createInstance(options: UserOption) {
   runInitHooks(options, linkInstance);
   // 开发模式下自动挂载页内 DevTools 面板。
   maybeInstallDevtoolsUI(linkInstance, devtools);
+  // 构建期由 unplugin-linkjs 注入的自动预加载（consumeTypes.remotes[].preload）。
+  runBootPreloads();
   return linkInstance;
+}
+
+/**
+ * 执行构建期注入的「启动即预加载」列表（`__linkjs_preload__`）。
+ * 只消费一次，逐项 fire-and-forget；失败静默（远端未启动时不影响宿主）。
+ */
+function runBootPreloads(): void {
+  const g = globalThis as { [key: string]: unknown };
+  const list = g[__LINKJS_PRELOAD__];
+  if (!Array.isArray(list) || list.length === 0) {
+    return;
+  }
+  delete g[__LINKJS_PRELOAD__];
+  for (const item of list) {
+    if (item && typeof item === 'object' && typeof (item as PreloadRemoteOptions).name === 'string') {
+      void preloadRemote(item as PreloadRemoteOptions).catch(() => {
+        /* 远端未启动时忽略 */
+      });
+    }
+  }
 }
 
 /** 手动挂载页内 DevTools 面板。 */

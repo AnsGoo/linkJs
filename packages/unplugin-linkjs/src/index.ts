@@ -16,12 +16,14 @@ import {
   toRemoteImportId,
   type RemoteImportRegistry,
 } from './remote-imports.js';
+import { buildRuntimeBootstrap, PRELOAD_GLOBAL, REMOTE_HOSTS_GLOBAL } from './runtime-bootstrap.js';
 import path from 'path';
 
 export type {
   ManifestJson,
   UnpluginLinkjsOptions,
   RemoteTypeTarget,
+  RemotePreloadOptions,
   RemoteImportsOptions,
   ConsumeTypesOptions,
   ConsumeTypesAuth,
@@ -396,33 +398,27 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
           optimizeDeps: { exclude: names },
         };
       },
-      // 构建期注入「远程名 -> 运行时基址」映射（linkjs 常量 __linkjs_remote_hosts__），
-      // 使 loadApp/createRemoteApp/preloadRemote 等无需在每个调用点重复传 host。
+      // 构建期注入运行时引导：
+      // - `__linkjs_remote_hosts__`：远程名 -> 运行时基址（loadApp/createRemoteApp 等省略 host）；
+      // - `__linkjs_preload__`：需要自动预加载的远程（等价于 main 里手动 preloadRemote）。
       transformIndexHtml() {
-        const hosts: Record<string, string> = {};
-        for (const target of consumeTypes?.remotes ?? []) {
-          let host = target.host;
-          if (!host && target.manifestUrl) {
-            try {
-              host = new URL(target.manifestUrl).origin;
-            } catch {
-              host = undefined;
-            }
-          }
-          if (host) {
-            hosts[target.name] = host;
-          }
-        }
-        if (Object.keys(hosts).length === 0) {
-          return;
-        }
-        return [
-          {
+        const { hosts, preloads } = buildRuntimeBootstrap(consumeTypes?.remotes);
+        const tags: { tag: string; injectTo: 'head-prepend'; children: string }[] = [];
+        if (Object.keys(hosts).length > 0) {
+          tags.push({
             tag: 'script',
-            injectTo: 'head-prepend' as const,
-            children: `globalThis.__linkjs_remote_hosts__=${JSON.stringify(hosts)};`,
-          },
-        ];
+            injectTo: 'head-prepend',
+            children: `globalThis.${REMOTE_HOSTS_GLOBAL}=${JSON.stringify(hosts)};`,
+          });
+        }
+        if (preloads.length > 0) {
+          tags.push({
+            tag: 'script',
+            injectTo: 'head-prepend',
+            children: `globalThis.${PRELOAD_GLOBAL}=${JSON.stringify(preloads)};`,
+          });
+        }
+        return tags.length > 0 ? tags : undefined;
       },
       transform: createTransform('dev'),
       configResolved(config: { command?: string }) {

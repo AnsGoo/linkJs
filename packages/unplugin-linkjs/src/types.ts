@@ -63,6 +63,16 @@ export interface ManifestJson {
   [key: string]: any;
 }
 
+/** `RemoteTypeTarget.preload` 的覆盖项（缺省沿用该 remote 的类型目标）。 */
+export interface RemotePreloadOptions {
+  /** 预加载使用的 manifest 地址，默认取该目标的 `manifestUrl`。 */
+  manifestUrl?: string;
+  /** 预加载基址，默认取该目标的 `host`（或 manifestUrl 的 origin）。 */
+  host?: string;
+  /** 是否预取 manifest 里的 `entry.assets`，默认 `false`。 */
+  prefetch?: boolean;
+}
+
 /** 宿主消费类型时的单个远程目标（`consumeTypes`）。 */
 export interface RemoteTypeTarget {
   /** 模块名前缀，宿主用 `<name>/<Expose>` 访问。 */
@@ -73,6 +83,11 @@ export interface RemoteTypeTarget {
   host?: string;
   /** 模式覆盖：`auto`（默认，读 manifest.mode）| `development` | `production`。 */
   mode?: 'auto' | 'development' | 'production';
+  /**
+   * 设为 `true` 或覆盖对象时，宿主启动会**自动预加载**该远程（等价于自动执行
+   * `preloadRemote(...)`），无需在 `main` 里手动调用。
+   */
+  preload?: boolean | RemotePreloadOptions;
 }
 
 /** 类型拉取的鉴权配置（与运行时一致）。 */

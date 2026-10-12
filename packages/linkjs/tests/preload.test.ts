@@ -1,5 +1,6 @@
 import { beforeEach, expect, test, vi } from 'vitest';
 import { preloadRemote, clearPrefetchCache } from '../src/preload';
+import { createInstance } from '../src';
 import { linkInstance } from '../src/state/instance';
 import { LOAD_STATUS } from '../src/event-bus/constant';
 
@@ -143,4 +144,27 @@ test('applies SRI integrity from the manifest', async () => {
   const byHref = new Map(created.map((l) => [l.href, l]));
   expect((byHref.get('http://localhost:4001/mf/lib.js') as any)?.integrity).toBe('sha384-AAA');
   expect((byHref.get('http://localhost:4001/mf/style.css') as any)?.integrity).toBe('sha384-BBB');
+});
+
+test('createInstance auto-runs build-time injected preloads (__linkjs_preload__)', async () => {
+  const fetchMock = vi.fn(async () => ({
+    ok: true,
+    json: async () => ({
+      name: 'remoteApp',
+      version: '1.0.0',
+      entry: { assets: { js: { sync: ['/mf/lib.js'] } } },
+      exposes: [],
+    }),
+  }));
+  (globalThis as any).fetch = fetchMock;
+  (globalThis as any).__linkjs_preload__ = [
+    { name: 'remoteApp', manifestUrl: 'http://localhost:8081/manifest.json', prefetch: true },
+  ];
+
+  createInstance({});
+
+  await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
+  // 只消费一次
+  expect((globalThis as any).__linkjs_preload__).toBeUndefined();
+  await vi.waitFor(() => expect(created.some((l) => l.href.includes('/mf/lib.js'))).toBe(true));
 });
