@@ -8,7 +8,9 @@ import { createRemoteApp } from 'linkjs/vue';
 import { HelloWorld as RemoteHelloWorld } from 'remoteApp';
 import { HelloWorld as RemoteLibHelloWorld } from 'remote-lib';
 
-const RemoteApp = createRemoteApp('remoteApp', { shadow: true, host: 'http://localhost:8081' });
+// host 由 unplugin-linkjs 依据 consumeTypes.remotes 构建期注入（__linkjs_remote_hosts__），
+// 故无需在此重复传 host。
+const RemoteApp = createRemoteApp('remoteApp', { shadow: true });
 </script>
 
 <template>
