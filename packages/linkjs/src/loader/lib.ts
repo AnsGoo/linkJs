@@ -107,7 +107,7 @@ async function loadRemoteLib<M = unknown>(
   }).then(
     (result) => {
       if (options?.shadow) {
-        endStyleCapture();
+        endStyleCapture(appName);
       }
       endTotal();
       void runHook('afterLoadContainer', remoteInfo, result);
@@ -117,7 +117,7 @@ async function loadRemoteLib<M = unknown>(
     },
     (error) => {
       if (options?.shadow) {
-        endStyleCapture();
+        endStyleCapture(appName);
       }
       endTotal();
       recordDiagnostic({

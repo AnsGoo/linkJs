@@ -200,7 +200,7 @@ async function loadApp<M = unknown>(
     // 若不关闭会把宿主随后注入的样式也误收进影子树。
     (result) => {
       if (options?.shadow) {
-        endStyleCapture();
+        endStyleCapture(appName);
       }
       endTotal();
       void runHook('afterLoadContainer', remoteInfo, result);
@@ -210,7 +210,7 @@ async function loadApp<M = unknown>(
     },
     (error) => {
       if (options?.shadow) {
-        endStyleCapture();
+        endStyleCapture(appName);
       }
       endTotal();
       recordDiagnostic({

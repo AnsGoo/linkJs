@@ -155,12 +155,12 @@ function useShadowSlot(name: string) {
     if (!host.value) {
       return;
     }
-    iso = createShadowIsolation(host.value, name);
+    // 不开启捕获窗口：样式由 loadApp/loadLib({ shadow: true }) 在加载期捕获，
+    // 这里只接管挂载点。若开启并立即关闭，会打断其它远程加载的捕获窗口导致样式泄漏。
+    iso = createShadowIsolation(host.value, name, { capture: false });
     slotEl = document.createElement('div');
     iso.shadow.appendChild(slotEl);
     mountPoint.value = slotEl;
-    // 样式已在 loadApp/loadLib({ shadow: true }) 的加载窗口内捕获，这里只需接管挂载点。
-    iso.stopCapture();
   });
   onUnmounted(() => {
     slotEl?.remove();

@@ -55,8 +55,17 @@ export interface ShadowTarget {
 
 const targets = new Map<string, ShadowTarget>();
 
-/** 当前处于「样式捕获窗口」的目标：窗口内新增的 style/link 会被重定向进影子树。 */
-let captureTarget: ShadowTarget | null = null;
+/**
+ * 「样式捕获窗口」栈：多个远程可能**并发加载**（各自的加载期窗口重叠），
+ * 用栈记录所有开启中的目标；新注入的 style/link 归到栈顶（最近开启的加载）。
+ * 结束窗口只移除对应目标，避免一个远程的结束清掉另一个仍在加载的远程的窗口。
+ */
+let captureStack: ShadowTarget[] = [];
+
+/** 当前归属目标（栈顶），无窗口时为 null。 */
+function activeCaptureTarget(): ShadowTarget | null {
+  return captureStack.length > 0 ? captureStack[captureStack.length - 1] : null;
+}
 
 const SCOPE_HOST_ATTR = 'data-linkjs-shadow-host';
 const SCOPE_MOUNT_ATTR = 'data-linkjs-shadow-mount';
@@ -100,11 +109,12 @@ function normalizeIdent(ident: string): string {
  */
 function routeStyleTarget(node: Node): ShadowTarget | null {
   const ident = styleIdent(node);
-  if (captureTarget) {
+  const active = activeCaptureTarget();
+  if (active) {
     if (ident) {
-      captureTarget.modulePaths.add(normalizeIdent(ident));
+      active.modulePaths.add(normalizeIdent(ident));
     }
-    return captureTarget;
+    return active;
   }
   if (!ident) {
     return null;
@@ -261,17 +271,25 @@ export function ensureShadowTarget(name: string, mode: ShadowRootMode = 'open'):
   return target;
 }
 
-/** 开启某个目标的样式捕获窗口。 */
+/** 开启某个目标的样式捕获窗口（幂等；同名重复开启不重复入栈）。 */
 export function beginStyleCapture(name: string): void {
   const target = targets.get(name);
-  if (target) {
-    captureTarget = target;
+  if (target && !captureStack.includes(target)) {
+    captureStack.push(target);
   }
 }
 
-/** 结束样式捕获窗口。 */
-export function endStyleCapture(): void {
-  captureTarget = null;
+/**
+ * 结束样式捕获窗口：传 `name` 精确移除该目标（推荐，支持并发加载），
+ * 不传则弹出栈顶（兼容旧的一次一个场景）。
+ */
+export function endStyleCapture(name?: string): void {
+  if (name === undefined) {
+    captureStack.pop();
+    return;
+  }
+  const target = targets.get(name);
+  captureStack = captureStack.filter((item) => item !== target);
 }
 
 /** 已注册目标对应的 ShadowRoot。 */
@@ -282,6 +300,15 @@ export function getShadowRoot(name: string): ShadowRoot | undefined {
 export interface CreateShadowIsolationOptions {
   /** ShadowRoot 模式，默认 `open`。 */
   mode?: ShadowRootMode;
+  /**
+   * 是否开启样式捕获窗口，默认 `true`（`createRemoteApp` 用：捕获窗口覆盖子应用加载）。
+   *
+   * 宿主自渲染的容器（`LinkjsShadowRoot` / `createRemoteComponent`）应传 `false`：
+   * 样式由 `loadApp/loadLib({ shadow: true })` 在加载期捕获，它只需接管影子树。
+   * 若也开启并立即关闭，会**打断正在进行的其它远程加载**的捕获窗口，导致样式漏到
+   * `document.head` 而隔离失效。
+   */
+  capture?: boolean;
 }
 
 /**
@@ -303,25 +330,28 @@ export function createShadowIsolation(
   if (!target.host.isConnected && target.host.parentNode !== container) {
     container.appendChild(target.host);
   }
-  beginStyleCapture(name);
+  // 仅当本次隔离负责捕获窗口时才开启，避免非加载方误开/误关全局捕获。
+  const ownsCapture = options.capture !== false;
+  if (ownsCapture) {
+    beginStyleCapture(name);
+  }
 
   let disposed = false;
+  const releaseCapture = () => {
+    if (ownsCapture) {
+      endStyleCapture(name);
+    }
+  };
   return {
     shadow: target.shadow,
     mountPoint: target.mountPoint,
-    stopCapture() {
-      if (captureTarget === target) {
-        endStyleCapture();
-      }
-    },
+    stopCapture: releaseCapture,
     dispose() {
       if (disposed) {
         return;
       }
       disposed = true;
-      if (captureTarget === target) {
-        endStyleCapture();
-      }
+      releaseCapture();
       // 仍有其它消费者持有同一影子树：保留宿主元素，交给最后一个释放者拆除。
       target.refs = Math.max(0, target.refs - 1);
       if (target.refs > 0) {
