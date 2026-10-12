@@ -152,7 +152,10 @@ export interface UnpluginLinkjsOptions {
    * 允许宿主用 `import { <Expose> } from '<remote>'` 直接消费远程组件。
    * 基于 `consumeTypes.remotes` 解析远端 manifest 的 exposes，生成运行时虚拟模块
    * （内部为 `createRemoteComponent`，自动加载 + 响应式重解析）。
-   * 默认在配置了 `consumeTypes.remotes` 时开启；传 `false` 关闭。
+   *
+   * 仅对声明了 `consumeTypes.remotes[].preload`（构建期注入预加载）的 remote 生效；
+   * 未声明 preload 的 remote 视为 lazy，不提供 import 语法，只能用运行时 `loadRemote`/`loadLib`。
+   * 默认开启；传 `false` 可整体关闭。
    */
   remoteImports?: boolean | RemoteImportsOptions;
   /**

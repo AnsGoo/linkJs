@@ -16,7 +16,12 @@ import {
   toRemoteImportId,
   type RemoteImportRegistry,
 } from './remote-imports.js';
-import { buildRuntimeBootstrap, PRELOAD_GLOBAL, REMOTE_HOSTS_GLOBAL } from './runtime-bootstrap.js';
+import {
+  buildRuntimeBootstrap,
+  PRELOAD_GLOBAL,
+  REMOTE_HOSTS_GLOBAL,
+  selectRemoteImportNames,
+} from './runtime-bootstrap.js';
 import path from 'path';
 
 export type {
@@ -57,13 +62,26 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
   const remoteImportsShadow = typeof remoteImports === 'object' && remoteImports ? remoteImports.shadow === true : false;
   const remoteImportRegistry: RemoteImportRegistry = new Map();
 
+  /**
+   * 允许 `import { X } from '<remote>'` 语法的远程名集合。
+   * 只有声明了 `preload`（构建期注入预加载）的 remote 才支持；未声明的按 lazy 处理，
+   * 只能用运行时的 `loadRemote` / `loadLib` 主动加载。
+   */
+  function eligibleImportNames(): Set<string> {
+    return new Set(selectRemoteImportNames(consumeTypes?.remotes));
+  }
+
   /** 用最新 consumeTypes 结果刷新远程注册表（dev 下类型刷新时同步更新 exposes）。 */
   function syncRemoteImports(result?: ConsumeTypesResult): void {
     remoteImportRegistry.clear();
     if (!remoteImportsEnabled || !result) {
       return;
     }
+    const eligible = eligibleImportNames();
     for (const info of result.remotes) {
+      if (!eligible.has(info.name)) {
+        continue;
+      }
       remoteImportRegistry.set(info.name, { name: info.name, host: info.host, exposes: info.exposes });
     }
   }
@@ -386,7 +404,8 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
         if (!remoteImportsEnabled) {
           return;
         }
-        const names = (consumeTypes?.remotes ?? []).map((remote) => remote.name);
+        // 只有声明 preload 的 remote 支持 import 语法；lazy 的走运行时 loadRemote。
+        const names = selectRemoteImportNames(consumeTypes?.remotes);
         if (names.length === 0) {
           return;
         }

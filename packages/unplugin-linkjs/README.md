@@ -201,8 +201,8 @@ Behaviour:
 
 ## Remote component imports (`remoteImports`)
 
-With `consumeTypes.remotes` configured, the host can import remote components directly by remote
-name (no wrapper component, no manual `createRemoteComponent`):
+For a remote that opts into preloading (`preload`), the host can import its components directly by
+remote name (no wrapper component, no manual `createRemoteComponent`):
 
 ```ts
 import { HelloWorld as RemoteHelloWorld } from 'remoteApp';
@@ -211,6 +211,10 @@ import { HelloWorld as RemoteHelloWorld } from 'remoteApp';
 ```html
 <RemoteHelloWorld msg="hi" :age="18" />
 ```
+
+Only remotes declared with `consumeTypes.remotes[].preload` get the import syntax. Remotes without
+`preload` are treated as **lazy** and cannot be statically imported — load them at runtime with
+`loadRemote('<remote>/<Expose>')` / `loadLib(...)` instead.
 
 How it works:
 
@@ -226,8 +230,15 @@ Options:
 
 ```ts
 unpluginLinkjs.vite({
-  consumeTypes: { remotes: [{ name: 'remoteApp', manifestUrl: 'http://localhost:8081/mf/manifest.json' }] },
-  // disable: remoteImports: false
+  consumeTypes: {
+    remotes: [
+      // preload: also enables the `import { X } from 'remoteApp'` syntax
+      { name: 'remoteApp', manifestUrl: 'http://localhost:8081/mf/manifest.json', preload: { prefetch: true } },
+      // lazy: no import syntax, use loadRemote at runtime
+      { name: 'remoteWidgets', manifestUrl: 'http://cdn/widgets/manifest.json' },
+    ],
+  },
+  // disable import syntax entirely: remoteImports: false
   remoteImports: { shadow: true }, // render imported components inside the remote's shadow root
 });
 ```

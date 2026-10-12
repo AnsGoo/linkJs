@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildRuntimeBootstrap } from '../src/runtime-bootstrap';
+import { buildRuntimeBootstrap, selectRemoteImportNames } from '../src/runtime-bootstrap';
 
 describe('buildRuntimeBootstrap', () => {
   it('derives hosts from host override or manifestUrl origin', () => {
@@ -45,5 +45,17 @@ describe('buildRuntimeBootstrap', () => {
       { name: 'r', manifestUrl: 'http://cdn/r/manifest.json', preload: true },
     ]);
     expect(preloads).toEqual([{ name: 'r', manifestUrl: 'http://cdn/r/manifest.json', host: 'http://cdn' }]);
+  });
+});
+
+describe('selectRemoteImportNames', () => {
+  it('only returns remotes that opted into preload (lazy ones excluded)', () => {
+    expect(
+      selectRemoteImportNames([
+        { name: 'eager', manifestUrl: 'http://cdn/eager/manifest.json', preload: true },
+        { name: 'lazy', manifestUrl: 'http://cdn/lazy/manifest.json' },
+        { name: 'eager2', manifestUrl: 'http://cdn/e2/manifest.json', preload: { prefetch: true } },
+      ]),
+    ).toEqual(['eager', 'eager2']);
   });
 });

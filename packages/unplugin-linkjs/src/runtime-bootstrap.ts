@@ -11,6 +11,14 @@ export interface RuntimeBootstrap {
   preloads: Record<string, unknown>[];
 }
 
+/**
+ * 允许 `import { X } from '<remote>'` 语法的远程名。
+ * 只有声明了 `preload` 的 remote 才支持；lazy 的只能用运行时 `loadRemote`/`loadLib`。
+ */
+export function selectRemoteImportNames(remotes: RemoteTypeTarget[] = []): string[] {
+  return remotes.filter((target) => target.preload).map((target) => target.name);
+}
+
 function originOf(url: string | undefined): string | undefined {
   if (!url) {
     return undefined;
