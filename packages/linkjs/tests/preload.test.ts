@@ -78,7 +78,7 @@ test('applies declared shareScope from the manifest onto the registered remote',
     json: async () => ({ name: 'RemoteApp', shareScope: ['ui', 'global'], publicPath: 'https://cdn.example.com/remote/' }),
   }));
 
-  await preloadRemote({ manifestUrl: 'http://localhost:8080/manifest.json', name: 'remoteApp' });
+  await preloadRemote({ manifestUrl: 'http://localhost:8081/manifest.json', name: 'remoteApp' });
 
   const remote = linkInstance.remotes.get('remoteApp');
   expect(remote?.displayName).toBe('RemoteApp');
@@ -93,8 +93,8 @@ test('skips the network when already prefetched (snapshot)', async () => {
   }));
   (globalThis as any).fetch = fetchMock;
 
-  await preloadRemote({ manifestUrl: 'http://localhost:8080/manifest.json', name: 'remoteApp' });
-  const second = await preloadRemote({ manifestUrl: 'http://localhost:8080/manifest.json', name: 'remoteApp' });
+  await preloadRemote({ manifestUrl: 'http://localhost:8081/manifest.json', name: 'remoteApp' });
+  const second = await preloadRemote({ manifestUrl: 'http://localhost:8081/manifest.json', name: 'remoteApp' });
 
   expect(fetchMock).toHaveBeenCalledTimes(1);
   expect(second.name).toBe('RemoteApp');
@@ -105,7 +105,7 @@ test('skips everything when the remote is already loaded', async () => {
   const fetchMock = vi.fn();
   (globalThis as any).fetch = fetchMock;
 
-  const manifest = await preloadRemote({ manifestUrl: 'http://localhost:8080/manifest.json', name: 'remoteApp' });
+  const manifest = await preloadRemote({ manifestUrl: 'http://localhost:8081/manifest.json', name: 'remoteApp' });
 
   expect(fetchMock).not.toHaveBeenCalled();
   expect(manifest.name).toBe('remoteApp');
@@ -118,8 +118,8 @@ test('force refreshes even when already prefetched', async () => {
   }));
   (globalThis as any).fetch = fetchMock;
 
-  await preloadRemote({ manifestUrl: 'http://localhost:8080/manifest.json', name: 'remoteApp' });
-  await preloadRemote({ manifestUrl: 'http://localhost:8080/manifest.json', name: 'remoteApp', force: true });
+  await preloadRemote({ manifestUrl: 'http://localhost:8081/manifest.json', name: 'remoteApp' });
+  await preloadRemote({ manifestUrl: 'http://localhost:8081/manifest.json', name: 'remoteApp', force: true });
 
   expect(fetchMock).toHaveBeenCalledTimes(2);
 });

@@ -169,7 +169,7 @@ declaration that types `loadRemote('remote/Expose')`:
 unpluginLinkjs.vite({
   consumeTypes: {
     remotes: [
-      { name: 'remoteApp', manifestUrl: 'http://localhost:8080/manifest.json' },
+      { name: 'remoteApp', manifestUrl: 'http://localhost:8081/manifest.json' },
     ],
   },
 });

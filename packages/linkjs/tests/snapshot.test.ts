@@ -34,12 +34,12 @@ describe('remoteSnapshot / globalSnapshot', () => {
 
   test('reflects the prefetched manifest and assets', async () => {
     mockManifest();
-    await preloadRemote({ manifestUrl: 'http://localhost:8080/manifest.json', name: 'remoteApp' });
+    await preloadRemote({ manifestUrl: 'http://localhost:8081/manifest.json', name: 'remoteApp' });
 
     const snap = remoteSnapshot('remoteApp');
     expect(snap?.prefetched).toBe(true);
-    expect(snap?.manifestUrl).toBe('http://localhost:8080/manifest.json');
-    expect(snap?.assets).toEqual(['http://localhost:8080/a.js', 'http://localhost:8080/s.css']);
+    expect(snap?.manifestUrl).toBe('http://localhost:8081/manifest.json');
+    expect(snap?.assets).toEqual(['http://localhost:8081/a.js', 'http://localhost:8081/s.css']);
     // 仅预取、尚未加载
     expect(snap?.status).toBe('unloaded');
   });
@@ -53,7 +53,7 @@ describe('remoteSnapshot / globalSnapshot', () => {
       displayName: 'RemoteApp',
     });
 
-    await preloadRemote({ manifestUrl: 'http://localhost:8080/manifest.json', name: 'remoteApp' });
+    await preloadRemote({ manifestUrl: 'http://localhost:8081/manifest.json', name: 'remoteApp' });
 
     expect(fetchMock).not.toHaveBeenCalled();
     expect(remoteSnapshot('remoteApp')?.status).toBe('loaded');
@@ -62,7 +62,7 @@ describe('remoteSnapshot / globalSnapshot', () => {
   test('globalSnapshot includes registered and prefetched remotes with a version', async () => {
     mockManifest();
     linkInstance.remotes.set('other', { name: 'other', entry: '/', status: LOAD_STATUS.UNLOADED });
-    await preloadRemote({ manifestUrl: 'http://localhost:8080/manifest.json', name: 'remoteApp' });
+    await preloadRemote({ manifestUrl: 'http://localhost:8081/manifest.json', name: 'remoteApp' });
 
     const snap = globalSnapshot();
     expect(Object.keys(snap.remotes).sort()).toEqual(['other', 'remoteApp']);

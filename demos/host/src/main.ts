@@ -61,14 +61,14 @@ preloadRemote({
 const prepareRemoteMeta = () =>
   preloadRemote({
     name: 'remoteApp',
-    host: 'http://localhost:8080',
-    manifestUrl: 'http://localhost:8080/manifest.json',
+    host: 'http://localhost:8081',
+    manifestUrl: 'http://localhost:8081/manifest.json',
   }).catch(() => undefined);
 
 // 加载远程模块的函数
 function loadRemoteModule() {
   return loadApp('remoteApp', {
-    host: 'http://localhost:8080',
+    host: 'http://localhost:8081',
     sandbox: true,
     // 与 createRemoteApp 一致：预加载即启用 shadow，样式在捕获窗口内进入影子树
     shadow: true,

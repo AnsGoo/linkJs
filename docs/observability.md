@@ -88,7 +88,7 @@ interface LoadMetric { entry: string; kind: 'app' | 'lib' | 'remote'; host?: str
 ```
 
 - 记录每次远程加载耗时/结果（含 retry 各次尝试）；`afterLoadShare(name, module, durationMs)` 记录共享依赖耗时。
-- 控制台输出：`[linkjs] ✓ load "remote" @http://localhost:8080 (app) 358ms`、`[linkjs] ⇄ share "vue" 5ms`。
+- 控制台输出：`[linkjs] ✓ load "remote" @http://localhost:8081 (app) 358ms`、`[linkjs] ⇄ share "vue" 5ms`。
 - `loggerPlugin({ log, prefix, collect })` 可自定义。
 
 ## 8. 事件总线

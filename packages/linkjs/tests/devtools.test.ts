@@ -27,7 +27,7 @@ beforeEach(() => {
 });
 
 test('buildSnapshot reports remotes / shares / plugins', () => {
-  registerRemote({ name: 'remote', entry: 'http://localhost:8080/index.html' });
+  registerRemote({ name: 'remote', entry: 'http://localhost:8081/index.html' });
   registerShare({ vue: { name: 'vue', version: '3.5.0', singleton: true, requiredVersion: '^3.0.0', lib: {} } });
 
   const snapshot = buildSnapshot(linkInstance);

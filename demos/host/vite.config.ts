@@ -27,7 +27,7 @@ export default defineConfig({
         // 放到 node_modules 或仅靠根级 include 时 IDE 可能不刷新。
         dtsFile: 'src/linkjs-remotes.d.ts',
         remotes: [
-          { name: 'remoteApp', manifestUrl: 'http://localhost:4002/mf/manifest.json' },
+          { name: 'remoteApp', manifestUrl: 'http://localhost:8081/mf/manifest.json' },
           { name: 'remote-lib', manifestUrl: 'http://localhost:4001/mf/manifest.json' },
         ],
       },

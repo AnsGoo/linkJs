@@ -15,7 +15,7 @@
           instance: { id: 'mock-123', name: 'linkjs', version: '1.0.0', mode: 'development', shareStrategy: 'version-first' },
           remotes: [
             {
-              name: 'remoteApp', displayName: 'RemoteApp', type: 'app', status: 'loaded', host: 'http://localhost:8080',
+              name: 'remoteApp', displayName: 'RemoteApp', type: 'app', status: 'loaded', host: 'http://localhost:8081',
               shareScope: ['global'],
               shared: { vue: { version: '3.5.0', scope: 'global', singleton: true } },
               integrity: { 'index.js': 'sha384-AAAA' },
@@ -41,7 +41,7 @@
             { name: 'linkjs-logger', description: '加载指标', enabled: true },
           ],
           metrics: [
-            { entry: 'remoteApp', kind: 'app', host: 'http://localhost:8080', durationMs: 358, status: 'loaded', time: now },
+            { entry: 'remoteApp', kind: 'app', host: 'http://localhost:8081', durationMs: 358, status: 'loaded', time: now },
             { entry: 'remote-lib/HelloWorld', kind: 'lib', host: 'http://localhost:4001', durationMs: 88, status: 'error', time: now },
           ],
           perf: [
