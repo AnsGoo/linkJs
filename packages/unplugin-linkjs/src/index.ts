@@ -396,6 +396,34 @@ export const unpluginLinkjs = createUnplugin((options: UnpluginLinkjsOptions = {
           optimizeDeps: { exclude: names },
         };
       },
+      // 构建期注入「远程名 -> 运行时基址」映射（linkjs 常量 __linkjs_remote_hosts__），
+      // 使 loadApp/createRemoteApp/preloadRemote 等无需在每个调用点重复传 host。
+      transformIndexHtml() {
+        const hosts: Record<string, string> = {};
+        for (const target of consumeTypes?.remotes ?? []) {
+          let host = target.host;
+          if (!host && target.manifestUrl) {
+            try {
+              host = new URL(target.manifestUrl).origin;
+            } catch {
+              host = undefined;
+            }
+          }
+          if (host) {
+            hosts[target.name] = host;
+          }
+        }
+        if (Object.keys(hosts).length === 0) {
+          return;
+        }
+        return [
+          {
+            tag: 'script',
+            injectTo: 'head-prepend' as const,
+            children: `globalThis.__linkjs_remote_hosts__=${JSON.stringify(hosts)};`,
+          },
+        ];
+      },
       transform: createTransform('dev'),
       configResolved(config: { command?: string }) {
         isServe = config.command === 'serve';

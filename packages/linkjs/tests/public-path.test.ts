@@ -43,6 +43,20 @@ describe('resolvePublicPath', () => {
     );
   });
 
+  it('falls back to the build-time injected remote host', async () => {
+    (globalThis as any).__linkjs_remote_hosts__ = { r: 'http://localhost:8081' };
+    expect(await resolvePublicPath({ name: 'r', entry: '' }, 'r')).toBe('http://localhost:8081');
+    delete (globalThis as any).__linkjs_remote_hosts__;
+  });
+
+  it('prefers the registered host over the injected one', async () => {
+    (globalThis as any).__linkjs_remote_hosts__ = { r: 'http://localhost:8081' };
+    expect(await resolvePublicPath({ name: 'r', entry: '', host: 'http://localhost:4001' }, 'r')).toBe(
+      'http://localhost:4001',
+    );
+    delete (globalThis as any).__linkjs_remote_hosts__;
+  });
+
   it('resolves a relative publicPath against the current page', async () => {
     expect(await resolvePublicPath({ name: 'r', entry: '', publicPath: '/cdn/' }, 'r')).toBe('https://host.app/cdn/');
   });

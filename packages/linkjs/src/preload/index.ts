@@ -1,4 +1,5 @@
 import { getRemoteInfo } from '../loader';
+import { getInjectedRemoteHost } from '../loader/utils';
 import { selectRemoteSource } from '../loader/source';
 import { LOAD_STATUS } from '../event-bus/constant';
 import { runHook } from '../plugins';
@@ -112,7 +113,7 @@ async function resolveManifestUrl(options: PreloadRemoteOptions): Promise<string
     const source = await selectRemoteSource(info, options.name);
     host = source?.publicPath || source?.host;
   }
-  host = host || info?.host;
+  host = host || info?.host || (options.name ? getInjectedRemoteHost(options.name) : undefined);
   if (!host) {
     throw new Error('[linkjs] preloadRemote requires `manifestUrl`, `host`, or a registered remote `name`');
   }

@@ -1,4 +1,5 @@
 import { getInstance } from '..';
+import { __LINKJS_REMOTE_HOSTS__ } from '../constant';
 import { LIB_EXPOSE } from '../event-bus/constant';
 import { getShadowRoot } from '../sandbox/shadow';
 import type { RegistryOption, RemoteEntry, RemoteInfo, RemoteSource } from '../state/instance';
@@ -55,6 +56,16 @@ function isAbsoluteUrl(value: string): boolean {
   return /^[a-z][a-z0-9+.-]*:\/\//i.test(value) || value.startsWith('//');
 }
 
+/** 读取构建期注入的远程基址映射（`unplugin-linkjs` 依据 `consumeTypes.remotes` 写入）。 */
+function getInjectedRemoteHost(appName: string): string | undefined {
+  const store = (globalThis as Record<string, unknown>)[__LINKJS_REMOTE_HOSTS__];
+  if (!store || typeof store !== 'object') {
+    return undefined;
+  }
+  const host = (store as Record<string, unknown>)[appName];
+  return typeof host === 'string' && host ? host : undefined;
+}
+
 /** 把相对基址解析为绝对 URL；绝对基址原样返回（不改动尾斜杠语义）。 */
 function toAbsoluteBase(value: string): string {
   if (isAbsoluteUrl(value) || typeof location === 'undefined') {
@@ -101,7 +112,8 @@ async function resolvePublicPath(remoteInfo: RegistryOption, appName: string, ex
       resolved = await instanceResolver(ctx);
     }
   }
-  resolved = resolved || selectedSource?.host || remoteInfo.host || defaultPublicPath;
+  // 回退顺序：注册信息里的 host > 构建期注入的 host（consumeTypes.remotes）> 当前页面 origin。
+  resolved = resolved || selectedSource?.host || remoteInfo.host || getInjectedRemoteHost(appName) || defaultPublicPath;
   return toAbsoluteBase(resolved);
 }
 
@@ -305,5 +317,5 @@ function useHandleExpose<M = unknown>(
   return handler;
 }
 
-export { loadCss, preloadModule, loadScript, rewriteRequestUrl, getRemoteInfo, resolveEntryConfig, resolveShareScopes, resolvePublicPath, useGetRemote, useHandleExpose, withShareProvider };
+export { loadCss, preloadModule, loadScript, rewriteRequestUrl, getRemoteInfo, getInjectedRemoteHost, resolveEntryConfig, resolveShareScopes, resolvePublicPath, useGetRemote, useHandleExpose, withShareProvider };
 export type { LoadScriptOptions, ResourceSecurityOptions, RemoteCache };
