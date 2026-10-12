@@ -17,6 +17,9 @@
     "build:ext": "pnpm --filter linkjs-devtools-extension build",
     "dev:ext": "pnpm --filter linkjs-devtools-extension dev",
     "prepare": "pnpm run build",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs",
     "test": "pnpm -r --filter \"./packages/*\" run test",
     "typecheck": "pnpm -r --filter \"./packages/*\" run typecheck",
     "lint": "oxlint",
@@ -27,6 +30,7 @@
   "devDependencies": {
     "oxfmt": "^0.28.0",
     "oxlint": "^1.87.0",
-    "tsdown": "^0.21.10"
+    "tsdown": "^0.21.10",
+    "vitepress": "^1.6.4"
   }
 }

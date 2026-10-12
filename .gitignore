@@ -17,3 +17,7 @@ lib/
 
 # devtools-extension build output
 tools/devtools-extension/dist
+
+# VitePress
+docs/.vitepress/dist
+docs/.vitepress/cache

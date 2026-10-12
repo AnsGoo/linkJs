@@ -89,9 +89,50 @@
 
 ## H. 文档 / 示例
 
-- [ ] **H1 文档站/指南**：HMR、Shadow 隔离、插件开发、清单/预加载。`[中 / 中]`
-- [ ] **H2 插件开发指南**（写自定义插件 + 加入目录）。`[中 / 小]`
-- [ ] **H3 示例矩阵**：React 宿主、多子应用、路由级预取。`[中 / 中]`
+> 目标：外部团队「看得懂、跑得起来、能扩展」。分三块：文档站（H1）、插件指南（H2）、示例矩阵（H3）。
+> 现状：`docs/` 已有深度设计文档（HMR / 类型 / 可观测 / 远程依赖），demo 有 Vue 宿主 + 2 个子应用；
+> 缺站点、缺 React、缺插件教程。
+>
+> 决策：站点用 **VitePress**；**暂不实现** `@linkjs/bridge`（React 先走 core-only 最小适配）；
+> H1.7 先写**占位 API 页**，不阻塞 F1/typedoc。
+
+### H1 文档站 / 指南 `[中 / 中]`
+
+- [x] **H1.0 文档站脚手架**：**VitePress**（`docs/.vitepress/config.mts`）+ 导航/侧栏 + `docs:dev`/`docs:build`/`docs:preview`。`[中 / 小]`
+  - [ ] 待办：GitHub Pages 部署 + CI 死链校验。
+- [ ] **H1.1 快速开始**：安装、最小宿主 + 最小远端、dev/build 跑通（初稿已建 `docs/guide/getting-started.md`；待补截图）。`[高 / 小]`
+- [ ] **H1.2 集成模式**：路线 A（构建期 `import` / `createRemoteComponent`）、路线 B（`createRemoteApp`）、运行时 `loadRemote` / `loadLib`（初稿已建 `docs/guide/integration-modes.md`）。`[高 / 小]`
+- [ ] **H1.3 样式隔离（Shadow）**：捕获窗口与并发加载、`Teleport`/portal 逃逸边界、dev/build 一致性。`[中 / 中]`
+- [ ] **H1.4 HMR 与类型热更新**：`REMOTE_UPDATE`、`/__linkjs/events` SSE `types-changed`、dev 生产者契约（`tsdown-plugin-server`）。`[中 / 中]`
+- [ ] **H1.5 清单 / 预加载**：manifest 字段、`entry.assets`、`preloadRemote`、`consumeTypes.remotes[].preload`。`[中 / 小]`
+- [ ] **H1.6 类型转发**：`consumeTypes` + `remoteImports` + tsconfig 纳入（对齐 A1 / `dts-type-forwarding.md`）。`[中 / 小]`
+- [ ] **H1.7 API 参考**：先写**占位 API 页**（已建 `docs/api/index.md`，含核心导出表）；后续再接 typedoc（F1）。`[中 / 小]`
+- **验收**：`pnpm --filter docs build` 通过；CI 死链校验；每篇指南挂一个可运行 demo 链接。
+
+### H2 插件开发指南 `[中 / 小]`
+
+- [ ] **H2.1 插件契约**：`RuntimePlugin` 全钩子清单 + 生命周期图（`init` / `beforeLoadRemote` / `afterResolve` / `beforeLoadContainer` / `beforeLoadEntry` / `afterLoadEntry` / `afterLoadContainer` / `onLoad` / `beforeLoadShare` / `afterLoadShare` / `beforePreloadRemote` / `errorLoadRemote` + `apply` 包装 `loadApp`/`loadLib`/`loadRemote`）。`[中 / 小]`
+- [ ] **H2.2 示例插件**：`examples/plugin-analytics`，演示加载埋点与 `apply` 包装。`[中 / 小]`
+- [ ] **H2.3 加入目录**：扩展 `availablePlugins`（catalog）+ DevTools 面板展示自定义插件（依赖 C4a）。`[低 / 小]`
+- [ ] **H2.4 插件测试模板**：单测桩 + 文档片段。`[低 / 小]`
+- **验收**：照文档从零新增一个插件 → 面板可见、单测通过、类型通过。
+
+### H3 示例矩阵 `[中 / 中]`
+
+- [ ] **H3.1 React 宿主**：`demos/host-react`（Vite + React），基于核心 `loadRemote`/`getRemote` + 最小 React 适配（`useRemoteComponent`）。**先不实现 `@linkjs/bridge`（J1）**。`[中 / 中]`
+- [ ] **H3.2 多子应用**：一个宿主挂 2+ 远端，含 remote→remote（对齐 `remote-dependencies.md`）。`[中 / 小]`
+- [ ] **H3.3 路由级预取**：切路由时 `preloadRemote` / 复用 B1 preload 插件。`[中 / 小]`（依赖 B1）
+- [ ] **H3.4 跨构建器**：Vite 宿主 + tsdown/rolldown 子应用（`remote-lib` 已具雏形，补 README 与脚本）。`[低 / 小]`
+- [ ] **H3.5 示例导航**：`demos/README.md` + 一键编排启动脚本。`[低 / 小]`
+- **验收**：每个示例独立 `pnpm dev` 可起、含 README；冒烟 e2e 覆盖（对齐 G2）。
+
+**H 依赖 / 建议顺序**：
+
+1. 先做 **H1.0 + H1.1 + H1.2**（能力已就绪，最快见效）。
+2. 再补 **H3.2 / H3.3**（多应用 + 路由预取，复用现有 demo 与 B1）。
+3. 然后 **H1.3–H1.6、H2**（把已有设计文档整理为对外指南 + 插件教程）。
+4. **H1.7 API 参考**：先出占位页（不依赖 F1）；**H3.1 React** 靠后（core-only，不依赖 J1 bridge）。
+5. 前置：**I4**（同步过时文档）与 **C4a**（插件操作入口）尽早做，避免文档站发布过期内容。
 
 ## I. 仓库 / Demo 清理
 
