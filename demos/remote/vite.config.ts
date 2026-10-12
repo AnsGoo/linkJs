@@ -38,13 +38,8 @@ const linkjsDevPlugins = (Array.isArray(linkjsVitePlugin) ? linkjsVitePlugin : [
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
-    vue({
-      // 跨子应用唯一化 scoped id（详见 host/vite.config.ts 注释）
-      features: {
-        componentIdGenerator: (normalizedPath: string, _source: string, _isProd: boolean, getHash: (t: string) => string) =>
-          getHash(`${normalizedPath}:remote`),
-      },
-    }),
+    // 保留 vue()，仅用 unpluginLinkjs.vueOptions() 补充 per-app scoped id（详见 host/vite.config.ts 注释）
+    vue(unpluginLinkjs.vueOptions()),
     // dev 模式下把共享依赖 import 重写为 $linkjs.loadShare，使子应用复用宿主（主应用）的实例
     ...linkjsDevPlugins,
   ],

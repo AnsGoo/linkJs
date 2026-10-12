@@ -3,7 +3,7 @@ import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
 import { defineConfig } from 'tsdown';
 import VuePlugin from 'unplugin-vue/rolldown';
-import { unpluginLinkjsRollowPlugin } from 'unplugin-linkjs';
+import { unpluginLinkjs, unpluginLinkjsRollowPlugin } from 'unplugin-linkjs';
 import tsdownPluginServer from 'tsdown-plugin-server';
 import * as Vue from 'vue';
 
@@ -63,9 +63,12 @@ export default defineConfig({
   external: [],
   noExternal: ['vue', 'pinia', 'vue-router'],
   plugins: [
-    VuePlugin({
-      isProduction: true,
-    }),
+    // 保留 VuePlugin()，仅用 unpluginLinkjs.vueOptions() 补充 per-app scoped id 作用域
+    VuePlugin(
+      unpluginLinkjs.vueOptions({
+        isProduction: true,
+      }),
+    ),
     unpluginLinkjsRollowPlugin({
       shared: {
         vue: {

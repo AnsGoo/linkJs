@@ -8,14 +8,9 @@ import { linkjsSharedVersions, unpluginLinkjs } from 'unplugin-linkjs';
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
-    vue({
-      // 跨子应用唯一化 scoped id：plugin-vue dev 默认只 hash 相对路径，
-      // 不同应用相同路径的组件会得到相同 scopeId 导致样式互相覆盖。
-      features: {
-        componentIdGenerator: (normalizedPath: string, _source: string, _isProd: boolean, getHash: (t: string) => string) =>
-          getHash(`${normalizedPath}:host`),
-      },
-    }),
+    // 保留 vue()，仅用 unpluginLinkjs.vueOptions() 补充 per-app 的 scoped id 作用域，
+    // 避免不同应用相同相对路径的组件 scopeId 冲突（样式互相覆盖）。
+    vue(unpluginLinkjs.vueOptions()),
     vueJsx(),
     vueDevTools(),
     // 注入已安装的共享依赖版本（globalThis.__LINKJS_SHARED_VERSIONS__），运行时自动补齐
