@@ -1,6 +1,6 @@
 import { getInstance, loadShare } from '..';
 import { LIB_EXPOSE } from '../event-bus/constant';
-import { beginStyleCapture, endStyleCapture, ensureShadowTarget } from '../sandbox/shadow';
+import { beginStyleCapture, endStyleCapture, ensureShadowTarget, isShadowSupported } from '../sandbox/shadow';
 import { runBeforeLoadRemote, runHook } from '../plugins';
 import { recordDiagnostic } from '../devtools';
 import { startPhase } from '../perf';
@@ -50,9 +50,9 @@ async function loadRemoteLib<M = unknown>(
   const jsUrl = rewriteRequestUrl(entryName ? new URL(entryName, host).href : host, appName);
   const timeout = options?.timeout ?? 10000;
 
-  // Shadow DOM 隔离：在加载库模块前建立游离影子目标并开启样式捕获，
-  // 使库模块导入时注入的样式进入影子树（由 LinkjsShadowRoot 挂载时接管）。
-  if (options?.shadow) {
+  // Shadow DOM 隔离（默认开启；运行环境不支持 Shadow 时自动降级为非隔离）。
+  const useShadow = Boolean(options?.shadow) && isShadowSupported();
+  if (useShadow) {
     ensureShadowTarget(appName);
     beginStyleCapture(appName);
   }
@@ -116,7 +116,7 @@ async function loadRemoteLib<M = unknown>(
       .catch(fail);
   }).then(
     (result) => {
-      if (options?.shadow) {
+      if (useShadow) {
         endStyleCapture(appName);
       }
       endTotal();
@@ -126,7 +126,7 @@ async function loadRemoteLib<M = unknown>(
       return result;
     },
     (error) => {
-      if (options?.shadow) {
+      if (useShadow) {
         endStyleCapture(appName);
       }
       endTotal();

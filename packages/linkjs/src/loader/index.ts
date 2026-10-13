@@ -92,9 +92,11 @@ function loadOneRemote(name: string, dep: RemoteDependency): Promise<unknown> {
 function loadApp(entry: string, options?: LoadAppOptions): Promise<RemoteModule | null> {
   ensureRemoteUpdates();
   const appName = entry.split('/')[0];
-  return resolveDepsFor(appName, options).then(() => {
+  // 默认开启样式隔离（shadow: true）；显式 `{ shadow: false }` 才关闭。
+  const opts: LoadAppOptions = { ...options, shadow: options?.shadow !== false };
+  return resolveDepsFor(appName, opts).then(() => {
     setRemoteStatus(appName, LOAD_STATUS.LOADING);
-    return useLoadApp<RemoteModule>(remoteCache())(entry, options).then(
+    return useLoadApp<RemoteModule>(remoteCache())(entry, opts).then(
       (result) => {
         setRemoteStatus(appName, LOAD_STATUS.LOADED);
         return result;
@@ -174,9 +176,10 @@ function doUnloadRemote(appName?: string): void {
 function loadLib(entry: string, options?: LoadLibOptions): Promise<RemoteModule | null> {
   ensureRemoteUpdates();
   const appName = entry.split('/')[0];
-  return resolveDepsFor(appName, options).then(() => {
+  const opts: LoadLibOptions = { ...options, shadow: options?.shadow !== false };
+  return resolveDepsFor(appName, opts).then(() => {
     setRemoteStatus(appName, LOAD_STATUS.LOADING);
-    return useLoadRemoteLib<RemoteModule>(remoteCache())(entry, options).then(
+    return useLoadRemoteLib<RemoteModule>(remoteCache())(entry, opts).then(
       (result) => {
         setRemoteStatus(appName, LOAD_STATUS.LOADED);
         return result;

@@ -2,7 +2,7 @@ import { getInstance, loadShare } from '..';
 import { LIB_EXPOSE } from '../event-bus/constant';
 import { activateSandbox } from '../sandbox';
 import { installVueHmrRuntimeShim } from '../hmr';
-import { beginStyleCapture, endStyleCapture, ensureShadowTarget } from '../sandbox/shadow';
+import { beginStyleCapture, endStyleCapture, ensureShadowTarget, isShadowSupported } from '../sandbox/shadow';
 import { runBeforeLoadRemote, runHook } from '../plugins';
 import { recordDiagnostic } from '../devtools';
 import { startPhase } from '../perf';
@@ -87,9 +87,9 @@ async function loadApp<M = unknown>(
 
   const extOption: ExtOption = { modelName };
 
-  // Shadow DOM 隔离：在脚本执行前建立游离影子目标并开启样式捕获，
-  // 即便宿主是「先预加载、后挂载容器」，子应用注入的样式也会进入影子树。
-  if (options?.shadow) {
+  // Shadow DOM 隔离（默认开启；运行环境不支持 Shadow 时自动降级为非隔离）。
+  const useShadow = Boolean(options?.shadow) && isShadowSupported();
+  if (useShadow) {
     ensureShadowTarget(appName);
     beginStyleCapture(appName);
   }
@@ -199,7 +199,7 @@ async function loadApp<M = unknown>(
     // 子应用加载完成（或失败）后立即关闭捕获窗口：子应用样式此时已注入影子树，
     // 若不关闭会把宿主随后注入的样式也误收进影子树。
     (result) => {
-      if (options?.shadow) {
+      if (useShadow) {
         endStyleCapture(appName);
       }
       endTotal();
@@ -209,7 +209,7 @@ async function loadApp<M = unknown>(
       return result;
     },
     (error) => {
-      if (options?.shadow) {
+      if (useShadow) {
         endStyleCapture(appName);
       }
       endTotal();

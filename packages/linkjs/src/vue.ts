@@ -13,7 +13,7 @@ import {
   type ShallowRef,
 } from 'vue';
 import { getRemote, loadApp, loadRemote, subscribeRemoteUpdate, type LoadAppOptions } from './index';
-import { createShadowIsolation, type ShadowIsolation } from './sandbox/shadow';
+import { createShadowIsolation, isShadowSupported, type ShadowIsolation } from './sandbox/shadow';
 
 /**
  * 宿主消费远程组件并响应式重解析 expose。
@@ -29,9 +29,13 @@ function useRemoteModule<C = Component>(entry: string, options?: LoadAppOptions)
     ref.value = (getRemote(entry) as C) ?? null;
   };
 
-  loadApp(appName, options).then(resolve).catch((error) => {
-    console.error(`[linkjs] Failed to load remote "${entry}":`, error);
-  });
+  // `useRemoteModule` 交给宿主用 `<component :is>` 在**普通 DOM** 渲染，故默认 shadow:false
+  // （需要隔离请用 `createRemoteComponent` / `LinkjsShadowRoot`）。
+  loadApp(appName, { ...options, shadow: options?.shadow ?? false })
+    .then(resolve)
+    .catch((error) => {
+      console.error(`[linkjs] Failed to load remote "${entry}":`, error);
+    });
 
   const off = subscribeRemoteUpdate(entry, resolve);
   if (getCurrentScope()) {
@@ -85,11 +89,13 @@ function createRemoteApp(entry: string, options?: CreateRemoteAppOptions) {
           return;
         }
         status.value = 'loading';
-        if (options?.shadow) {
+        // 默认开启样式隔离；显式 `{ shadow: false }` 或不支持 Shadow 时关闭。
+        const useShadow = options?.shadow !== false && isShadowSupported();
+        if (useShadow) {
           iso = createShadowIsolation(el.value, appName);
         }
         try {
-          mod = ((await loadApp(appName, options)) as unknown as MountableModule) || null;
+          mod = ((await loadApp(appName, { ...options, shadow: useShadow })) as unknown as MountableModule) || null;
           const target = iso ? iso.mountPoint : el.value;
           mod?.mount?.(target, { ...attrs });
           mounted = true;
@@ -234,8 +240,8 @@ function createRemoteComponent(entry: string, options?: CreateRemoteComponentOpt
     inheritAttrs: false,
     setup(_props, { attrs, slots }) {
       const comp = shallowRef<Component | null>(null);
-      // 默认开启样式隔离；显式 `{ shadow: false }` 才关闭。
-      const shadow = options?.shadow === false ? null : useShadowSlot(appName);
+      // 默认开启样式隔离；显式 `{ shadow: false }` 或不支持 Shadow 时关闭。
+      const shadow = options?.shadow === false || !isShadowSupported() ? null : useShadowSlot(appName);
       // 影子挂载点迟迟未就绪时的兜底：回退为普通渲染，避免组件“消失”。
       const shadowFallback = ref(false);
       let fallbackTimer: ReturnType<typeof setTimeout> | undefined;

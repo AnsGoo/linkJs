@@ -297,6 +297,22 @@ export function getShadowRoot(name: string): ShadowRoot | undefined {
   return targets.get(name)?.shadow;
 }
 
+let shadowSupport: boolean | undefined;
+
+/** 运行环境是否支持 Shadow DOM（jsdom 等默认不支持，此时自动降级为非隔离）。 */
+export function isShadowSupported(): boolean {
+  if (shadowSupport !== undefined) {
+    return shadowSupport;
+  }
+  try {
+    const el = document.createElement('div') as unknown as { attachShadow?: unknown };
+    shadowSupport = typeof el.attachShadow === 'function';
+  } catch {
+    shadowSupport = false;
+  }
+  return shadowSupport;
+}
+
 /**
  * 销毁某远程的影子目标（在**远程卸载**时调用）：
  * 移除宿主元素、丢弃已捕获样式、结束其捕获窗口；全部目标清空后恢复被 patch 的 DOM 方法。

@@ -4,7 +4,11 @@ export interface LoadBaseOptions {
   host?: string;
   /** 等待 expose 的超时时间（毫秒），默认 10000。 */
   timeout?: number;
-  /** 是否启用 Shadow DOM 样式隔离（配合 `linkjs/vue` 的 `LinkjsShadowRoot` 使用）。 */
+  /**
+   * 是否启用 Shadow DOM 样式隔离。**默认 `true`**（隔离）；显式 `{ shadow: false }` 关闭。
+   * 开启后远端样式被捕获进其影子树，消费端需在**同一影子树**内渲染
+   * （`createRemoteComponent` / `LinkjsShadowRoot` / `createRemoteApp`）。
+   */
   shadow?: boolean;
   /** 中止信号：用于取消入口 HTML 的 fetch（超时/手动中止）。 */
   signal?: AbortSignal;
