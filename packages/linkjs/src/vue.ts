@@ -152,15 +152,24 @@ function useShadowSlot(name: string) {
   let slotEl: HTMLElement | null = null;
 
   onMounted(() => {
-    if (!host.value) {
-      return;
-    }
-    // 不开启捕获窗口：样式由 loadApp/loadLib({ shadow: true }) 在加载期捕获，
-    // 这里只接管挂载点。若开启并立即关闭，会打断其它远程加载的捕获窗口导致样式泄漏。
-    iso = createShadowIsolation(host.value, name, { capture: false });
-    slotEl = document.createElement('div');
-    iso.shadow.appendChild(slotEl);
-    mountPoint.value = slotEl;
+    // 兜底重试：极少数时序下（如过渡/异步路由）`host` 在 onMounted 时可能尚未就绪，
+    // 若直接 return 会导致影子树永不建立 → 组件“消失”。这里有限次重试直到 host 出现。
+    let tries = 0;
+    const setup = () => {
+      if (!host.value) {
+        if (tries++ < 10) {
+          requestAnimationFrame(setup);
+        }
+        return;
+      }
+      // 不开启捕获窗口：样式由 loadApp/loadLib({ shadow: true }) 在加载期捕获，
+      // 这里只接管挂载点。若开启并立即关闭，会打断其它远程加载的捕获窗口导致样式泄漏。
+      iso = createShadowIsolation(host.value, name, { capture: false });
+      slotEl = document.createElement('div');
+      iso.shadow.appendChild(slotEl);
+      mountPoint.value = slotEl;
+    };
+    setup();
   });
   onUnmounted(() => {
     slotEl?.remove();
@@ -225,6 +234,9 @@ function createRemoteComponent(entry: string, options?: CreateRemoteComponentOpt
     setup(_props, { attrs, slots }) {
       const comp = shallowRef<Component | null>(null);
       const shadow = options?.shadow ? useShadowSlot(appName) : null;
+      // 影子挂载点迟迟未就绪时的兜底：回退为普通渲染，避免组件“消失”。
+      const shadowFallback = ref(false);
+      let fallbackTimer: ReturnType<typeof setTimeout> | undefined;
 
       const resolve = () => {
         comp.value = (getRemote(entry) as Component | null) ?? null;
@@ -236,16 +248,28 @@ function createRemoteComponent(entry: string, options?: CreateRemoteComponentOpt
           .catch((error) => {
             console.error(`[linkjs] Failed to load remote component "${entry}":`, error);
           });
+        if (shadow) {
+          fallbackTimer = setTimeout(() => {
+            if (!shadow.mountPoint.value) {
+              shadowFallback.value = true;
+            }
+          }, 800);
+        }
       });
 
       const off = subscribeRemoteUpdate(entry, resolve);
-      onUnmounted(off);
+      onUnmounted(() => {
+        off();
+        if (fallbackTimer) {
+          clearTimeout(fallbackTimer);
+        }
+      });
 
       return () => {
         const inner = comp.value
           ? h(comp.value, { ...attrs }, slots.default ? { default: () => slots.default!() } : undefined)
           : null;
-        if (!shadow) {
+        if (!shadow || shadowFallback.value) {
           return inner;
         }
         return h(
