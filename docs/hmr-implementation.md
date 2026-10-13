@@ -347,15 +347,12 @@ pnpm build
 
 ### 9.2 浏览器实测（Playwright + CDP）
 
+> 注：示例宿主已迁移到 `demos/showcase`（原 `demos/host` / `demos/runtime-registry` 已移除）。
+
 ```bash
 # 主 DEV + 子 DEV
 pnpm --dir demos/remote exec vite --port 8081
-pnpm --dir demos/host exec vite --port 5173
-
-# 主 PROD + 子 DEV
-pnpm build && pnpm --dir demos/runtime-registry exec tsdown
-pnpm --dir demos/host exec vite build
-pnpm --dir demos/host exec vite preview --port 8090
+pnpm --dir demos/showcase exec vite --port 5190
 ```
 
 探针：加载宿主 → 记录导航次数 → 改 `HelloWorld.vue` → 断言文本更新且无整页刷新。实测两场景均通过；路线 B 主 PROD 下 `__VUE_HMR_RUNTIME__.rerender` 被真实 runtime 调用（非 shim）。
@@ -420,5 +417,5 @@ localStorage.setItem('__linkjs_overrides__', JSON.stringify({ remote: 'https://y
 
 ### 12.4 静态宿主 + 本地 dev 子应用（实测）
 
-- 进程：`demos/host/dist` 由静态服务器托管（模拟线上），`demos/remote` 跑 `vite --port 8081`。
+- 进程：`demos/showcase/dist` 由静态服务器托管（模拟线上），`demos/remote` 跑 `vite --port 8081`。
 - 结果：改 `demos/remote/src/components/HelloWorld.vue` → 宿主页面就地更新、无整页刷新（`nav` 不变）。

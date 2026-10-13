@@ -349,8 +349,10 @@ setup() {
 
 ### demos
 
-- 路线 A：`demos/host/src/App.vue` 用 `useRemoteModule` + `<component :is>`；`demos/remote/src/main.ts` 移除手动 reload。
-- 路线 B：`demos/remote/src/main.ts` 改为 `mount/unmount` 契约；`demos/host` 用 `createRemoteApp` 容器。
+> 示例宿主已迁移到 `demos/showcase`（原 `demos/host` 已移除）。
+
+- 路线 A：在 `demos/showcase` 中用 `import { X } from '<remote>'`（`remoteImports`）或 `createRemoteComponent` + `<component :is>`。
+- 路线 B：`demos/remote/src/main.ts` 为 `mount/unmount` 契约；`demos/showcase` 用 `createRemoteApp` 容器。
 
 ---
 
@@ -430,10 +432,7 @@ setup() {
 
 ```bash
 pnpm --dir demos/remote exec vite --port 8081
-pnpm --dir demos/host exec vite --port 5173          # 主 DEV
-# 或
-pnpm build && pnpm --dir demos/runtime-registry exec tsdown && pnpm --dir demos/host exec vite build
-pnpm --dir demos/host exec vite preview --port 8090   # 主 PROD
+pnpm --dir demos/showcase exec vite --port 5190      # 宿主 DEV
 ```
 
 ### 13.4 路线 B 实现记录

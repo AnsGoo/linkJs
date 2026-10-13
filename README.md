@@ -162,11 +162,11 @@ init();
 
 ## 示例
 
-项目包含完整的示例：
+项目包含一套完整示例：
 
-- `demos/remote` - 远程应用示例（Vue 3）
-- `demos/host` - 宿主应用示例（Vue 3）
-- `demos/runtime-registry` - 运行时注册表示例
+- `demos/showcase` - **精美示例集（宿主，多页）**：总览 / 运行时加载 / 构建期 import / 依赖拓扑 / 路由级预取 / 多源灰度 / Shadow 隔离 / 插件机制 / 类型转发 / HMR / 可观测
+- `demos/remote` - 远程应用（remoteApp，声明依赖 `remote-lib`）
+- `demos/remote-lib` - 远程库（vue-components-starter）
 
 ## 开发
 
@@ -180,9 +180,10 @@ pnpm run build
 # 运行测试
 pnpm run test
 
-# 运行示例
-cd demos/remote && pnpm run dev
-cd demos/host && pnpm run dev
+# 运行示例（三个终端）
+pnpm --filter vue-components-starter dev   # remote-lib  :4001
+pnpm --filter RemoteApp dev                # remoteApp   :8081（类型 :4002）
+pnpm dev:showcase                          # 示例集      :5190
 ```
 
 > 说明：各包以 **dist 产物**对外（`exports` 只指向 dist，无 `src` 回退），因此不会出现

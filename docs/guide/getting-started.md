@@ -119,9 +119,10 @@ import { HelloWorld as RemoteHelloWorld } from 'remoteApp';
 ## 5. 跑起来
 
 ```bash
-pnpm --dir demos/remote run dev      # remoteApp：Vite(8081) + 类型服务(4002)
-pnpm --dir demos/remote-lib run dev  # remote-lib(4001)
-pnpm --dir demos/host run dev        # 宿主(5173)
+pnpm --filter vue-components-starter dev   # remote-lib  :4001
+pnpm --filter RemoteApp dev                # remoteApp   :8081（类型服务 :4002）
+pnpm dev:showcase                          # 示例集      :5190
 ```
 
-宿主内置「一个场景一页」的示例：路线 A / B、运行时加载、可观测。
+打开 http://localhost:5190 ：宿主示例集内置「一个场景一页」——
+总览 / 运行时加载 / 构建期 import / 依赖拓扑 / 路由级预取 / 多源灰度 / Shadow 隔离 / 插件机制 / 类型转发 / HMR / 可观测。

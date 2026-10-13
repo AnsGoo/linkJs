@@ -13,7 +13,7 @@
     "url": "git+https://github.com/AnsGoo/linkJs.git"
   },
   "scripts": {
-    "build": "pnpm -r --filter \"./packages/*\" --filter \"runtime-registry\" build",
+    "build": "pnpm -r --filter \"./packages/*\" build",
     "build:ext": "pnpm --filter linkjs-devtools-extension build",
     "dev:ext": "pnpm --filter linkjs-devtools-extension dev",
     "dev:showcase": "pnpm --filter linkjs-showcase dev",
