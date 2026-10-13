@@ -17,7 +17,7 @@ import { createRemoteComponent } from 'linkjs/vue';
 
 export const HelloWorld = /* @__PURE__ */ createRemoteComponent(
   "remoteApp/HelloWorld",
-  { host: "http://localhost:8081", shadow: false },
+  { host: "http://localhost:8081", shadow: true },
 );
 export default { HelloWorld };`;
 </script>

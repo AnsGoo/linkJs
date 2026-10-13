@@ -7,6 +7,7 @@ import { resolveRemoteDeps, releaseRemote, type ResolveDepsContext } from './dep
 import type { RemoteDependency } from '../state/instance';
 import type { LoadOptions } from './options';
 import { deactivateAllSandboxes, deactivateSandbox } from '../sandbox';
+import { disposeShadowTarget } from '../sandbox/shadow';
 import { clearAppHmr, setupHmrIndexing } from '../hmr';
 import type { RemoteModule } from '../types';
 
@@ -155,6 +156,7 @@ function doUnloadRemote(appName?: string): void {
   clearAppHmr(appName);
   if (appName) {
     deactivateSandbox(appName);
+    disposeShadowTarget(appName);
     setRemoteStatus(appName, LOAD_STATUS.UNLOADED);
   } else {
     deactivateAllSandboxes();
@@ -201,6 +203,7 @@ function doUnloadLib(appName?: string): void {
   clearRemoteCache(appName);
   clearAppHmr(appName);
   if (appName) {
+    disposeShadowTarget(appName);
     setRemoteStatus(appName, LOAD_STATUS.UNLOADED);
   }
   if (typeof document === 'undefined') {

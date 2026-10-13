@@ -297,6 +297,26 @@ export function getShadowRoot(name: string): ShadowRoot | undefined {
   return targets.get(name)?.shadow;
 }
 
+/**
+ * 销毁某远程的影子目标（在**远程卸载**时调用）：
+ * 移除宿主元素、丢弃已捕获样式、结束其捕获窗口；全部目标清空后恢复被 patch 的 DOM 方法。
+ *
+ * 注意：**不要**在消费者卸载（路由切换）时调用——同一远程可能仍处于已加载状态，
+ * 其样式只在加载期被捕获一次，目标须保留复用以避免样式丢失。
+ */
+export function disposeShadowTarget(name: string): void {
+  const target = targets.get(name);
+  if (!target) {
+    return;
+  }
+  target.host.remove();
+  targets.delete(name);
+  captureStack = captureStack.filter((item) => item !== target);
+  if (targets.size === 0) {
+    restoreDom();
+  }
+}
+
 export interface CreateShadowIsolationOptions {
   /** ShadowRoot 模式，默认 `open`。 */
   mode?: ShadowRootMode;
@@ -352,16 +372,11 @@ export function createShadowIsolation(
       }
       disposed = true;
       releaseCapture();
-      // 仍有其它消费者持有同一影子树：保留宿主元素，交给最后一个释放者拆除。
       target.refs = Math.max(0, target.refs - 1);
-      if (target.refs > 0) {
-        return;
-      }
-      target.host.remove();
-      targets.delete(name);
-      if (targets.size === 0) {
-        restoreDom();
-      }
+      // 关键：**不**在这里销毁目标。样式只在远程**加载期**被捕获进影子树；
+      // 若消费者卸载（如路由切换）即删除目标，而远程仍处于已加载状态，则新消费者
+      // 会重建一个**空影子树**，样式随之丢失。目标改由远程卸载时统一清理
+      // （见 disposeShadowTarget + loader 的 unload）。
     },
   };
 }
