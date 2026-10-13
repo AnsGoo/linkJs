@@ -19,7 +19,8 @@ interface RemoteRow {
 
 const loading = ref(false);
 const error = ref('');
-const slot = ref<unknown>(null);
+const runtimeSlot = ref<unknown>(null);
+const staticSlot = ref<unknown>(null);
 const snapshot = ref<{ remotes?: RemoteRow[] } | null>(null);
 
 // 只加载 remoteApp；remote-lib 由 remoteApp 声明的依赖触发加载。
@@ -28,7 +29,10 @@ async function load() {
   error.value = '';
   try {
     await loadApp('remoteApp');
-    slot.value = getRemote('remoteApp/RemoteLibSlot');
+    // 运行时（异步）消费：getRemote 拿到依赖方组件
+    runtimeSlot.value = getRemote('remoteApp/RemoteLibSlot');
+    // 构建期（静态 import）消费：remoteApp 内部 `import { HelloWorld } from 'remote-lib'`
+    staticSlot.value = getRemote('remoteApp/RemoteLibStatic');
     refresh();
   } catch (e) {
     error.value = (e as Error)?.message || String(e);
@@ -39,7 +43,8 @@ async function load() {
 
 function unload() {
   unloadRemote('remoteApp');
-  slot.value = null;
+  runtimeSlot.value = null;
+  staticSlot.value = null;
   refresh();
 }
 
@@ -91,8 +96,18 @@ const remotes = computed(() => snapshot.value?.remotes ?? []);
     </table>
 
     <h2>remoteApp 消费 remote-lib</h2>
+    <p class="desc">
+      两种消费方式：<code>RemoteLibSlot</code> 走<strong>运行时异步</strong>
+      （<code>getRemote</code>），<code>RemoteLibStatic</code> 走<strong>构建期静态 import</strong>
+      （remoteApp 内 <code>import { HelloWorld } from 'remote-lib'</code>，且 remote-lib 已在
+      <code>consumeTypes.remotes</code> 声明 <code>preload</code> 预加载）。
+    </p>
     <div class="stage">
-      <component :is="slot" v-if="slot" />
+      <component :is="runtimeSlot" v-if="runtimeSlot" />
+      <span v-else class="muted">点击「加载 remoteApp」后显示。</span>
+    </div>
+    <div class="stage">
+      <component :is="staticSlot" v-if="staticSlot" />
       <span v-else class="muted">点击「加载 remoteApp」后显示。</span>
     </div>
   </main>

@@ -30,6 +30,23 @@ const linkjsVitePlugin = unpluginLinkjs.vite({
   shared,
   // 路线 B：框架生态走自适应 runtime（宿主 DEV 复用共享，宿主 PROD 用子应用自带）
   adaptiveRuntime: ['vue', 'vue-router', 'pinia'],
+  // 构建期消费 remote-lib：拉取类型 + 生成 `import { HelloWorld } from 'remote-lib'` 虚拟模块。
+  // 声明 `preload` 后，remote-lib 被列入构建期预加载（顶层运行时自动 preloadRemote）。
+  consumeTypes: {
+    dtsFile: 'src/linkjs-remotes.d.ts',
+    remotes: [
+      {
+        name: 'remote-lib',
+        host: 'http://localhost:4001',
+        manifestUrl: 'http://localhost:4001/mf/manifest.json',
+        preload: true,
+      },
+    ],
+  },
+  // 写入 manifest.remotes，使宿主加载 remoteApp 前按拓扑先加载 remote-lib（生产构建验证）。
+  remotes: { 'remote-lib': { host: 'http://localhost:4001' } },
+  // 允许 remoteApp 用 `import { HelloWorld } from 'remote-lib'`（静态 import）。
+  remoteImports: { shadow: true },
 });
 const linkjsDevPlugins = (Array.isArray(linkjsVitePlugin) ? linkjsVitePlugin : [linkjsVitePlugin]).map(
   (plugin) => ({ ...plugin, apply: 'serve' as const }),

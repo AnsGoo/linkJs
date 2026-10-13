@@ -1,14 +1,15 @@
 import HelloWorld from './components/HelloWorld.vue';
 import RemoteLibSlot from './components/RemoteLibSlot.vue';
+import RemoteLibStatic from './components/RemoteLibStatic.vue';
 import { expose, shared } from 'linkjs';
 
-export { HelloWorld, RemoteLibSlot };
+export { HelloWorld, RemoteLibSlot, RemoteLibStatic };
 
 // 使用全局的 linkjs 实例
 
 expose(
   'remoteApp',
-  { HelloWorld, RemoteLibSlot },
+  { HelloWorld, RemoteLibSlot, RemoteLibStatic },
   {
     version: '1.0.0',
   },
