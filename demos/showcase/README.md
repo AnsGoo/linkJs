@@ -8,6 +8,9 @@
 | 运行时加载 | `loadApp` + `getRemote` 异步消费；含解析日志与实时状态 |
 | 构建期 import | `import { HelloWorld } from 'remoteApp'`（虚拟模块 + `preload`） |
 | 依赖拓扑 | 实时 SVG 依赖图 + 依赖表 |
+| 路由级预取 | `preloadRemote` 预热远端资源 + `remoteSnapshot`/`globalSnapshot` |
+| 多源灰度 | 多候选源 + `first-healthy` 健康检查/回退（`sourceStrategy` 灰度） |
+| Shadow 隔离 | `createRemoteComponent(..., { shadow: true })` 对比全局样式渗入 |
 | 可观测 | `getSnapshot()` 实时视图：实例 / 依赖 / 共享 / 事件 / 诊断 |
 
 ## 运行

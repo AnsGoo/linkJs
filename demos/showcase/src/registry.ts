@@ -24,6 +24,19 @@ const registry: RegistryOption[] = [
     entry: { js: '/mf/lib.js', shared: '/mf/shared.js' },
     shared: sharedDeps,
   },
+  {
+    // 多源灰度示例：首个源不可用（4999），健康检查会回退到可用源（4001）。
+    name: 'remote-lib-ms',
+    type: 'lib',
+    entry: { js: '/mf/lib.js', shared: '/mf/shared.js' },
+    shared: sharedDeps,
+    sourceStrategy: 'first-healthy',
+    healthCheck: { path: 'mf/manifest.json', timeout: 1200, interval: 0 },
+    sources: [
+      { host: 'http://localhost:4999', labels: { region: 'us', tier: 'canary' } },
+      { host: 'http://localhost:4001', labels: { region: 'cn', tier: 'stable' } },
+    ],
+  },
 ];
 
 export default registry;

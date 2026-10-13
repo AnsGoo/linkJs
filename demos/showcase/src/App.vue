@@ -10,6 +10,9 @@ const nav = [
   { to: '/runtime', label: '运行时加载', icon: 'play' },
   { to: '/static', label: '构建期 import', icon: 'zap' },
   { to: '/topology', label: '依赖拓扑', icon: 'flow' },
+  { to: '/preload', label: '路由级预取', icon: 'download' },
+  { to: '/sources', label: '多源灰度', icon: 'network' },
+  { to: '/shadow', label: 'Shadow 隔离', icon: 'box' },
   { to: '/observability', label: '可观测', icon: 'activity' },
 ];
 
