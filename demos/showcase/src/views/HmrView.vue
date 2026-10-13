@@ -3,6 +3,10 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import CodeBlock from '../components/CodeBlock.vue';
 import { useSnapshot } from '../composables/useSnapshot';
 import { loadApp, subscribeRemoteUpdate } from 'linkjs';
+import { createRemoteComponent } from 'linkjs/vue';
+
+// 构建期/运行时均可；该组件挂载即自动加载，并在远端 HMR 时响应式重解析。
+const RemoteAppHello = createRemoteComponent('remoteApp/HelloWorld', { shadow: false });
 
 interface UpdateRec {
   t: number;
@@ -84,8 +88,9 @@ const off = subscribeRemoteUpdate('remoteApp', (payload) => {
           </span>
         </div>
         <p class="howto">
-          在远端运行中编辑 <code>demos/remote/src/components/HelloWorld.vue</code> 并保存，
-          即可在此看到 <code>REMOTE_UPDATE</code> 记录。
+          在远端运行中编辑 <code>demos/remote/src/components/HelloWorld.vue</code> 并保存：
+          预览区即时更新，同时下方「订阅到的更新」计数 +1（远端在 HMR 后重新 expose，linkjs 广播
+          <code>REMOTE_UPDATE</code>）。
         </p>
       </div>
 
@@ -111,6 +116,13 @@ const off = subscribeRemoteUpdate('remoteApp', (payload) => {
         </ul>
       </div>
     </div>
+
+    <section class="preview">
+      <h3 class="sec">remoteApp / HelloWorld — 编辑远端组件即热更新</h3>
+      <div class="stage panel">
+        <RemoteAppHello msg="HMR 预览：修改远端组件即刻更新" :age="18" name="hmr" sex="male" tst="math" />
+      </div>
+    </section>
   </div>
 </template>
 
@@ -210,6 +222,15 @@ const off = subscribeRemoteUpdate('remoteApp', (payload) => {
 }
 .empty {
   grid-template-columns: 1fr;
+}
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.stage {
+  padding: 18px;
+  min-height: 120px;
 }
 @media (max-width: 860px) {
   .grid {

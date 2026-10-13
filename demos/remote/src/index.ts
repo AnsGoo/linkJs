@@ -20,4 +20,15 @@ function unmount() {
 // 同时暴露组件，供宿主用 getRemote('remoteApp/<Expose>') 消费（路线 A）。
 expose('remoteApp', { mount, unmount, HelloWorld, RemoteLibSlot, RemoteLibStatic }, { version: '1.0.0' });
 
+// 远端组件热更新时**重新 expose**：linkjs 检测到已缓存模块再次暴露，会广播 REMOTE_UPDATE，
+// 宿主（subscribeRemoteUpdate）即可感知。
+// 说明：Vue SFC 会自我 accept（组件级 HMR），因此 `accept(dep, cb)` 不会触发；
+// 这里监听 Vite 的 `vite:afterUpdate`（任意 HMR 更新后）来重新 expose。
+if (import.meta.hot) {
+  import.meta.hot.on('vite:afterUpdate', () => {
+    expose('remoteApp', { mount, unmount, HelloWorld, RemoteLibSlot, RemoteLibStatic }, { version: '1.0.0' });
+    console.log('[remote] re-exposed remoteApp (HMR) → REMOTE_UPDATE');
+  });
+}
+
 export { mount, unmount, HelloWorld, RemoteLibSlot, RemoteLibStatic };

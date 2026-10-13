@@ -14,7 +14,7 @@ withDefaults(
 
 <template>
   <div class="greetings">
-    <h1 class="green">{{ msg }} hot update1232wew</h1>
+    <h1 class="green">{{ msg }} hot update</h1>
     <p>Age: {{ age }}</p>
     <p>Name: {{ name }}</p>
     <p>Sex: {{ sex }}</p>
@@ -32,7 +32,7 @@ h1 {
   font-size: 2.6rem;
   position: relative;
   top: -10px;
-  color:aquamarine
+  color: aquamarine;
 }
 
 h3 {
