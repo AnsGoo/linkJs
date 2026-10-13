@@ -22,8 +22,9 @@ export default defineConfig({
           { name: 'remote-lib', manifestUrl: 'http://localhost:4001/mf/manifest.json', preload: { prefetch: true } },
         ],
       },
-      // `import { HelloWorld } from 'remoteApp'` / `'remote-lib'`
-      remoteImports: { shadow: false },
+      // `import { HelloWorld } from 'remoteApp'` / `'remote-lib'`：
+      // shadow: true → 导入的远程组件连同其样式自动进入影子树（样式隔离）。
+      remoteImports: { shadow: true },
     }),
   ],
   resolve: {
