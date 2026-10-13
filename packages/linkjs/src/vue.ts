@@ -212,10 +212,11 @@ export interface CreateRemoteComponentOptions extends LoadAppOptions {}
  *
  * 内部负责：按 `entry` 加载远程（`loadRemote`，自动区分 app/lib 与 `<remote>/<Expose>`）、
  * 订阅 `REMOTE_UPDATE` 响应式重解析、把宿主 attrs 透传给远程组件。
- * `{ shadow: true }` 时自动把组件渲染进该远程的影子树，**无需**手动包 `LinkjsShadowRoot`。
+ * **默认开启样式隔离**（`shadow: true`）：把组件渲染进该远程的影子树，无需手动包 `LinkjsShadowRoot`；
+ * 传 `{ shadow: false }` 可关闭。
  *
  * ```ts
- * const RemoteHelloWorld = createRemoteComponent('remoteApp/HelloWorld', { shadow: true });
+ * const RemoteHelloWorld = createRemoteComponent('remoteApp/HelloWorld'); // 默认隔离
  * ```
  * ```html
  * <RemoteHelloWorld msg="hi" :age="18" />
@@ -233,7 +234,8 @@ function createRemoteComponent(entry: string, options?: CreateRemoteComponentOpt
     inheritAttrs: false,
     setup(_props, { attrs, slots }) {
       const comp = shallowRef<Component | null>(null);
-      const shadow = options?.shadow ? useShadowSlot(appName) : null;
+      // 默认开启样式隔离；显式 `{ shadow: false }` 才关闭。
+      const shadow = options?.shadow === false ? null : useShadowSlot(appName);
       // 影子挂载点迟迟未就绪时的兜底：回退为普通渲染，避免组件“消失”。
       const shadowFallback = ref(false);
       let fallbackTimer: ReturnType<typeof setTimeout> | undefined;
@@ -243,7 +245,8 @@ function createRemoteComponent(entry: string, options?: CreateRemoteComponentOpt
       };
 
       onMounted(() => {
-        loadRemote(entry, options)
+        // 与渲染一致：默认以 shadow 加载，确保样式被捕获进影子树。
+        loadRemote(entry, { ...options, shadow: options?.shadow !== false })
           .then(resolve)
           .catch((error) => {
             console.error(`[linkjs] Failed to load remote component "${entry}":`, error);

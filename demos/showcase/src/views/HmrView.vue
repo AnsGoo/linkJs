@@ -5,8 +5,8 @@ import { useSnapshot } from '../composables/useSnapshot';
 import { loadApp, subscribeRemoteUpdate } from 'linkjs';
 import { createRemoteComponent } from 'linkjs/vue';
 
-// 构建期/运行时均可；该组件挂载即自动加载，并在远端 HMR 时响应式重解析。
-const RemoteAppHello = createRemoteComponent('remoteApp/HelloWorld', { shadow: false });
+// 构建期/运行时均可；默认开启样式隔离（shadow），挂载即自动加载，并在远端 HMR 时响应式重解析。
+const RemoteAppHello = createRemoteComponent('remoteApp/HelloWorld');
 
 interface UpdateRec {
   t: number;

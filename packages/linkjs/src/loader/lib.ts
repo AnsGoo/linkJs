@@ -58,10 +58,12 @@ async function loadRemoteLib<M = unknown>(
   }
 
   // 加载远程库的样式（`entry.css`）。shadow 模式下经 `loadCss(url, appName)` 注入影子树，否则注入 head。
+  // 不阻塞：样式可能被路由到一个**尚未挂载（游离）**的影子树，此时 <link> 不会触发 onload，
+  // `await` 会永久挂起；交由浏览器异步加载即可（与 `loadApp` 的 CSS 处理一致）。
   const cssEntry = resolveEntryConfig(remoteInfo.entry).css;
   if (cssEntry) {
     const cssUrl = rewriteRequestUrl(new URL(cssEntry, host).href, appName);
-    await loadCss(cssUrl, appName);
+    void loadCss(cssUrl, appName);
   }
 
   // 预加载该远程声明的共享依赖（支持多个共享作用域）
