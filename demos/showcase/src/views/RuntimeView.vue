@@ -83,10 +83,10 @@ function timeStr(t: number) {
   return `${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
 }
 
-const code = `import { loadApp, getRemote, unloadRemote } from 'linkjs';
+const code = `import { loadApp } from 'linkjs';
 
-await loadApp('remoteApp');                       // 拓扑：先 remote-lib，后 remoteApp
-const Slot = getRemote('remoteApp/RemoteLibSlot'); // 消费依赖方组件`;
+// 默认 shadow 隔离：先按拓扑加载依赖 remote-lib，再加载 remoteApp
+await loadApp('remoteApp', { shadow: true });`;
 </script>
 
 <template>

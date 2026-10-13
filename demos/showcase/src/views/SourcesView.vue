@@ -47,7 +47,7 @@ async function load() {
   busy.value = true;
   error.value = '';
   try {
-    await loadLib('remote-lib');
+    await loadLib('remote-lib', { shadow: true });
     loaded.value = true;
   } catch (e) {
     error.value = (e as Error)?.message || String(e);

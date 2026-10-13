@@ -36,7 +36,7 @@ async function load() {
   if (dead.value) return;
   busy.value = true;
   try {
-    await loadApp('remoteApp');
+    await loadApp('remoteApp', { shadow: true });
   } finally {
     busy.value = false;
     refresh();

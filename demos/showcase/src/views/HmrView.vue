@@ -40,7 +40,7 @@ onUnmounted(() => off?.());
 async function load() {
   busy.value = true;
   try {
-    await loadApp('remoteApp');
+    await loadApp('remoteApp', { shadow: true });
     refresh();
   } finally {
     busy.value = false;

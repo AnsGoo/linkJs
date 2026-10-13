@@ -51,7 +51,7 @@ async function loadLazy() {
   notice.value = '';
   try {
     const t = performance.now();
-    await loadApp('remoteApp');
+    await loadApp('remoteApp', { shadow: true });
     timing.value = { ...timing.value, lazy: Math.round(performance.now() - t) };
     loadedOnce.value = true;
     version.value++;
@@ -76,7 +76,7 @@ async function loadPrefetched() {
       force: true,
     });
     const t = performance.now();
-    await loadApp('remoteApp');
+    await loadApp('remoteApp', { shadow: true });
     timing.value = { ...timing.value, prefetched: Math.round(performance.now() - t) };
     loadedOnce.value = true;
     version.value++;

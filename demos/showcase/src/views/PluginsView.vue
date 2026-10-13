@@ -30,7 +30,7 @@ onUnmounted(() => timer && clearInterval(timer));
 async function trigger() {
   busy.value = true;
   try {
-    await loadApp('remoteApp');
+    await loadApp('remoteApp', { shadow: true });
   } finally {
     busy.value = false;
     read();
