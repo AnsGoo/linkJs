@@ -40,3 +40,6 @@ __screenshots__/
 
 test-results/
 playwright-report/
+
+# linkjs consumeTypes 生成的远程类型声明
+src/linkjs-remotes.d.ts
