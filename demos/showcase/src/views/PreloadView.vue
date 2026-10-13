@@ -6,7 +6,6 @@ import { globalSnapshot, loadApp, preloadRemote, remoteSnapshot } from 'linkjs';
 const busy = ref(false);
 const error = ref('');
 const version = ref(0);
-const reveal = ref(false);
 const loadedOnce = ref(false);
 const notice = ref('');
 const timing = ref<{ lazy?: number; prefetched?: number }>({});
@@ -33,7 +32,7 @@ async function preload() {
       force: true,
     });
     version.value++;
-    reveal.value = true;
+    notice.value = '';
   } catch (e) {
     error.value = (e as Error)?.message || String(e);
   } finally {
@@ -142,18 +141,24 @@ await preloadRemote({
           <div class="row"><span class="faint mono">globalSnapshot.version</span><span class="mono tnum">{{ all.version }}</span></div>
         </div>
 
-        <h3 class="sec">预取记录</h3>
-        <ul class="records">
-          <li v-for="r in records" :key="r.name">
-            <span class="mono r-name">{{ r.name }}</span>
-            <span class="mono faint">{{ r.manifestUrl?.replace(/^https?:\/\//, '') }}</span>
-            <span class="mono tnum">{{ r.assets?.length || 0 }} assets</span>
-          </li>
-          <li v-if="!records.length" class="faint empty">预取后列出记录。</li>
-        </ul>
-        <ul class="assets" v-if="reveal && snap?.assets?.length">
-          <li v-for="a in snap.assets" :key="a" class="mono">{{ a.replace('http://localhost:4001', '') }}</li>
-        </ul>
+        <h3 class="sec">预取记录与资源 ({{ records.length }})</h3>
+        <div class="records">
+          <div v-for="r in records" :key="r.name" class="rec">
+            <div class="rec-head">
+              <span class="mono r-name">{{ r.name }}</span>
+              <span class="pill" :class="r.prefetched ? 'is-loaded' : ''">
+                <span class="dot" />{{ r.prefetched ? 'prefetched' : 'idle' }}
+              </span>
+              <span class="mono faint r-url">{{ r.manifestUrl?.replace(/^https?:\/\//, '') }}</span>
+              <span class="mono tnum r-count">{{ r.assets?.length || 0 }} assets</span>
+            </div>
+            <ul class="rec-assets" v-if="r.assets && r.assets.length">
+              <li v-for="a in r.assets" :key="a" class="mono">{{ a.replace(/^https?:\/\/[^/]+/, '') }}</li>
+            </ul>
+            <p v-else class="faint no-assets">该远程 manifest 无 entry.assets（未预取资源）。</p>
+          </div>
+          <p v-if="!records.length" class="faint empty">预取后列出记录。</p>
+        </div>
       </div>
     </div>
   </div>
@@ -248,27 +253,52 @@ await preloadRemote({
 .row:last-child {
   border-bottom: none;
 }
-.records,
-.assets {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  border-top: 1px solid var(--line);
-}
-.records li,
-.assets li {
-  display: grid;
+.records {
+  display: flex;
+  flex-direction: column;
   gap: 12px;
-  padding: 9px 4px;
-  border-bottom: 1px solid var(--line);
+}
+.rec {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+}
+.rec-head {
+  display: grid;
+  grid-template-columns: auto auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+}
+.r-name {
+  font-size: 13px;
+  color: var(--text);
+}
+.r-url {
+  font-size: 11.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.r-count {
   font-size: 12px;
   color: var(--muted);
 }
-.records li {
-  grid-template-columns: 110px 1fr 90px;
+.rec-assets {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 10px 0 0;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
-.assets {
-  margin-top: 8px;
+.rec-assets li {
+  font-size: 12px;
+  color: var(--muted);
+}
+.no-assets {
+  margin-top: 10px;
+  font-size: 12px;
 }
 .error {
   color: var(--danger);

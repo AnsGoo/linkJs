@@ -1,3 +1,8 @@
 <template>
-  <div>Hello2</div>
+  <div>My RemoteLib VerySimple Component</div>
 </template>
+<style lang="css" scoped>
+div {
+  color: aquamarine;
+}
+</style>
