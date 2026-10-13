@@ -33,6 +33,16 @@ async function load() {
   await loadLib('remote-lib-ms');
   loaded.value = true;
 }
+
+const code = `{
+  name: 'remote-lib-ms',
+  sources: [
+    { host: 'http://localhost:4999', labels: { tier: 'canary' } }, // 不可用
+    { host: 'http://localhost:4001', labels: { tier: 'stable' } },
+  ],
+  sourceStrategy: 'first-healthy',
+  healthCheck: { path: 'mf/manifest.json', timeout: 1200 },
+}`;
 </script>
 
 <template>
@@ -47,17 +57,7 @@ async function load() {
 
     <div class="grid">
       <div class="col">
-        <CodeBlock title="registry.ts">
-{
-  name: 'remote-lib-ms',
-  sources: [
-    { host: 'http://localhost:4999', labels: { tier: 'canary' } }, // 不可用
-    { host: 'http://localhost:4001', labels: { tier: 'stable' } },
-  ],
-  sourceStrategy: 'first-healthy',
-  healthCheck: { path: 'mf/manifest.json', timeout: 1200 },
-}
-        </CodeBlock>
+        <CodeBlock title="registry.ts" :code="code" />
         <div class="controls">
           <button class="btn" @click="runHealth">健康检查</button>
           <button class="btn btn-ghost" @click="resolveSource">解析源</button>

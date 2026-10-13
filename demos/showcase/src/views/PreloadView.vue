@@ -36,6 +36,17 @@ async function preload() {
     busy.value = false;
   }
 }
+
+const code = `import { preloadRemote } from 'linkjs';
+
+// 路由守卫 / hover 时触发
+await preloadRemote({
+  name: 'remote-lib',
+  host: 'http://localhost:4001',
+  manifestUrl: 'http://localhost:4001/mf/manifest.json',
+  prefetch: true,   // 连同 exposes 的异步资源一起预热
+  force: true,
+});`;
 </script>
 
 <template>
@@ -50,18 +61,7 @@ async function preload() {
 
     <div class="grid">
       <div class="col">
-        <CodeBlock title="PreloadView.vue">
-import { preloadRemote } from 'linkjs';
-
-// 路由守卫 / hover 时触发
-await preloadRemote({
-  name: 'remote-lib',
-  host: 'http://localhost:4001',
-  manifestUrl: 'http://localhost:4001/mf/manifest.json',
-  prefetch: true,   // 连同 exposes 的异步资源一起预热
-  force: true,
-});
-        </CodeBlock>
+        <CodeBlock title="PreloadView.vue" :code="code" />
         <div class="controls">
           <button class="btn btn-primary" :disabled="busy" @click="preload">
             {{ busy ? '预取中…' : '预取 remote-lib' }}

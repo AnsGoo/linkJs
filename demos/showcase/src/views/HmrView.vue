@@ -40,6 +40,12 @@ function timeStr(t: number) {
   const d = new Date(t);
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
 }
+
+const code = `import { subscribeRemoteUpdate } from 'linkjs';
+
+const off = subscribeRemoteUpdate('remoteApp', (payload) => {
+  console.log('remote updated', payload);
+});`;
 </script>
 
 <template>
@@ -54,13 +60,7 @@ function timeStr(t: number) {
 
     <div class="grid">
       <div class="col">
-        <CodeBlock title="HmrView.vue">
-import { subscribeRemoteUpdate } from 'linkjs';
-
-const off = subscribeRemoteUpdate('remoteApp', (payload) => {
-  console.log('remote updated', payload);
-});
-        </CodeBlock>
+        <CodeBlock title="HmrView.vue" :code="code" />
         <div class="controls">
           <button class="btn btn-primary" :disabled="busy" @click="load">加载 remoteApp</button>
           <span class="pill" :class="remoteApp?.status === 'loaded' ? 'is-loaded' : ''">

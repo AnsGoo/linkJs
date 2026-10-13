@@ -5,6 +5,11 @@ import { createRemoteComponent } from 'linkjs/vue';
 // 同一远程组件，分别以「普通 DOM」与「Shadow DOM」渲染，对比样式隔离效果。
 const Plain = createRemoteComponent('remoteApp/HelloWorld', { shadow: false });
 const Isolated = createRemoteComponent('remoteApp/HelloWorld', { shadow: true });
+
+const code = `import { createRemoteComponent } from 'linkjs/vue';
+
+const Plain = createRemoteComponent('remoteApp/HelloWorld', { shadow: false });
+const Isolated = createRemoteComponent('remoteApp/HelloWorld', { shadow: true });`;
 </script>
 
 <template>
@@ -17,12 +22,7 @@ const Isolated = createRemoteComponent('remoteApp/HelloWorld', { shadow: true })
       </p>
     </header>
 
-    <CodeBlock title="ShadowView.vue">
-import { createRemoteComponent } from 'linkjs/vue';
-
-const Plain = createRemoteComponent('remoteApp/HelloWorld', { shadow: false });
-const Isolated = createRemoteComponent('remoteApp/HelloWorld', { shadow: true });
-    </CodeBlock>
+    <CodeBlock title="ShadowView.vue" :code="code" />
 
     <div class="compare">
       <section class="zone">

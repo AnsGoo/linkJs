@@ -48,6 +48,11 @@ function unload() {
   stamp('unloadRemote("remoteApp") — 引用计数归零，remote-lib 一并卸载');
   refresh();
 }
+
+const code = `import { loadApp, getRemote, unloadRemote } from 'linkjs';
+
+await loadApp('remoteApp');                       // 拓扑：先 remote-lib，后 remoteApp
+const Slot = getRemote('remoteApp/RemoteLibSlot'); // 消费依赖方组件`;
 </script>
 
 <template>
@@ -63,12 +68,7 @@ function unload() {
 
     <div class="grid">
       <div class="col">
-        <CodeBlock title="RuntimeView.vue">
-import { loadApp, getRemote, unloadRemote } from 'linkjs';
-
-await loadApp('remoteApp');           // 拓扑：先 remote-lib，后 remoteApp
-const Slot = getRemote('remoteApp/RemoteLibSlot');  // 消费依赖方组件
-        </CodeBlock>
+        <CodeBlock title="RuntimeView.vue" :code="code" />
 
         <div class="controls">
           <button class="btn btn-primary" :disabled="busy" @click="load">

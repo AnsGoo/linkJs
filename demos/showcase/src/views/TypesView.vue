@@ -15,6 +15,11 @@ onMounted(async () => {
 
 const lines = computed(() => dts.value.split('\n'));
 const preview = computed(() => lines.value.slice(0, 34).join('\n'));
+
+const hostCode = `import { HelloWorld } from 'remoteApp';
+
+// props 类型来自远端的 .d.ts
+<HelloWorld msg="typed" :age="18" name="host" sex="male" />`;
 </script>
 
 <template>
@@ -29,14 +34,9 @@ const preview = computed(() => lines.value.slice(0, 34).join('\n'));
     </header>
 
     <div class="cols">
-      <CodeBlock title="Host · 类型即用">
-import { HelloWorld } from 'remoteApp';
+      <CodeBlock title="Host · 类型即用" :code="hostCode" />
 
-// props 类型来自远端的 .d.ts
-&lt;HelloWorld msg="typed" :age="18" name="host" sex="male" /&gt;
-      </CodeBlock>
-
-      <CodeBlock title="生成的聚合声明（预览）">{{ preview }}</CodeBlock>
+      <CodeBlock title="生成的聚合声明（预览）" :code="preview" />
     </div>
 
     <p class="note mono faint">共 {{ lines.length }} 行 · 源文件 src/linkjs-remotes.d.ts（consumeTypes 生成）</p>

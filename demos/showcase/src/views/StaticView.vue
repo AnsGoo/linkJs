@@ -3,6 +3,9 @@ import CodeBlock from '../components/CodeBlock.vue';
 // 构建期静态 import：unplugin-linkjs 把 <remote> 解析为虚拟模块（内部 createRemoteComponent）。
 import { HelloWorld as RemoteAppHello } from 'remoteApp';
 import { HelloWorld as RemoteLibHello } from 'remote-lib';
+
+const code = `import { HelloWorld as RemoteAppHello } from 'remoteApp';
+import { HelloWorld as RemoteLibHello } from 'remote-lib';`;
 </script>
 
 <template>
@@ -16,10 +19,7 @@ import { HelloWorld as RemoteLibHello } from 'remote-lib';
       </p>
     </header>
 
-    <CodeBlock title="StaticView.vue">
-import { HelloWorld as RemoteAppHello } from 'remoteApp';
-import { HelloWorld as RemoteLibHello } from 'remote-lib';
-    </CodeBlock>
+    <CodeBlock title="StaticView.vue" :code="code" />
 
     <div class="stages">
       <div class="panel stage">
