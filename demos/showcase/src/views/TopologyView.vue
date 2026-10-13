@@ -7,6 +7,7 @@ import { loadApp, unloadRemote } from 'linkjs';
 
 const { snapshot, refresh } = useSnapshot(500);
 const busy = ref(false);
+const dead = ref(false);
 const showRemoteDeps = ref(true);
 const showShared = ref(true);
 
@@ -32,6 +33,7 @@ const providers = computed(() =>
 );
 
 async function load() {
+  if (dead.value) return;
   busy.value = true;
   try {
     await loadApp('remoteApp');
@@ -42,8 +44,10 @@ async function load() {
 }
 function reset() {
   unloadRemote('remoteApp');
+  dead.value = true;
   refresh();
 }
+const reload = () => location.reload();
 </script>
 
 <template>
@@ -57,8 +61,9 @@ function reset() {
         </p>
       </div>
       <div class="controls">
-        <button class="btn btn-primary" :disabled="busy" @click="load">加载 remoteApp</button>
+        <button class="btn btn-primary" :disabled="busy || dead" @click="load">加载 remoteApp</button>
         <button class="btn btn-ghost" :disabled="busy" @click="reset">重置</button>
+        <button v-if="dead" class="btn" @click="reload">刷新页面</button>
       </div>
     </header>
 
@@ -66,6 +71,8 @@ function reset() {
       <label class="toggle"><input v-model="showRemoteDeps" type="checkbox" /> 远程依赖边</label>
       <label class="toggle"><input v-model="showShared" type="checkbox" /> 共享依赖边</label>
     </div>
+
+    <p v-if="dead" class="notice">已卸载：远端模块已被浏览器缓存，重复加载不会再次 expose —— 点「刷新页面」回到初始态。</p>
 
     <DepGraph :instance-name="snapshot.instance?.name" :remotes="remotes" :shares="shares" />
 
@@ -131,6 +138,12 @@ function reset() {
 .controls {
   display: flex;
   gap: 10px;
+  flex-wrap: wrap;
+}
+.notice {
+  color: var(--amber);
+  font-size: 12.5px;
+  line-height: 1.6;
 }
 .filters {
   display: flex;

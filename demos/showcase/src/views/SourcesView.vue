@@ -4,51 +4,78 @@ import CodeBlock from '../components/CodeBlock.vue';
 import { checkRemoteHealth, clearHealthCache, loadLib, selectRemoteSource } from 'linkjs';
 import registry from '../registry';
 
-const entry = registry.find((r) => r.name === 'remote-lib-ms')!;
+const entry = registry.find((r) => r.name === 'remote-lib')!;
 const sources = entry.sources || [];
 const health = entry.healthCheck;
 
 const statuses = ref<Record<string, 'unknown' | 'ok' | 'bad'>>({});
 const chosen = ref<string>('');
 const checks = ref(0);
+const busy = ref(false);
+const error = ref('');
 
 async function runHealth() {
-  clearHealthCache('remote-lib-ms');
+  busy.value = true;
+  error.value = '';
+  clearHealthCache('remote-lib');
   checks.value = 0;
   statuses.value = {};
-  for (const s of sources) {
-    const ok = await checkRemoteHealth(s, health, 'remote-lib-ms');
-    statuses.value[s.host || ''] = ok ? 'ok' : 'bad';
-    checks.value++;
+  try {
+    for (const s of sources) {
+      const ok = await checkRemoteHealth(s, health, 'remote-lib');
+      statuses.value[s.host || ''] = ok ? 'ok' : 'bad';
+      checks.value++;
+    }
+  } finally {
+    busy.value = false;
   }
 }
 
 async function resolveSource() {
-  const picked = await selectRemoteSource({ name: 'remote-lib-ms', entry: {}, ...entry }, 'remote-lib-ms');
-  chosen.value = picked?.host || '';
+  busy.value = true;
+  error.value = '';
+  try {
+    const picked = await selectRemoteSource({ name: 'remote-lib', entry: {}, ...entry }, 'remote-lib');
+    chosen.value = picked?.host || '';
+  } finally {
+    busy.value = false;
+  }
 }
 
 const loaded = ref(false);
 async function load() {
-  await loadLib('remote-lib-ms');
-  loaded.value = true;
+  busy.value = true;
+  error.value = '';
+  try {
+    await loadLib('remote-lib');
+    loaded.value = true;
+  } catch (e) {
+    error.value = (e as Error)?.message || String(e);
+  } finally {
+    busy.value = false;
+  }
 }
 
 // weighted 灰度抽样：跳过健康检查，按 weight 随机挑选，统计分布。
 const samples = ref<Record<string, number>>({});
 const rounds = ref(0);
 async function sampleWeighted(times = 60) {
-  const tally: Record<string, number> = {};
-  for (let i = 0; i < times; i++) {
-    const picked = await selectRemoteSource({ name: 'remote-lib-ms', entry: {}, ...entry }, 'remote-lib-ms', {
-      strategy: 'weighted',
-      skipHealthCheck: true,
-    });
-    const h = picked?.host || '?';
-    tally[h] = (tally[h] || 0) + 1;
+  busy.value = true;
+  try {
+    const tally: Record<string, number> = {};
+    for (let i = 0; i < times; i++) {
+      const picked = await selectRemoteSource({ name: 'remote-lib', entry: {}, ...entry }, 'remote-lib', {
+        strategy: 'weighted',
+        skipHealthCheck: true,
+      });
+      const h = picked?.host || '?';
+      tally[h] = (tally[h] || 0) + 1;
+    }
+    samples.value = tally;
+    rounds.value = times;
+  } finally {
+    busy.value = false;
   }
-  samples.value = tally;
-  rounds.value = times;
 }
 const distribution = computed(() =>
   sources.map((s) => ({
@@ -60,13 +87,13 @@ const distribution = computed(() =>
 );
 
 const code = `{
-  name: 'remote-lib-ms',
+  name: 'remote-lib',
   sources: [
     { host: 'http://localhost:4999', weight: 1, labels: { tier: 'canary' } }, // 不可用
     { host: 'http://localhost:4001', weight: 3, labels: { tier: 'stable' } },
   ],
   sourceStrategy: 'first-healthy',   // 或 'weighted'
-  healthCheck: { path: 'mf/manifest.json', timeout: 1200 },
+  healthCheck: { path: 'mf/manifest.json', timeout: 900 },
 }`;
 </script>
 
@@ -84,13 +111,14 @@ const code = `{
       <div class="col">
         <CodeBlock title="registry.ts" lang="ts" :code="code" />
         <div class="controls">
-          <button class="btn" @click="runHealth">健康检查</button>
-          <button class="btn btn-ghost" @click="resolveSource">解析源</button>
-          <button class="btn btn-primary" @click="load">按多源加载</button>
+          <button class="btn" :disabled="busy" @click="runHealth">健康检查</button>
+          <button class="btn btn-ghost" :disabled="busy" @click="resolveSource">解析源</button>
+          <button class="btn btn-primary" :disabled="busy" @click="load">按多源加载</button>
         </div>
+        <p v-if="error" class="error mono">{{ error }}</p>
         <p class="hint mono faint" v-if="checks">已探测 {{ checks }} 个源</p>
         <p class="chosen mono" v-if="chosen">解析结果 → <b>{{ chosen }}</b></p>
-        <p class="faint" v-if="loaded">remote-lib-ms 已从解析到的源加载完成。</p>
+        <p class="faint" v-if="loaded">remote-lib 已从解析到的源加载完成。</p>
       </div>
 
       <div class="col">
@@ -116,8 +144,8 @@ const code = `{
       <div class="w-head">
         <h3 class="sec">weighted 灰度抽样</h3>
         <div class="controls">
-          <button class="btn" @click="sampleWeighted(60)">抽样 ×60</button>
-          <button class="btn" @click="sampleWeighted(300)">抽样 ×300</button>
+          <button class="btn" :disabled="busy" @click="sampleWeighted(60)">抽样 ×60</button>
+          <button class="btn" :disabled="busy" @click="sampleWeighted(300)">抽样 ×300</button>
         </div>
       </div>
       <div class="bars">
@@ -205,6 +233,13 @@ const code = `{
 }
 .hint {
   font-size: 12px;
+}
+.error {
+  color: var(--danger);
+  font-size: 12.5px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in oklab, var(--danger) 30%, transparent);
+  border-radius: var(--radius-sm);
 }
 .weighted {
   display: flex;

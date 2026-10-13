@@ -8,6 +8,8 @@ import { getRemote, loadApp, loadLib, unloadLib, unloadRemote } from 'linkjs';
 const { snapshot, refresh } = useSnapshot(500);
 const busy = ref(false);
 const error = ref('');
+// 卸载后：远端模块已被浏览器缓存，重复 import 不会再次 expose，需刷新页面才能重新加载。
+const dead = ref(false);
 // 远程组件是 Vue 组件对象，用 shallowRef 避免被响应式代理（否则触发 Vue 警告）。
 const libComponent = shallowRef<unknown>(null);
 const log = ref<Array<{ t: string; msg: string }>>([]);
@@ -44,20 +46,24 @@ async function run(label: string, fn: () => Promise<unknown>) {
   }
 }
 
-const loadRemoteApp = () =>
-  run('loadApp("remoteApp") → 拓扑先加载 remote-lib', async () => {
+const loadRemoteApp = () => {
+  if (dead.value) return;
+  log.value = [];
+  return run('loadApp("remoteApp") → 拓扑先加载 remote-lib', async () => {
     libComponent.value = null;
-    log.value = [];
     await loadApp('remoteApp');
     libComponent.value = getRemote('remoteApp/RemoteLibSlot');
     stamp('getRemote("remoteApp/RemoteLibSlot") 取用依赖方组件');
   });
+};
 
-const loadLibOnly = () =>
-  run('loadLib("remote-lib")', async () => {
+const loadLibOnly = () => {
+  if (dead.value) return;
+  return run('loadLib("remote-lib")', async () => {
     await loadLib('remote-lib');
     stamp('remote-lib 已单独加载');
   });
+};
 
 function reset() {
   libComponent.value = null;
@@ -65,8 +71,11 @@ function reset() {
   unloadRemote('remoteApp');
   unloadLib('remote-lib');
   stamp('卸载 remoteApp + remote-lib，引用计数归零');
+  dead.value = true;
   refresh();
 }
+
+const reload = () => location.reload();
 
 function timeStr(t: number) {
   const d = new Date(t);
@@ -95,11 +104,13 @@ const Slot = getRemote('remoteApp/RemoteLibSlot'); // 消费依赖方组件`;
         <CodeBlock title="RuntimeView.vue" :code="code" />
 
         <div class="controls">
-          <button class="btn btn-primary" :disabled="busy" @click="loadRemoteApp">加载 remoteApp</button>
-          <button class="btn" :disabled="busy" @click="loadLibOnly">仅加载 remote-lib</button>
+          <button class="btn btn-primary" :disabled="busy || dead" @click="loadRemoteApp">加载 remoteApp</button>
+          <button class="btn" :disabled="busy || dead" @click="loadLibOnly">仅加载 remote-lib</button>
           <button class="btn btn-ghost" :disabled="busy" @click="reset">全部卸载</button>
+          <button v-if="dead" class="btn" @click="reload">刷新页面</button>
         </div>
 
+        <p v-if="dead" class="notice">已卸载：远端模块已被浏览器缓存，重复加载不会再次 expose —— 点「刷新页面」回到初始态。</p>
         <p v-if="error" class="error mono">{{ error }}</p>
 
         <h3 class="sec">解析日志</h3>
@@ -218,6 +229,11 @@ const Slot = getRemote('remoteApp/RemoteLibSlot'); // 消费依赖方组件`;
   border: 1px solid color-mix(in oklab, var(--danger) 30%, transparent);
   border-radius: var(--radius-sm);
   background: color-mix(in oklab, var(--danger) 8%, transparent);
+}
+.notice {
+  color: var(--amber);
+  font-size: 12.5px;
+  line-height: 1.6;
 }
 .log {
   list-style: none;

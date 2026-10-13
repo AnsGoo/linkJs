@@ -20,18 +20,13 @@ const registry: RegistryOption[] = [
   {
     name: 'remote-lib',
     type: 'lib',
+    entry: { js: '/mf/lib.js', shared: '/mf/shared.js' },
+    shared: sharedDeps,
+    // 多源灰度：首个源不可用（4999），健康检查回退到可用源（4001）。
+    // 注意：远端 `expose` 的名字就是 'remote-lib'，故多源必须挂在本名上（别名会因 expose 名不匹配而超时）。
     host: 'http://localhost:4001',
-    entry: { js: '/mf/lib.js', shared: '/mf/shared.js' },
-    shared: sharedDeps,
-  },
-  {
-    // 多源灰度示例：首个源不可用（4999），健康检查会回退到可用源（4001）。
-    name: 'remote-lib-ms',
-    type: 'lib',
-    entry: { js: '/mf/lib.js', shared: '/mf/shared.js' },
-    shared: sharedDeps,
     sourceStrategy: 'first-healthy',
-    healthCheck: { path: 'mf/manifest.json', timeout: 1200, interval: 0 },
+    healthCheck: { path: 'mf/manifest.json', timeout: 900, interval: 30000 },
     sources: [
       { host: 'http://localhost:4999', weight: 1, labels: { region: 'us', tier: 'canary' } },
       { host: 'http://localhost:4001', weight: 3, labels: { region: 'cn', tier: 'stable' } },

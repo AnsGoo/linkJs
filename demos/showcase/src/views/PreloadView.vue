@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import CodeBlock from '../components/CodeBlock.vue';
-import { globalSnapshot, loadApp, preloadRemote, remoteSnapshot, unloadRemote } from 'linkjs';
+import { globalSnapshot, loadApp, preloadRemote, remoteSnapshot } from 'linkjs';
 
 const busy = ref(false);
 const error = ref('');
 const version = ref(0);
 const reveal = ref(false);
+const loadedOnce = ref(false);
+const notice = ref('');
 const timing = ref<{ lazy?: number; prefetched?: number }>({});
 
 const snap = computed(() => {
@@ -39,15 +41,20 @@ async function preload() {
   }
 }
 
-/** 未预取：清缓存后直接 loadApp，计时。 */
+/** 冷加载（未预取）：直接 loadApp 计时。仅首次有效——模块加载后会被浏览器缓存。 */
 async function loadLazy() {
+  if (loadedOnce.value) {
+    notice.value = '已冷加载过：远端模块已被浏览器缓存，冷测需刷新页面。';
+    return;
+  }
   busy.value = true;
   error.value = '';
-  unloadRemote('remoteApp');
+  notice.value = '';
   try {
     const t = performance.now();
     await loadApp('remoteApp');
     timing.value = { ...timing.value, lazy: Math.round(performance.now() - t) };
+    loadedOnce.value = true;
     version.value++;
   } catch (e) {
     error.value = (e as Error)?.message || String(e);
@@ -56,11 +63,11 @@ async function loadLazy() {
   }
 }
 
-/** 预取后：先 preloadRemote 预热，再 loadApp，计时（应更快）。 */
+/** 预取后加载：先 preloadRemote 预热，再 loadApp 计时（已加载则命中缓存，近乎 0ms）。 */
 async function loadPrefetched() {
   busy.value = true;
   error.value = '';
-  unloadRemote('remoteApp');
+  notice.value = '';
   try {
     await preloadRemote({
       name: 'remoteApp',
@@ -72,6 +79,7 @@ async function loadPrefetched() {
     const t = performance.now();
     await loadApp('remoteApp');
     timing.value = { ...timing.value, prefetched: Math.round(performance.now() - t) };
+    loadedOnce.value = true;
     version.value++;
   } catch (e) {
     error.value = (e as Error)?.message || String(e);
@@ -110,6 +118,7 @@ await preloadRemote({
           </button>
         </div>
         <p v-if="error" class="error mono">{{ error }}</p>
+        <p v-if="notice" class="notice">{{ notice }}</p>
 
         <h3 class="sec">首屏耗时对比（loadApp）</h3>
         <div class="compare">
@@ -267,6 +276,11 @@ await preloadRemote({
   padding: 10px 12px;
   border: 1px solid color-mix(in oklab, var(--danger) 30%, transparent);
   border-radius: var(--radius-sm);
+}
+.notice {
+  color: var(--amber);
+  font-size: 12.5px;
+  line-height: 1.6;
 }
 .empty {
   font-size: 13px;
