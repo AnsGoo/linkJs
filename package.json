@@ -16,7 +16,6 @@
     "build": "pnpm -r --filter \"./packages/*\" --filter \"runtime-registry\" build",
     "build:ext": "pnpm --filter linkjs-devtools-extension build",
     "dev:ext": "pnpm --filter linkjs-devtools-extension dev",
-    "dev:deps": "pnpm --filter remote-deps-demo dev",
     "dev:showcase": "pnpm --filter linkjs-showcase dev",
     "prepare": "pnpm run build",
     "docs:dev": "vitepress dev docs",

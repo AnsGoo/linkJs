@@ -1,6 +1,6 @@
 # 远程间依赖（Remote Dependencies）实现方案
 
-> 状态：**P1/P2/P4/P5 已实现** + Demo（`demos/remote-deps`）。P3 复用既有 `remoteImports`，未新增 API。
+> 状态：**P1/P2/P4/P5 已实现** + Demo（`demos/showcase` 的「总览 / 运行时加载 / 构建期 import」，以及 `demos/remote` 的 remoteApp→remote-lib）。P3 复用既有 `remoteImports`，未新增 API。
 > 目标：让一个远程（App 或 Lib）声明依赖另一个远程，运行时按拓扑自动加载、去重、检测环，
 > 并让依赖方消费被依赖方 `expose` 的模块。
 >
@@ -192,7 +192,7 @@ async function resolveRemoteDeps(name, ctx: { stack: string[]; inflight: Map<str
      `getRemote('<dep>/<Expose>')` 与宿主共用同一缓存（跨 bundle / 多份 linkjs 副本）。`loader/index.ts`。
 
 **实现状态：** P1（类型 + unplugin manifest/环检测）、P2（`loader/deps.ts` 拓扑/去重/版本）、
-P4（引用计数 + 卸载顺序）、P5（快照 `deps` + 扩展面板/拓扑）已落地；Demo：`demos/remote-deps`。
+P4（引用计数 + 卸载顺序）、P5（快照 `deps` + 扩展面板/拓扑）已落地；Demo：`demos/showcase`（多页示例集）。
 测试：`packages/linkjs/tests/remote-deps.test.ts`、`packages/unplugin-linkjs/tests/remote-dep-graph.test.ts`。
 
 ## 15. 循环依赖：专项方案（本轮不实现）
