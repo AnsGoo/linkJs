@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import CodeBlock from '../components/CodeBlock.vue';
 import StatusPill from '../components/StatusPill.vue';
 import { useSnapshot } from '../composables/useSnapshot';
-import { getRemote, loadApp, unloadRemote } from 'linkjs';
+import { getRemote, loadApp, loadLib, unloadLib, unloadRemote } from 'linkjs';
 
 const { snapshot, refresh } = useSnapshot(500);
 const busy = ref(false);
@@ -14,6 +14,13 @@ const log = ref<Array<{ t: string; msg: string }>>([]);
 const remotes = computed(() => snapshot.value.remotes || []);
 const remoteApp = computed(() => remotes.value.find((r) => r.name === 'remoteApp'));
 const remoteLib = computed(() => remotes.value.find((r) => r.name === 'remote-lib'));
+const events = computed(() => (snapshot.value.events || []).slice(0, 8));
+
+const pipeline = computed(() => [
+  { k: 'HOST', s: 'loaded', note: '宿主运行时' },
+  { k: 'remote-lib', s: remoteLib.value?.status || 'unloaded', note: '被依赖方（Lib）' },
+  { k: 'remoteApp', s: remoteApp.value?.status || 'unloaded', note: '依赖方（App）' },
+]);
 
 function stamp(msg: string) {
   const d = new Date();
@@ -21,17 +28,12 @@ function stamp(msg: string) {
   log.value.unshift({ t, msg });
 }
 
-async function load() {
+async function run(label: string, fn: () => Promise<unknown>) {
   busy.value = true;
   error.value = '';
-  libComponent.value = null;
-  log.value = [];
-  stamp('loadApp("remoteApp")');
+  stamp(label);
   try {
-    await loadApp('remoteApp');
-    stamp('remoteApp 已就绪（其依赖 remote-lib 已被拓扑加载）');
-    libComponent.value = getRemote('remoteApp/RemoteLibSlot');
-    stamp('getRemote("remoteApp/RemoteLibSlot")');
+    await fn();
     refresh();
   } catch (e) {
     error.value = (e as Error)?.message || String(e);
@@ -41,12 +43,33 @@ async function load() {
   }
 }
 
-function unload() {
-  unloadRemote('remoteApp');
+const loadRemoteApp = () =>
+  run('loadApp("remoteApp") → 拓扑先加载 remote-lib', async () => {
+    libComponent.value = null;
+    log.value = [];
+    await loadApp('remoteApp');
+    libComponent.value = getRemote('remoteApp/RemoteLibSlot');
+    stamp('getRemote("remoteApp/RemoteLibSlot") 取用依赖方组件');
+  });
+
+const loadLibOnly = () =>
+  run('loadLib("remote-lib")', async () => {
+    await loadLib('remote-lib');
+    stamp('remote-lib 已单独加载');
+  });
+
+function reset() {
   libComponent.value = null;
   log.value = [];
-  stamp('unloadRemote("remoteApp") — 引用计数归零，remote-lib 一并卸载');
+  unloadRemote('remoteApp');
+  unloadLib('remote-lib');
+  stamp('卸载 remoteApp + remote-lib，引用计数归零');
   refresh();
+}
+
+function timeStr(t: number) {
+  const d = new Date(t);
+  return `${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
 }
 
 const code = `import { loadApp, getRemote, unloadRemote } from 'linkjs';
@@ -71,24 +94,38 @@ const Slot = getRemote('remoteApp/RemoteLibSlot'); // 消费依赖方组件`;
         <CodeBlock title="RuntimeView.vue" :code="code" />
 
         <div class="controls">
-          <button class="btn btn-primary" :disabled="busy" @click="load">
-            <span v-if="busy">加载中…</span>
-            <span v-else>加载 remoteApp</span>
-          </button>
-          <button class="btn btn-ghost" :disabled="busy" @click="unload">卸载</button>
+          <button class="btn btn-primary" :disabled="busy" @click="loadRemoteApp">加载 remoteApp</button>
+          <button class="btn" :disabled="busy" @click="loadLibOnly">仅加载 remote-lib</button>
+          <button class="btn btn-ghost" :disabled="busy" @click="reset">全部卸载</button>
         </div>
 
         <p v-if="error" class="error mono">{{ error }}</p>
 
+        <h3 class="sec">解析日志</h3>
         <ul class="log" v-if="log.length">
           <li v-for="(l, i) in log" :key="i">
             <span class="t mono">{{ l.t }}</span>
             <span class="m">{{ l.msg }}</span>
           </li>
         </ul>
+        <p v-else class="faint empty">点击按钮后显示。</p>
       </div>
 
       <div class="col">
+        <div class="panel pipeline">
+          <span class="label mono faint">拓扑顺序</span>
+          <div class="steps">
+            <template v-for="(p, i) in pipeline" :key="p.k">
+              <div class="step" :class="{ done: p.s === 'loaded', active: p.s === 'loading' }">
+                <span class="step-dot" />
+                <span class="step-k mono">{{ p.k }}</span>
+                <span class="step-note faint">{{ p.note }}</span>
+              </div>
+              <span v-if="i < pipeline.length - 1" class="arrow" :class="{ flow: p.s === 'loaded' }">↓</span>
+            </template>
+          </div>
+        </div>
+
         <div class="panel status-card">
           <div class="row">
             <span class="k mono">remoteApp</span>
@@ -96,9 +133,7 @@ const Slot = getRemote('remoteApp/RemoteLibSlot'); // 消费依赖方组件`;
           </div>
           <div class="deps" v-if="remoteApp?.deps?.length">
             <span class="faint">依赖</span>
-            <span v-for="d in remoteApp.deps" :key="d.name" class="dep-chip mono">
-              {{ d.name }} · {{ d.status || '?' }}
-            </span>
+            <span v-for="d in remoteApp.deps" :key="d.name" class="dep-chip mono">{{ d.name }} · {{ d.status || '?' }}</span>
           </div>
           <div class="row">
             <span class="k mono">remote-lib</span>
@@ -109,10 +144,22 @@ const Slot = getRemote('remoteApp/RemoteLibSlot'); // 消费依赖方组件`;
         <div class="panel stage">
           <span class="stage-label mono faint">remoteApp / RemoteLibSlot</span>
           <component :is="libComponent" v-if="libComponent" />
-          <p v-else class="faint placeholder">点击「加载 remoteApp」后，此处渲染 remoteApp 消费的 remote-lib 组件。</p>
+          <p v-else class="faint placeholder">加载 remoteApp 后，此处渲染 remoteApp 消费的 remote-lib 组件。</p>
         </div>
       </div>
     </div>
+
+    <section class="events-block">
+      <h3 class="sec">linkjs 事件</h3>
+      <ul class="events" v-if="events.length">
+        <li v-for="(e, i) in events" :key="i">
+          <span class="t mono faint">{{ timeStr(e.time) }}</span>
+          <span class="ev mono">{{ e.type }}</span>
+          <span class="sum mono">{{ e.summary }}</span>
+        </li>
+      </ul>
+      <p v-else class="faint empty">加载后可见 libExpose / sharedExpose / remoteUpdate 事件。</p>
+    </section>
   </div>
 </template>
 
@@ -120,10 +167,10 @@ const Slot = getRemote('remoteApp/RemoteLibSlot'); // 消费依赖方组件`;
 .page {
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 26px;
 }
 .head {
-  max-width: 720px;
+  max-width: 760px;
 }
 .head code {
   background: rgba(255, 255, 255, 0.06);
@@ -139,7 +186,7 @@ const Slot = getRemote('remoteApp/RemoteLibSlot'); // 消费依赖方组件`;
 }
 .grid {
   display: grid;
-  grid-template-columns: 1.1fr 0.9fr;
+  grid-template-columns: 1.05fr 0.95fr;
   gap: 24px;
   align-items: start;
 }
@@ -152,6 +199,16 @@ const Slot = getRemote('remoteApp/RemoteLibSlot'); // 消费依赖方组件`;
 .controls {
   display: flex;
   gap: 10px;
+  flex-wrap: wrap;
+}
+.sec {
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-weight: 600;
+  margin: 4px 0 0;
 }
 .error {
   color: var(--danger);
@@ -179,6 +236,60 @@ const Slot = getRemote('remoteApp/RemoteLibSlot'); // 消费依赖方组件`;
   font-size: 11.5px;
   padding-top: 2px;
 }
+
+.pipeline {
+  padding: 16px;
+}
+.pipeline .label {
+  display: block;
+  font-size: 11px;
+  margin-bottom: 12px;
+}
+.steps {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  color: var(--muted);
+  transition: all 0.3s var(--ease);
+}
+.step.done {
+  color: var(--accent);
+  border-color: color-mix(in oklab, var(--accent) 40%, transparent);
+  background: color-mix(in oklab, var(--accent) 8%, transparent);
+}
+.step.active {
+  color: var(--amber);
+  border-color: color-mix(in oklab, var(--amber) 40%, transparent);
+}
+.step-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.step-k {
+  font-size: 12px;
+}
+.step-note {
+  font-size: 10.5px;
+}
+.arrow {
+  color: var(--line-strong);
+  font-size: 14px;
+}
+.arrow.flow {
+  color: var(--accent);
+}
+
 .status-card {
   padding: 6px 16px;
 }
@@ -212,7 +323,7 @@ const Slot = getRemote('remoteApp/RemoteLibSlot'); // 消费依赖方组件`;
 }
 .stage {
   padding: 16px;
-  min-height: 120px;
+  min-height: 110px;
 }
 .stage-label {
   display: block;
@@ -224,9 +335,42 @@ const Slot = getRemote('remoteApp/RemoteLibSlot'); // 消费依赖方组件`;
   line-height: 1.6;
 }
 
+.events-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.events {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+}
+.events li {
+  display: grid;
+  grid-template-columns: 60px 130px 1fr;
+  gap: 14px;
+  padding: 9px 4px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12.5px;
+  align-items: baseline;
+}
+.ev {
+  color: var(--indigo);
+}
+.sum {
+  color: var(--muted);
+}
+.empty {
+  font-size: 13px;
+}
+
 @media (max-width: 860px) {
   .grid {
     grid-template-columns: 1fr;
+  }
+  .events li {
+    grid-template-columns: 60px 1fr;
   }
 }
 </style>

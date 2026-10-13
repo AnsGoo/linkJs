@@ -28,7 +28,9 @@ export interface SnapshotShape {
   remotes?: RemoteRow[];
   shares?: ShareRow[];
   events?: Array<{ type: string; time: number; summary: string }>;
-  metrics?: Array<{ entry: string; kind: string; durationMs: number; status: string; time: number }>;
+  metrics?: Array<{ entry: string; kind: string; host?: string; durationMs: number; status: string; time: number }>;
+  perf?: Array<{ name: string; label?: string; durationMs: number }>;
+  conflicts?: Array<{ scope: string; name: string; requiredVersion: string; provided: string[] }>;
   diagnostics?: Array<{ level: string; code: string; message: string; time: number }>;
   plugins?: string[];
   availablePlugins?: Array<{ name: string; description: string; enabled: boolean }>;

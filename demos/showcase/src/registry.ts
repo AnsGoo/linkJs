@@ -33,8 +33,8 @@ const registry: RegistryOption[] = [
     sourceStrategy: 'first-healthy',
     healthCheck: { path: 'mf/manifest.json', timeout: 1200, interval: 0 },
     sources: [
-      { host: 'http://localhost:4999', labels: { region: 'us', tier: 'canary' } },
-      { host: 'http://localhost:4001', labels: { region: 'cn', tier: 'stable' } },
+      { host: 'http://localhost:4999', weight: 1, labels: { region: 'us', tier: 'canary' } },
+      { host: 'http://localhost:4001', weight: 3, labels: { region: 'cn', tier: 'stable' } },
     ],
   },
 ];

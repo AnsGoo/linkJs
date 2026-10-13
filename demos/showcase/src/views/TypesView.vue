@@ -20,6 +20,11 @@ const hostCode = `import { HelloWorld } from 'remoteApp';
 
 // props 类型来自远端的 .d.ts
 <HelloWorld msg="typed" :age="18" name="host" sex="male" />`;
+
+const tsconfigCode = `// tsconfig.json —— 让 IDE / tsc 纳入聚合声明
+{
+  "include": ["src/**/*.ts", "src/**/*.vue", "src/linkjs-remotes.d.ts"]
+}`;
 </script>
 
 <template>
@@ -34,12 +39,21 @@ const hostCode = `import { HelloWorld } from 'remoteApp';
     </header>
 
     <div class="cols">
-      <CodeBlock title="Host · 类型即用" :code="hostCode" />
+      <div class="stack">
+        <CodeBlock title="Host · 类型即用" :code="hostCode" />
+        <CodeBlock title="tsconfig.json" lang="json" :code="tsconfigCode" />
+      </div>
 
       <CodeBlock title="生成的聚合声明（预览）" :code="preview" />
     </div>
 
-    <p class="note mono faint">共 {{ lines.length }} 行 · 源文件 src/linkjs-remotes.d.ts（consumeTypes 生成）</p>
+    <div class="notes">
+      <p class="note">
+        <b>内联而非 re-export</b>：ambient <code>declare module</code> 里对相对路径的
+        <code>export *</code> 不会解析，因此 unplugin 直接把远端 <code>.d.ts</code> 内容内联进来。
+      </p>
+      <p class="note mono faint">共 {{ lines.length }} 行 · 源文件 src/linkjs-remotes.d.ts（consumeTypes 生成）</p>
+    </div>
   </div>
 </template>
 
@@ -67,12 +81,35 @@ const hostCode = `import { HelloWorld } from 'remoteApp';
 }
 .cols {
   display: grid;
-  grid-template-columns: 0.8fr 1.2fr;
+  grid-template-columns: 0.95fr 1.05fr;
   gap: 20px;
   align-items: start;
 }
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.notes {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 .note {
-  font-size: 12px;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.note b {
+  color: var(--text);
+}
+.note code {
+  background: rgba(255, 255, 255, 0.06);
+  padding: 1px 6px;
+  border-radius: 5px;
+  font-size: 0.85em;
+  color: var(--accent);
 }
 
 @media (max-width: 860px) {

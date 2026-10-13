@@ -10,15 +10,22 @@ interface UpdateRec {
   payload: unknown;
 }
 
-const { snapshot, refresh } = useSnapshot(800);
+const { snapshot, refresh } = useSnapshot(700);
 const updates = ref<UpdateRec[]>([]);
 const busy = ref(false);
 let off: (() => void) | undefined;
 
 const remoteApp = computed(() => (snapshot.value.remotes || []).find((r) => r.name === 'remoteApp'));
+const events = computed(() => (snapshot.value.events || []).filter((e) => e.type === 'remoteUpdate' || e.type === 'libExpose'));
+
+const steps = [
+  { k: '编辑远端组件', v: '改动 demo/remote 源码' },
+  { k: 'dev server 重新 expose', v: '模块热替换' },
+  { k: 'linkjs 广播 REMOTE_UPDATE', v: '事件总线' },
+  { k: '宿主 subscribeRemoteUpdate', v: '无刷新更新' },
+];
 
 onMounted(() => {
-  // 订阅 remoteApp 的重新暴露（远端 HMR）。
   off = subscribeRemoteUpdate('remoteApp', (payload) => {
     updates.value.unshift({ t: Date.now(), app: 'remoteApp', payload });
     refresh();
@@ -61,6 +68,15 @@ const off = subscribeRemoteUpdate('remoteApp', (payload) => {
     <div class="grid">
       <div class="col">
         <CodeBlock title="HmrView.vue" :code="code" />
+
+        <div class="steps">
+          <div v-for="(s, i) in steps" :key="s.k" class="step">
+            <span class="step-i mono">{{ i + 1 }}</span>
+            <span class="step-k">{{ s.k }}</span>
+            <span class="step-v faint">{{ s.v }}</span>
+          </div>
+        </div>
+
         <div class="controls">
           <button class="btn btn-primary" :disabled="busy" @click="load">加载 remoteApp</button>
           <span class="pill" :class="remoteApp?.status === 'loaded' ? 'is-loaded' : ''">
@@ -74,13 +90,24 @@ const off = subscribeRemoteUpdate('remoteApp', (payload) => {
       </div>
 
       <div class="col">
+        <h3 class="sec">订阅到的更新（{{ updates.length }}）</h3>
         <ul class="feed">
-          <li v-for="(u, i) in updates.slice(0, 12)" :key="i">
+          <li v-for="(u, i) in updates.slice(0, 8)" :key="i">
             <span class="t mono faint">{{ timeStr(u.t) }}</span>
             <span class="ev mono">REMOTE_UPDATE</span>
             <span class="d mono">{{ u.app }}</span>
           </li>
           <li v-if="!updates.length" class="empty faint">暂无更新；先加载 remoteApp，再编辑远端组件。</li>
+        </ul>
+
+        <h3 class="sec">事件总线</h3>
+        <ul class="feed">
+          <li v-for="(e, i) in events.slice(0, 8)" :key="i">
+            <span class="t mono faint">{{ timeStr(e.time) }}</span>
+            <span class="ev mono">{{ e.type }}</span>
+            <span class="d mono">{{ e.summary }}</span>
+          </li>
+          <li v-if="!events.length" class="empty faint">加载后可见 libExpose / remoteUpdate 事件。</li>
         </ul>
       </div>
     </div>
@@ -94,7 +121,8 @@ const off = subscribeRemoteUpdate('remoteApp', (payload) => {
   gap: 24px;
 }
 .head code,
-.sub code {
+.sub code,
+.howto code {
   background: rgba(255, 255, 255, 0.06);
   padding: 1px 6px;
   border-radius: 5px;
@@ -119,6 +147,31 @@ const off = subscribeRemoteUpdate('remoteApp', (payload) => {
   gap: 16px;
   min-width: 0;
 }
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border-top: 1px solid var(--line);
+}
+.step {
+  display: grid;
+  grid-template-columns: 24px 170px 1fr;
+  gap: 12px;
+  align-items: baseline;
+  padding: 11px 4px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+.step-i {
+  color: var(--accent);
+  font-size: 11px;
+}
+.step-k {
+  font-weight: 600;
+}
+.step-v {
+  font-size: 12.5px;
+}
 .controls {
   display: flex;
   align-items: center;
@@ -129,11 +182,14 @@ const off = subscribeRemoteUpdate('remoteApp', (payload) => {
   font-size: 13px;
   line-height: 1.7;
 }
-.howto code {
-  background: rgba(255, 255, 255, 0.06);
-  padding: 1px 6px;
-  border-radius: 5px;
-  color: var(--accent);
+.sec {
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-weight: 600;
+  margin: 4px 0 0;
 }
 .feed {
   list-style: none;

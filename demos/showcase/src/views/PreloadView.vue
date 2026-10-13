@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import CodeBlock from '../components/CodeBlock.vue';
-import { globalSnapshot, preloadRemote, remoteSnapshot } from 'linkjs';
+import { globalSnapshot, loadApp, preloadRemote, remoteSnapshot, unloadRemote } from 'linkjs';
 
 const busy = ref(false);
 const error = ref('');
 const version = ref(0);
 const reveal = ref(false);
+const timing = ref<{ lazy?: number; prefetched?: number }>({});
 
 const snap = computed(() => {
   void version.value;
@@ -16,6 +17,7 @@ const all = computed(() => {
   void version.value;
   return globalSnapshot();
 });
+const records = computed(() => Object.values(all.value.remotes));
 
 async function preload() {
   busy.value = true;
@@ -37,15 +39,54 @@ async function preload() {
   }
 }
 
+/** 未预取：清缓存后直接 loadApp，计时。 */
+async function loadLazy() {
+  busy.value = true;
+  error.value = '';
+  unloadRemote('remoteApp');
+  try {
+    const t = performance.now();
+    await loadApp('remoteApp');
+    timing.value = { ...timing.value, lazy: Math.round(performance.now() - t) };
+    version.value++;
+  } catch (e) {
+    error.value = (e as Error)?.message || String(e);
+  } finally {
+    busy.value = false;
+  }
+}
+
+/** 预取后：先 preloadRemote 预热，再 loadApp，计时（应更快）。 */
+async function loadPrefetched() {
+  busy.value = true;
+  error.value = '';
+  unloadRemote('remoteApp');
+  try {
+    await preloadRemote({
+      name: 'remoteApp',
+      host: 'http://localhost:8081',
+      manifestUrl: 'http://localhost:8081/manifest.json',
+      prefetch: true,
+      force: true,
+    });
+    const t = performance.now();
+    await loadApp('remoteApp');
+    timing.value = { ...timing.value, prefetched: Math.round(performance.now() - t) };
+    version.value++;
+  } catch (e) {
+    error.value = (e as Error)?.message || String(e);
+  } finally {
+    busy.value = false;
+  }
+}
+
 const code = `import { preloadRemote } from 'linkjs';
 
-// 路由守卫 / hover 时触发
+// 路由守卫 / hover 时触发，预热远端 manifest 与资源
 await preloadRemote({
   name: 'remote-lib',
   host: 'http://localhost:4001',
-  manifestUrl: 'http://localhost:4001/mf/manifest.json',
   prefetch: true,   // 连同 exposes 的异步资源一起预热
-  force: true,
 });`;
 </script>
 
@@ -62,34 +103,48 @@ await preloadRemote({
     <div class="grid">
       <div class="col">
         <CodeBlock title="PreloadView.vue" :code="code" />
+
         <div class="controls">
           <button class="btn btn-primary" :disabled="busy" @click="preload">
-            {{ busy ? '预取中…' : '预取 remote-lib' }}
+            {{ busy ? '处理中…' : '预取 remote-lib 资源' }}
           </button>
         </div>
         <p v-if="error" class="error mono">{{ error }}</p>
+
+        <h3 class="sec">首屏耗时对比（loadApp）</h3>
+        <div class="compare">
+          <div class="cmp">
+            <span class="cmp-k">未预取</span>
+            <span class="cmp-v mono tnum">{{ timing.lazy != null ? timing.lazy + ' ms' : '—' }}</span>
+            <button class="btn btn-ghost" :disabled="busy" @click="loadLazy">测一次</button>
+          </div>
+          <div class="cmp">
+            <span class="cmp-k">预取后</span>
+            <span class="cmp-v mono tnum">{{ timing.prefetched != null ? timing.prefetched + ' ms' : '—' }}</span>
+            <button class="btn btn-ghost" :disabled="busy" @click="loadPrefetched">测一次</button>
+          </div>
+        </div>
       </div>
 
       <div class="col">
         <div class="panel stat">
-          <div class="row">
-            <span class="faint mono">prefetched</span>
-            <span class="mono tnum">{{ snap?.prefetched ? 'yes' : 'no' }}</span>
-          </div>
-          <div class="row">
-            <span class="faint mono">assets</span>
-            <span class="mono tnum">{{ snap?.assets?.length || 0 }}</span>
-          </div>
-          <div class="row">
-            <span class="faint mono">globalSnapshot.version</span>
-            <span class="mono tnum">{{ all.version }}</span>
-          </div>
+          <div class="row"><span class="faint mono">remote-lib.prefetched</span><span class="mono tnum">{{ snap?.prefetched ? 'yes' : 'no' }}</span></div>
+          <div class="row"><span class="faint mono">remote-lib.assets</span><span class="mono tnum">{{ snap?.assets?.length || 0 }}</span></div>
+          <div class="row"><span class="faint mono">globalSnapshot.version</span><span class="mono tnum">{{ all.version }}</span></div>
         </div>
 
+        <h3 class="sec">预取记录</h3>
+        <ul class="records">
+          <li v-for="r in records" :key="r.name">
+            <span class="mono r-name">{{ r.name }}</span>
+            <span class="mono faint">{{ r.manifestUrl?.replace(/^https?:\/\//, '') }}</span>
+            <span class="mono tnum">{{ r.assets?.length || 0 }} assets</span>
+          </li>
+          <li v-if="!records.length" class="faint empty">预取后列出记录。</li>
+        </ul>
         <ul class="assets" v-if="reveal && snap?.assets?.length">
           <li v-for="a in snap.assets" :key="a" class="mono">{{ a.replace('http://localhost:4001', '') }}</li>
         </ul>
-        <p v-else class="faint empty">点击「预取 remote-lib」后列出预热的资源。</p>
       </div>
     </div>
   </div>
@@ -99,10 +154,10 @@ await preloadRemote({
 .page {
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 26px;
 }
 .head {
-  max-width: 720px;
+  max-width: 760px;
 }
 .head code,
 .sub code {
@@ -133,6 +188,43 @@ await preloadRemote({
   display: flex;
   gap: 10px;
 }
+.sec {
+  font-size: 0.78rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-weight: 600;
+  margin: 6px 0 0;
+}
+.compare {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.cmp {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.cmp-k {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+.cmp-v {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.cmp .btn {
+  align-self: flex-start;
+  height: 30px;
+  padding: 0 12px;
+  font-size: 12px;
+}
 .stat {
   padding: 6px 16px;
 }
@@ -147,17 +239,27 @@ await preloadRemote({
 .row:last-child {
   border-bottom: none;
 }
+.records,
 .assets {
   list-style: none;
   margin: 0;
   padding: 0;
   border-top: 1px solid var(--line);
 }
+.records li,
 .assets li {
-  padding: 8px 4px;
+  display: grid;
+  gap: 12px;
+  padding: 9px 4px;
   border-bottom: 1px solid var(--line);
   font-size: 12px;
   color: var(--muted);
+}
+.records li {
+  grid-template-columns: 110px 1fr 90px;
+}
+.assets {
+  margin-top: 8px;
 }
 .error {
   color: var(--danger);
@@ -169,9 +271,9 @@ await preloadRemote({
 .empty {
   font-size: 13px;
 }
-
 @media (max-width: 860px) {
-  .grid {
+  .grid,
+  .compare {
     grid-template-columns: 1fr;
   }
 }
