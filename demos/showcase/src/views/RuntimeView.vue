@@ -60,9 +60,9 @@ const loadRemoteApp = () => {
 
 const loadLibOnly = () => {
   if (dead.value) return;
-  return run('loadLib("remote-lib")', async () => {
-    await loadLib('remote-lib');
-    stamp('remote-lib 已单独加载');
+  return run('loadLib("remote-lib", { shadow: true })', async () => {
+    await loadLib('remote-lib', { shadow: true });
+    stamp('remote-lib 已单独加载（隔离）');
   });
 };
 
