@@ -11,8 +11,8 @@ const busy = ref(false);
 const error = ref('');
 // 卸载后：远端模块已被浏览器缓存，重复 import 不会再次 expose，需刷新页面才能重新加载。
 const dead = ref(false);
-// 消费依赖方组件（默认开启样式隔离）。
-const RemoteLibSlotComp = createRemoteComponent('remoteApp/RemoteLibSlot');
+// 预览 remoteApp 拓扑加载来的依赖 remote-lib（在它自己的影子树内，样式隔离）。
+const RemoteLibHello = createRemoteComponent('remote-lib/HelloWorld');
 const slotLoaded = ref(false);
 const log = ref<Array<{ t: string; msg: string }>>([]);
 
@@ -155,8 +155,8 @@ const Slot = getRemote('remoteApp/RemoteLibSlot'); // 消费依赖方组件`;
         </div>
 
         <div class="panel stage">
-          <span class="stage-label mono faint">remoteApp / RemoteLibSlot</span>
-          <RemoteLibSlotComp v-if="slotLoaded" />
+          <span class="stage-label mono faint">remote-lib / HelloWorld（remoteApp 的依赖）</span>
+          <RemoteLibHello v-if="slotLoaded" />
           <p v-else class="faint placeholder">加载 remoteApp 后，此处渲染 remoteApp 消费的 remote-lib 组件。</p>
         </div>
       </div>

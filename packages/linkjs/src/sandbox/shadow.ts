@@ -298,15 +298,6 @@ export function getShadowRoot(name: string): ShadowRoot | undefined {
 }
 
 /**
- * 当前「样式捕获窗口」对应的 ShadowRoot（栈顶），无窗口时 undefined。
- * 用于把在消费者捕获窗口内加载的**依赖**资源（含 `loadCss`）一并收进消费者的影子树，
- * 解决 remote→remote 嵌套消费在 shadow 下的样式丢失。
- */
-export function getActiveCaptureShadowRoot(): ShadowRoot | undefined {
-  return activeCaptureTarget()?.shadow;
-}
-
-/**
  * 销毁某远程的影子目标（在**远程卸载**时调用）：
  * 移除宿主元素、丢弃已捕获样式、结束其捕获窗口；全部目标清空后恢复被 patch 的 DOM 方法。
  *

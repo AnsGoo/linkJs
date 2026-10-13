@@ -7,7 +7,7 @@ import { resolveRemoteDeps, releaseRemote, type ResolveDepsContext } from './dep
 import type { RemoteDependency } from '../state/instance';
 import type { LoadOptions } from './options';
 import { deactivateAllSandboxes, deactivateSandbox } from '../sandbox';
-import { beginStyleCapture, disposeShadowTarget, endStyleCapture, ensureShadowTarget } from '../sandbox/shadow';
+import { disposeShadowTarget } from '../sandbox/shadow';
 import { clearAppHmr, setupHmrIndexing } from '../hmr';
 import type { RemoteModule } from '../types';
 
@@ -71,7 +71,9 @@ function resolveDepsFor(appName: string, options?: { deps?: boolean }): Promise<
 /** 按被依赖远程的注册类型选择 loadApp / loadLib（不再递归解析其依赖）。 */
 function loadOneRemote(name: string, dep: RemoteDependency): Promise<unknown> {
   const info = getRemoteInfo(name);
-  const options: LoadOptions = { deps: false };
+  // 依赖默认按 shadow 加载：每个远程的样式落到**它自己的影子树**，避免同一远程
+  // 在不同消费者/不同顺序下样式落点不一致而丢失。
+  const options: LoadOptions = { deps: false, shadow: true };
   if (dep.host) {
     options.host = dep.host;
   }
@@ -90,32 +92,19 @@ function loadOneRemote(name: string, dep: RemoteDependency): Promise<unknown> {
 function loadApp(entry: string, options?: LoadAppOptions): Promise<RemoteModule | null> {
   ensureRemoteUpdates();
   const appName = entry.split('/')[0];
-  // shadow 消费：**先开捕获窗口再加载依赖**，使作为依赖被加载的远程样式也收进本远程的影子树
-  // （解决 remote→remote 嵌套消费在 shadow 下的样式丢失）。
-  const useShadow = options?.shadow === true;
-  if (useShadow) {
-    ensureShadowTarget(appName);
-    beginStyleCapture(appName);
-  }
-  return resolveDepsFor(appName, options)
-    .then(() => {
-      setRemoteStatus(appName, LOAD_STATUS.LOADING);
-      return useLoadApp<RemoteModule>(remoteCache())(entry, options).then(
-        (result) => {
-          setRemoteStatus(appName, LOAD_STATUS.LOADED);
-          return result;
-        },
-        (error) => {
-          setRemoteStatus(appName, LOAD_STATUS.UNLOADED);
-          throw error;
-        },
-      );
-    })
-    .finally(() => {
-      if (useShadow) {
-        endStyleCapture(appName);
-      }
-    });
+  return resolveDepsFor(appName, options).then(() => {
+    setRemoteStatus(appName, LOAD_STATUS.LOADING);
+    return useLoadApp<RemoteModule>(remoteCache())(entry, options).then(
+      (result) => {
+        setRemoteStatus(appName, LOAD_STATUS.LOADED);
+        return result;
+      },
+      (error) => {
+        setRemoteStatus(appName, LOAD_STATUS.UNLOADED);
+        throw error;
+      },
+    );
+  });
 }
 
 function getRemote<M = unknown>(entry: string): M | null {
@@ -185,30 +174,19 @@ function doUnloadRemote(appName?: string): void {
 function loadLib(entry: string, options?: LoadLibOptions): Promise<RemoteModule | null> {
   ensureRemoteUpdates();
   const appName = entry.split('/')[0];
-  const useShadow = options?.shadow === true;
-  if (useShadow) {
-    ensureShadowTarget(appName);
-    beginStyleCapture(appName);
-  }
-  return resolveDepsFor(appName, options)
-    .then(() => {
-      setRemoteStatus(appName, LOAD_STATUS.LOADING);
-      return useLoadRemoteLib<RemoteModule>(remoteCache())(entry, options).then(
-        (result) => {
-          setRemoteStatus(appName, LOAD_STATUS.LOADED);
-          return result;
-        },
-        (error) => {
-          setRemoteStatus(appName, LOAD_STATUS.UNLOADED);
-          throw error;
-        },
-      );
-    })
-    .finally(() => {
-      if (useShadow) {
-        endStyleCapture(appName);
-      }
-    });
+  return resolveDepsFor(appName, options).then(() => {
+    setRemoteStatus(appName, LOAD_STATUS.LOADING);
+    return useLoadRemoteLib<RemoteModule>(remoteCache())(entry, options).then(
+      (result) => {
+        setRemoteStatus(appName, LOAD_STATUS.LOADED);
+        return result;
+      },
+      (error) => {
+        setRemoteStatus(appName, LOAD_STATUS.UNLOADED);
+        throw error;
+      },
+    );
+  });
 }
 
 /**

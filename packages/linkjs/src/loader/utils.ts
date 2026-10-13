@@ -1,7 +1,7 @@
 import { getInstance } from '..';
 import { __LINKJS_REMOTE_HOSTS__ } from '../constant';
 import { LIB_EXPOSE } from '../event-bus/constant';
-import { getActiveCaptureShadowRoot, getShadowRoot } from '../sandbox/shadow';
+import { getShadowRoot } from '../sandbox/shadow';
 import type { RegistryOption, RemoteEntry, RemoteInfo, RemoteSource } from '../state/instance';
 import type { RemoteModule } from '../types';
 import { selectRemoteSource } from './source';
@@ -177,8 +177,7 @@ function loadCss(url: string, remoteName?: string, security: ResourceSecurityOpt
       console.warn(`[linkjs] Failed to load stylesheet: ${url}`);
       resolve();
     };
-    // 优先级：该远程自己的影子目标 > 当前捕获窗口（依赖在消费者窗口内加载时） > document.head。
-    const target = (remoteName ? getShadowRoot(remoteName) : undefined) ?? getActiveCaptureShadowRoot();
+    const target = remoteName ? getShadowRoot(remoteName) : undefined;
     (target ?? document.head).appendChild(link);
   });
 }
