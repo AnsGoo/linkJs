@@ -60,6 +60,8 @@ export interface ManifestJson {
       dependencies?: string[];
     }
   >;
+  /** 该远程声明的远程依赖（名 -> 配置），供宿主运行时拓扑加载。 */
+  remotes?: Record<string, { version?: string; required?: boolean; host?: string; entryName?: string; expose?: string[] }>;
   [key: string]: any;
 }
 
@@ -158,6 +160,12 @@ export interface UnpluginLinkjsOptions {
    * 默认开启；传 `false` 可整体关闭。
    */
   remoteImports?: boolean | RemoteImportsOptions;
+  /**
+   * 显式声明/覆盖本远程的**远程依赖**（写入 manifest `remotes`）。
+   * 缺省时从 `consumeTypes.remotes` 自动派生（`{ host }`）；此处可覆盖/补充
+   * `version` / `required` / `entryName` / `expose`，也支持声明不在 consumeTypes 中的依赖。
+   */
+  remotes?: Record<string, { version?: string; required?: boolean; host?: string; entryName?: string; expose?: string[] }>;
   /**
    * 路线 B：需要自适应 runtime 的框架级依赖（如 `['vue', 'vue-router', 'pinia']`）。
    * dev 下这些依赖改写为 `$linkjs.loadRuntime(name, () => import(name))`：

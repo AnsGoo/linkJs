@@ -3,13 +3,18 @@ import { LIB_EXPOSE, LOAD_STATUS, REMOTE_UPDATE } from '../event-bus/constant';
 import { getRemoteInfo, useGetRemote, type RemoteCache } from './utils';
 import { useLoadRemoteLib, type LoadLibOptions } from './lib';
 import { useLoadApp, type LoadAppOptions } from './app';
+import { resolveRemoteDeps, releaseRemote, type ResolveDepsContext } from './deps';
+import type { RemoteDependency } from '../state/instance';
 import type { LoadOptions } from './options';
 import { deactivateAllSandboxes, deactivateSandbox } from '../sandbox';
 import { clearAppHmr, setupHmrIndexing } from '../hmr';
 import type { RemoteModule } from '../types';
 
-// 缓存已加载的远程模块
-const remoteCache: RemoteCache = new Map();
+// 已加载远程模块缓存：挂到实例上（而非模块级），使远程 bundle 内的 `getRemote` 与本实例共用同一缓存，
+// 从而支持 remote → remote 消费（跨 bundle/多份 linkjs 模块副本）。
+function remoteCache(): RemoteCache {
+  return (getInstance().remoteCache ??= new Map<string, RemoteModule>());
+}
 
 let remoteUpdatesReady = false;
 
@@ -31,8 +36,8 @@ function ensureRemoteUpdates(): void {
     if (!data.libName || !data.lib) {
       return;
     }
-    const isUpdate = remoteCache.has(data.libName);
-    remoteCache.set(data.libName, data.lib);
+    const isUpdate = remoteCache().has(data.libName);
+    remoteCache().set(data.libName, data.lib);
     if (isUpdate) {
       console.log(`Remote module ${data.libName} re-exposed, broadcasting update`);
       getInstance().eventBus.emit(REMOTE_UPDATE, { appName: data.libName });
@@ -48,24 +53,59 @@ function setRemoteStatus(appName: string, status: (typeof LOAD_STATUS)[keyof typ
   }
 }
 
+/** 拓扑加载某远程声明的全部远程依赖（`deps:false` 时跳过）。 */
+function resolveDepsFor(appName: string, options?: { deps?: boolean }): Promise<void> {
+  if (options?.deps === false) {
+    return Promise.resolve();
+  }
+  const instance = getInstance();
+  const ctx: ResolveDepsContext = {
+    stack: [appName],
+    inflight: (instance.remoteInflight ??= new Map()),
+    loadOne: loadOneRemote,
+  };
+  return resolveRemoteDeps(appName, ctx);
+}
+
+/** 按被依赖远程的注册类型选择 loadApp / loadLib（不再递归解析其依赖）。 */
+function loadOneRemote(name: string, dep: RemoteDependency): Promise<unknown> {
+  const info = getRemoteInfo(name);
+  const options: LoadOptions = { deps: false };
+  if (dep.host) {
+    options.host = dep.host;
+  }
+  if (info?.type === 'lib') {
+    if (dep.entryName) {
+      options.entryName = dep.entryName;
+    }
+    return loadLib(name, options);
+  }
+  if (dep.entryName) {
+    options.entry = dep.entryName;
+  }
+  return loadApp(name, options);
+}
+
 function loadApp(entry: string, options?: LoadAppOptions): Promise<RemoteModule | null> {
   ensureRemoteUpdates();
   const appName = entry.split('/')[0];
-  setRemoteStatus(appName, LOAD_STATUS.LOADING);
-  return useLoadApp<RemoteModule>(remoteCache)(entry, options).then(
-    (result) => {
-      setRemoteStatus(appName, LOAD_STATUS.LOADED);
-      return result;
-    },
-    (error) => {
-      setRemoteStatus(appName, LOAD_STATUS.UNLOADED);
-      throw error;
-    },
-  );
+  return resolveDepsFor(appName, options).then(() => {
+    setRemoteStatus(appName, LOAD_STATUS.LOADING);
+    return useLoadApp<RemoteModule>(remoteCache())(entry, options).then(
+      (result) => {
+        setRemoteStatus(appName, LOAD_STATUS.LOADED);
+        return result;
+      },
+      (error) => {
+        setRemoteStatus(appName, LOAD_STATUS.UNLOADED);
+        throw error;
+      },
+    );
+  });
 }
 
 function getRemote<M = unknown>(entry: string): M | null {
-  return useGetRemote<M>(remoteCache)(entry);
+  return useGetRemote<M>(remoteCache())(entry);
 }
 
 /**
@@ -73,10 +113,10 @@ function getRemote<M = unknown>(entry: string): M | null {
  */
 function clearRemoteCache(appName?: string): void {
   if (appName) {
-    remoteCache.delete(appName);
+    remoteCache().delete(appName);
     console.log(`Remote cache for ${appName} cleared`);
   } else {
-    remoteCache.clear();
+    remoteCache().clear();
     console.log('All remote cache cleared');
   }
 }
@@ -87,7 +127,30 @@ function clearRemoteCache(appName?: string): void {
  * 注意：已执行的 JS 模块与已创建的 Vue 实例无法被真正回收，
  * 业务侧仍需自行卸载组件、解绑事件与清理副作用。
  */
+/** 卸载依赖方时释放其远程依赖的引用计数，归零者递归卸载（调用内部卸载，避免重复释放）。 */
+function releaseDependencies(appName: string): void {
+  const deps = getRemoteInfo(appName)?.remotes ?? {};
+  for (const depName of Object.keys(deps)) {
+    if (releaseRemote(depName) > 0) {
+      continue;
+    }
+    releaseDependencies(depName);
+    if (getRemoteInfo(depName)?.type === 'lib') {
+      doUnloadLib(depName);
+    } else {
+      doUnloadRemote(depName);
+    }
+  }
+}
+
 function unloadRemote(appName?: string): void {
+  if (appName) {
+    releaseDependencies(appName);
+  }
+  doUnloadRemote(appName);
+}
+
+function doUnloadRemote(appName?: string): void {
   clearRemoteCache(appName);
   clearAppHmr(appName);
   if (appName) {
@@ -107,17 +170,19 @@ function unloadRemote(appName?: string): void {
 function loadLib(entry: string, options?: LoadLibOptions): Promise<RemoteModule | null> {
   ensureRemoteUpdates();
   const appName = entry.split('/')[0];
-  setRemoteStatus(appName, LOAD_STATUS.LOADING);
-  return useLoadRemoteLib<RemoteModule>(remoteCache)(entry, options).then(
-    (result) => {
-      setRemoteStatus(appName, LOAD_STATUS.LOADED);
-      return result;
-    },
-    (error) => {
-      setRemoteStatus(appName, LOAD_STATUS.UNLOADED);
-      throw error;
-    },
-  );
+  return resolveDepsFor(appName, options).then(() => {
+    setRemoteStatus(appName, LOAD_STATUS.LOADING);
+    return useLoadRemoteLib<RemoteModule>(remoteCache())(entry, options).then(
+      (result) => {
+        setRemoteStatus(appName, LOAD_STATUS.LOADED);
+        return result;
+      },
+      (error) => {
+        setRemoteStatus(appName, LOAD_STATUS.UNLOADED);
+        throw error;
+      },
+    );
+  });
 }
 
 /**
@@ -126,6 +191,13 @@ function loadLib(entry: string, options?: LoadLibOptions): Promise<RemoteModule 
  */
 function unloadLib(entry?: string): void {
   const appName = entry?.split('/')[0];
+  if (appName) {
+    releaseDependencies(appName);
+  }
+  doUnloadLib(appName);
+}
+
+function doUnloadLib(appName?: string): void {
   clearRemoteCache(appName);
   clearAppHmr(appName);
   if (appName) {

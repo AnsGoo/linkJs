@@ -47,6 +47,20 @@ export interface RemoteHealthCheck {
   interval?: number;
 }
 
+/** 声明式「远程依赖另一个远程」。 */
+export interface RemoteDependency {
+  /** 期望版本范围（semver range）；缺省不校验。 */
+  version?: string;
+  /** 缺失是否致命，默认 `true`。 */
+  required?: boolean;
+  /** 覆盖被依赖远程的 host（多环境 / CDN）。 */
+  host?: string;
+  /** 覆盖被依赖远程的入口。 */
+  entryName?: string;
+  /** 依赖方用到的 expose 名（校验 / 预取提示）。 */
+  expose?: string[];
+}
+
 export interface RemoteBase {
   name: string;
   entry: string | RemoteEntry;
@@ -66,6 +80,8 @@ export interface RemoteBase {
   /** 远程类型：应用（走 HTML 入口）或库（走 JS 入口）。 */
   type?: 'app' | 'lib';
   shared?: Record<string, Omit<ShareInfo, 'name' | 'lib' | 'status'>>;
+  /** 该远程声明的远程依赖（名 -> 配置）。 */
+  remotes?: Record<string, RemoteDependency>;
   /** 该远程关联的共享作用域（可多个，默认 `global`）。 */
   shareScope?: string[];
   /** 产物 SRI 完整性（path -> `sha384-...`），键为远端 manifest 中的路径。 */
@@ -125,6 +141,8 @@ export interface LinkjsInstance {
   readonly id: string;
   apps: Map<string, unknown>;
   libs: Map<string, unknown>;
+  /** 已加载远程模块缓存（appName -> 暴露对象）。挂实例上以便跨 bundle 复用（remote→remote 消费）。 */
+  remoteCache?: Map<string, RemoteModule>;
   shares: Map<string, Map<string, ShareOption[]>>;
   sharedMap: Map<string, Map<string, RemoteModule>>;
   remotes: Map<string, RemoteInfo>;
@@ -134,6 +152,10 @@ export interface LinkjsInstance {
   mode: InstanceMode;
   /** 共享依赖并发加载去重表。 */
   shareInflight?: Map<string, Promise<RemoteModule>>;
+  /** 远程依赖并发加载去重表（name -> 加载 Promise）。 */
+  remoteInflight?: Map<string, Promise<unknown>>;
+  /** 远程被依赖的引用计数（name -> 次数），用于卸载时避免误删。 */
+  remoteRefs?: Map<string, number>;
   /** 请求 URL 重写器（插件通过 `apply` 注册）。 */
   requestRewriters?: RequestRewriter[];
   /** 全局动态基址解析器（对所有未单独配置的远程生效）。 */

@@ -108,6 +108,7 @@ const hostTopoEdges = computed<Array<[string, string]>>(() => {
   for (const r of props.snapshot.remotes || []) {
     edges.push(['host', r.name]);
     for (const dep of Object.keys(r.shared || {})) edges.push([r.name, dep]);
+    for (const dep of r.deps || []) edges.push([r.name, dep.name]);
   }
   return edges;
 });
@@ -151,6 +152,7 @@ const metaRows = computed(() => {
 });
 
 const integrityKeys = computed(() => Object.keys(selected.value?.integrity || {}));
+const remoteDeps = computed(() => selected.value?.deps || []);
 
 interface ShareRow {
   name: string;
@@ -290,6 +292,13 @@ const topoLabels = computed<Record<string, string>>(() => {
             <button class="mini" @click="onAction('preload', { name: selected.name })">预取</button>
             <button class="mini" @click="onAction(selected.type === 'lib' ? 'unloadLib' : 'unload', selected.name)">卸载</button>
           </span>
+        </div>
+
+        <h3>依赖的远程 ({{ remoteDeps.length }})</h3>
+        <div v-if="!remoteDeps.length" class="muted">（不依赖其他远程）</div>
+        <div v-for="row in remoteDeps" :key="row.name" class="row">
+          <span class="k">{{ row.name }}</span>
+          <span class="v">{{ row.version ? `req ${row.version} · ` : '' }}{{ row.resolved || '?' }} · {{ row.status || '-' }}</span>
         </div>
 
         <h3>声明的共享依赖（本远程元数据）({{ sharedRows.length }})</h3>

@@ -8,6 +8,8 @@ export interface LoadBaseOptions {
   shadow?: boolean;
   /** 中止信号：用于取消入口 HTML 的 fetch（超时/手动中止）。 */
   signal?: AbortSignal;
+  /** 是否自动解析并拓扑加载该远程声明的远程依赖，默认 `true`。 */
+  deps?: boolean;
 }
 
 /** `loadApp` 选项（远程应用，走 HTML 入口）。 */

@@ -14,6 +14,8 @@ export interface RemoteSnapshot {
   shareScope?: string[];
   entry?: string | Record<string, unknown>;
   shared?: Record<string, unknown>;
+  /** 该远程声明的远程依赖。 */
+  deps?: Array<{ name: string; version?: string; required?: boolean; status?: string; resolved?: string }>;
   integrity?: Record<string, string>;
   [key: string]: unknown;
 }

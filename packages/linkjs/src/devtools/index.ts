@@ -35,6 +35,8 @@ export interface RemoteSnapshot {
   shareScope?: string[];
   /** 该远程声明的共享依赖（名 -> 配置）。 */
   shared?: Record<string, unknown>;
+  /** 该远程声明的远程依赖（解析到的状态）。 */
+  deps?: Array<{ name: string; version?: string; required?: boolean; status?: string; resolved?: string }>;
   /** 产物 SRI 完整性（path -> sha384-...）。 */
   integrity?: Record<string, string>;
 }
@@ -220,6 +222,18 @@ function ensureEventLog(instance: LinkjsInstance): void {
 function buildSnapshot(instance: LinkjsInstance): LinkjsSnapshot {
   const remotes: RemoteSnapshot[] = [];
   instance.remotes.forEach((remote) => {
+    const deps = remote.remotes
+      ? Object.entries(remote.remotes).map(([depName, dep]) => {
+          const depInfo = instance.remotes.get(depName);
+          return {
+            name: depName,
+            version: dep.version,
+            required: dep.required,
+            status: depInfo?.status,
+            resolved: depInfo?.version,
+          };
+        })
+      : undefined;
     remotes.push({
       name: remote.name,
       displayName: remote.displayName,
@@ -230,6 +244,7 @@ function buildSnapshot(instance: LinkjsInstance): LinkjsSnapshot {
       version: remote.version,
       shareScope: remote.shareScope,
       shared: remote.shared,
+      deps,
       integrity: remote.integrity,
     });
   });

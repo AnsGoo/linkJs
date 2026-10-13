@@ -22,6 +22,7 @@ import {
   REMOTE_HOSTS_GLOBAL,
   selectRemoteImportNames,
 } from './runtime-bootstrap.js';
+import { detectRemoteDependencyCycles } from './remote-dep-graph.js';
 import { linkjsVue, linkjsVueOptions } from './vue-plugin.js';
 import path from 'path';
 
@@ -51,7 +52,35 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
     mode = 'production',
     consumeTypes,
     remoteImports,
+    remotes: declaredRemotes,
   } = options;
+
+  /** 远程资源的 origin（用于派生依赖 host）。 */
+  function originOf(url: string | undefined): string | undefined {
+    if (!url) {
+      return undefined;
+    }
+    try {
+      return new URL(url).origin;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * 解析写入 manifest 的远程依赖：
+   * - 从 `consumeTypes.remotes` 派生（`{ host }`，host 取显式 host 或 manifestUrl 的 origin）；
+   * - 由 `options.remotes` 覆盖/补充。
+   */
+  function resolveManifestRemotes(): ManifestJson['remotes'] | undefined {
+    const derived: NonNullable<ManifestJson['remotes']> = {};
+    for (const target of consumeTypes?.remotes ?? []) {
+      const host = target.host ?? originOf(target.manifestUrl);
+      derived[target.name] = host ? { host } : {};
+    }
+    const merged = { ...derived, ...(declaredRemotes ?? {}) };
+    return Object.keys(merged).length > 0 ? merged : undefined;
+  }
 
   // ---- consumeTypes（宿主类型转发）运行时状态 ----
   let isServe = false;
@@ -87,6 +116,23 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
     }
   }
 
+  /** 构建期检测远程依赖环（基于已拉取 manifest 的 `remotes` 声明）。 */
+  function checkRemoteDependencyCycles(result?: ConsumeTypesResult): void {
+    if (!result) {
+      return;
+    }
+    const graph: Record<string, string[]> = {};
+    for (const info of result.remotes) {
+      graph[info.name] = info.dependencyNames;
+    }
+    const cycles = detectRemoteDependencyCycles(graph);
+    if (cycles.length > 0) {
+      console.error(
+        `[linkjs] 检测到远程依赖环：${cycles.map((cycle) => cycle.join(' -> ')).join('; ')}（详见 docs/remote-dependencies.md §15）`,
+      );
+    }
+  }
+
   async function runConsumeTypes(): Promise<ConsumeTypesResult | undefined> {
     if (!consumeTypes?.remotes?.length) {
       return undefined;
@@ -94,6 +140,7 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
     try {
       const result = await consumeRemoteTypes(consumeTypes);
       syncRemoteImports(result);
+      checkRemoteDependencyCycles(result);
       return result;
     } catch (error) {
       console.warn(`[linkjs] consumeTypes failed: ${String((error as { message?: string })?.message ?? error)}`);
@@ -506,7 +553,7 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
 
         // 自动分析共享依赖之间的子依赖关系（基于 package.json 依赖闭包）
         const analyzedSharedDeps = analyzeDependencies(shared);
-        generateManifestFile(outDir, exposes, shared, analyzedSharedDeps, shareScope, publicPath, mode);
+        generateManifestFile(outDir, exposes, shared, analyzedSharedDeps, shareScope, publicPath, mode, resolveManifestRemotes());
 
         // d.ts 内容哈希（内容寻址 + 宿主类型变更去重）。
         const sha384 = (data: string | Buffer) => `sha384-${createHash('sha384').update(data).digest('base64')}`;
@@ -608,7 +655,11 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
         const metaData: NonNullable<ManifestJson['metaData']> | undefined = entry.types
           ? { types: entry.types, typesHash }
           : undefined;
-        updateManifestFile(outDir, { entry, dependencies, exposes: exposeAssets, integrity, metaData, mode }, analyzedSharedDeps);
+        updateManifestFile(
+          outDir,
+          { entry, dependencies, exposes: exposeAssets, integrity, metaData, mode, remotes: resolveManifestRemotes() },
+          analyzedSharedDeps,
+        );
 
         // 生成依赖拓扑图（含共享依赖的子共享依赖）
         generateDependencyGraph(outDir, dependencyGraph, bundle, analyzedSharedDeps, dependencies);

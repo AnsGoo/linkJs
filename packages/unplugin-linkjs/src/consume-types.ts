@@ -20,6 +20,8 @@ export interface RemoteTypeInfo {
   cacheRel: string;
   exposes: string[];
   mode: 'development' | 'production';
+  /** 该远程 manifest 声明的远程依赖名（构建期环检测用）。 */
+  dependencyNames: string[];
   /** d.ts 内容（用于内联进聚合声明）。 */
   content: string;
 }
@@ -209,6 +211,7 @@ async function fetchRemoteType(
     cacheRel,
     exposes: resolveExposes(manifest),
     mode: resolveMode(target, manifest),
+    dependencyNames: manifest.remotes && typeof manifest.remotes === 'object' ? Object.keys(manifest.remotes) : [],
     content: dtsContent,
   };
 }

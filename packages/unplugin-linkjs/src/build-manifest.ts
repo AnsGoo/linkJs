@@ -67,6 +67,7 @@ function generateManifestFile(
   shareScope?: string[],
   publicPath?: string,
   mode: 'development' | 'production' = 'production',
+  remotes?: ManifestJson['remotes'],
 ) {
   const packageJsonPath = resolve(process.cwd(), 'package.json');
 
@@ -128,6 +129,9 @@ function generateManifestFile(
     if (publicPath) {
       manifest.publicPath = publicPath;
     }
+    if (remotes && Object.keys(remotes).length > 0) {
+      manifest.remotes = remotes;
+    }
 
     for (const [depName, depConfig] of Object.entries(shared)) {
       const declared = externalDeps[depName] || packageJson.dependencies?.[depName] || packageJson.peerDependencies?.[depName];
@@ -147,7 +151,9 @@ function generateManifestFile(
 
 function updateManifestFile(
   outDir: string,
-  content?: Partial<Pick<ManifestJson, 'expose' | 'entry' | 'dependencies' | 'exposes' | 'integrity' | 'metaData' | 'mode'>>,
+  content?: Partial<
+    Pick<ManifestJson, 'expose' | 'entry' | 'dependencies' | 'exposes' | 'integrity' | 'metaData' | 'mode' | 'remotes'>
+  >,
   sharedDeps: Record<string, string[]> = {},
 ) {
   const manifestJsonPath = resolve(outDir, 'manifest.json');
@@ -161,10 +167,13 @@ function updateManifestFile(
     const manifestJsonContent = readFileSync(manifestJsonPath, 'utf-8');
     const manifestJson = JSON.parse(manifestJsonContent);
 
-    const { expose = [], entry = {}, dependencies = [], exposes, integrity, metaData, mode } = content || {};
+    const { expose = [], entry = {}, dependencies = [], exposes, integrity, metaData, mode, remotes } = content || {};
     manifestJson.expose = Array.from(new Set([...expose, ...(manifestJson.expose || [])]));
     manifestJson.entry = { ...manifestJson.entry, ...entry };
     manifestJson.dependencies = dependencies;
+    if (remotes) {
+      manifestJson.remotes = { ...(manifestJson.remotes || {}), ...remotes };
+    }
 
     if (exposes) {
       manifestJson.exposes = exposes;

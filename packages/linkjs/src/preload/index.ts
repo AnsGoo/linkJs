@@ -37,6 +37,8 @@ export interface RemoteManifest {
   /** 多源候选列表（健康检查 / 灰度）。 */
   sources?: RemoteSource[];
   shared?: Record<string, unknown>;
+  /** 该远程声明的远程依赖（名 -> 配置），供运行时拓扑加载。 */
+  remotes?: Record<string, { version?: string; required?: boolean; host?: string; entryName?: string; expose?: string[] }>;
   /** 产物 SRI 完整性（manifest path -> `sha384-...`）。 */
   integrity?: Record<string, string>;
   [key: string]: unknown;
@@ -203,6 +205,10 @@ async function preloadRemote(options: PreloadRemoteOptions): Promise<RemoteManif
       }
       if (Array.isArray(manifest.sources) && manifest.sources.length) {
         info.sources = manifest.sources;
+      }
+      if (manifest.remotes && typeof manifest.remotes === 'object') {
+        // 合并 manifest 声明的远程依赖（注册表已声明的保留）。
+        info.remotes = { ...(info.remotes || {}), ...manifest.remotes };
       }
     }
   }
