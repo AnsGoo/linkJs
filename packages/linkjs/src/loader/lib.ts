@@ -6,6 +6,7 @@ import { recordDiagnostic } from '../devtools';
 import { startPhase } from '../perf';
 import {
   getRemoteInfo,
+  loadCss,
   resolveEntryConfig,
   resolvePublicPath,
   resolveShareScopes,
@@ -54,6 +55,13 @@ async function loadRemoteLib<M = unknown>(
   if (options?.shadow) {
     ensureShadowTarget(appName);
     beginStyleCapture(appName);
+  }
+
+  // 加载远程库的样式（`entry.css`）。shadow 模式下经 `loadCss(url, appName)` 注入影子树，否则注入 head。
+  const cssEntry = resolveEntryConfig(remoteInfo.entry).css;
+  if (cssEntry) {
+    const cssUrl = rewriteRequestUrl(new URL(cssEntry, host).href, appName);
+    await loadCss(cssUrl, appName);
   }
 
   // 预加载该远程声明的共享依赖（支持多个共享作用域）

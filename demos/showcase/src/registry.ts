@@ -20,7 +20,7 @@ const registry: RegistryOption[] = [
   {
     name: 'remote-lib',
     type: 'lib',
-    entry: { js: '/mf/lib.js', shared: '/mf/shared.js' },
+    entry: { js: '/mf/lib.js', shared: '/mf/shared.js', css: '/mf/style.css' },
     shared: sharedDeps,
     // 多源灰度：首个源不可用（4999），健康检查回退到可用源（4001）。
     // 注意：远端 `expose` 的名字就是 'remote-lib'，故多源必须挂在本名上（别名会因 expose 名不匹配而超时）。
