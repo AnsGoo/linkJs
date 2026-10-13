@@ -1,0 +1,23 @@
+{
+  "name": "linkjs-showcase",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "LinkJS 精美示例集（深色科技感）：远程间依赖 / 运行时加载 / 构建期静态 import / 依赖拓扑 / 可观测。",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "linkjs": "workspace:*",
+    "pinia": "^3.0.4",
+    "vue": "^3.5.43",
+    "vue-router": "^5.4.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.9",
+    "unplugin-linkjs": "workspace:*",
+    "vite": "beta"
+  }
+}

@@ -1,0 +1,5 @@
+node_modules
+dist
+
+# linkjs consumeTypes 生成的远程类型声明
+src/linkjs-remotes.d.ts
