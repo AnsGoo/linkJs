@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, shallowRef } from 'vue';
 import CodeBlock from '../components/CodeBlock.vue';
 import StatusPill from '../components/StatusPill.vue';
 import { useSnapshot } from '../composables/useSnapshot';
@@ -8,7 +8,8 @@ import { getRemote, loadApp, loadLib, unloadLib, unloadRemote } from 'linkjs';
 const { snapshot, refresh } = useSnapshot(500);
 const busy = ref(false);
 const error = ref('');
-const libComponent = ref<unknown>(null);
+// 远程组件是 Vue 组件对象，用 shallowRef 避免被响应式代理（否则触发 Vue 警告）。
+const libComponent = shallowRef<unknown>(null);
 const log = ref<Array<{ t: string; msg: string }>>([]);
 
 const remotes = computed(() => snapshot.value.remotes || []);
