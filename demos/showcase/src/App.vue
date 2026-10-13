@@ -13,6 +13,9 @@ const nav = [
   { to: '/preload', label: '路由级预取', icon: 'download' },
   { to: '/sources', label: '多源灰度', icon: 'network' },
   { to: '/shadow', label: 'Shadow 隔离', icon: 'box' },
+  { to: '/plugins', label: '插件机制', icon: 'zap' },
+  { to: '/types', label: '类型转发', icon: 'link' },
+  { to: '/hmr', label: 'HMR 热更新', icon: 'spark' },
   { to: '/observability', label: '可观测', icon: 'activity' },
 ];
 

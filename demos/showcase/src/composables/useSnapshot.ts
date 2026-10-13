@@ -30,6 +30,8 @@ export interface SnapshotShape {
   events?: Array<{ type: string; time: number; summary: string }>;
   metrics?: Array<{ entry: string; kind: string; durationMs: number; status: string; time: number }>;
   diagnostics?: Array<{ level: string; code: string; message: string; time: number }>;
+  plugins?: string[];
+  availablePlugins?: Array<{ name: string; description: string; enabled: boolean }>;
 }
 
 /** 轮询 linkjs 快照，供示例页实时展示。 */

@@ -11,6 +11,9 @@
 | 路由级预取 | `preloadRemote` 预热远端资源 + `remoteSnapshot`/`globalSnapshot` |
 | 多源灰度 | 多候选源 + `first-healthy` 健康检查/回退（`sourceStrategy` 灰度） |
 | Shadow 隔离 | `createRemoteComponent(..., { shadow: true })` 对比全局样式渗入 |
+| 插件机制 | `RuntimePlugin` 钩子（本页注册 `demo-inspector` 实时记录钩子调用） |
+| 类型转发 | `consumeTypes` 生成的聚合 `declare module`（`<remote>` / `<remote>/<Expose>`） |
+| HMR 热更新 | `subscribeRemoteUpdate` 订阅 `REMOTE_UPDATE`（编辑远端组件即触发） |
 | 可观测 | `getSnapshot()` 实时视图：实例 / 依赖 / 共享 / 事件 / 诊断 |
 
 ## 运行
