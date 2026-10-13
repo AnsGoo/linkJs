@@ -66,13 +66,19 @@ const boundary = [
   </div>
 </template>
 
-<!-- 全局（非 scoped）样式：用于演示“宿主样式渗入” -->
+<!--
+  全局（非 scoped）样式：演示“宿主样式渗入” light DOM。
+  注意：选择器**刻意不包含 `div`** —— 影子宿主是一个 div，若对它设置 color/font 这类
+  可继承属性，会经继承穿透进影子树，导致隔离面板看起来“不是原样式”。这里只命中
+  light DOM 里的文本元素，隔离面板即可保持远端原样。
+-->
 <style>
-.leak-zone div,
 .leak-zone h1,
 .leak-zone p,
 .leak-zone h3,
-.leak-zone a {
+.leak-zone a,
+.leak-zone span,
+.leak-zone strong {
   color: #ff5c8a !important;
   font-family: 'Comic Sans MS', 'Bradley Hand', cursive !important;
   letter-spacing: 0.04em;
