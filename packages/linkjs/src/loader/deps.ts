@@ -94,6 +94,22 @@ export function hasDependencyCycle(graph: Record<string, string[]>): boolean {
   return false;
 }
 
+/** expose 引用计数 +1（key 形如 `<appName>/<Expose>`）。 */
+export function retainExpose(key: string): void {
+  const instance = getInstance();
+  const refs = (instance.exposeRefs ??= new Map());
+  refs.set(key, (refs.get(key) ?? 0) + 1);
+}
+
+/** expose 引用计数 -1，返回剩余计数。 */
+export function releaseExpose(key: string): number {
+  const instance = getInstance();
+  const refs = (instance.exposeRefs ??= new Map());
+  const next = (refs.get(key) ?? 0) - 1;
+  refs.set(key, next);
+  return next;
+}
+
 /** 引用计数 +1。 */
 export function retainRemote(name: string): void {
   const instance = getInstance();

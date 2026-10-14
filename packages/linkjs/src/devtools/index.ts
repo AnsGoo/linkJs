@@ -37,8 +37,13 @@ export interface RemoteSnapshot {
   shared?: Record<string, unknown>;
   /** 该远程声明的远程依赖（解析到的状态）。 */
   deps?: Array<{ name: string; version?: string; required?: boolean; status?: string; resolved?: string }>;
-  /** 该远程的 exposes（含每 expose 的 deps），供面板展示 expose 级依赖。 */
-  exposes?: Array<{ name: string; deps?: { remotes?: Record<string, unknown>; shared?: string[] } }>;
+  /** 该远程的 exposes（含每 expose 的 deps 与引用计数），供面板展示 expose 级依赖。 */
+  exposes?: Array<{
+    name: string;
+    deps?: { remotes?: Record<string, unknown>; shared?: string[] };
+    /** 当前消费该 expose 的引用数。 */
+    refs?: number;
+  }>;
   /** 产物 SRI 完整性（path -> sha384-...）。 */
   integrity?: Record<string, string>;
 }
@@ -247,7 +252,10 @@ function buildSnapshot(instance: LinkjsInstance): LinkjsSnapshot {
       shareScope: remote.shareScope,
       shared: remote.shared,
       deps,
-      exposes: remote.exposes,
+      exposes: remote.exposes?.map((expose) => ({
+        ...expose,
+        refs: instance.exposeRefs?.get(`${remote.name}/${expose.name}`) ?? 0,
+      })),
       integrity: remote.integrity,
     });
   });

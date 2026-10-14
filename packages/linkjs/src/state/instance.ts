@@ -168,6 +168,8 @@ export interface LinkjsInstance {
   remoteLoadInflight?: Map<string, Promise<unknown>>;
   /** 远程被依赖的引用计数（name -> 次数），用于卸载时避免误删。 */
   remoteRefs?: Map<string, number>;
+  /** expose 引用计数（`<appName>/<Expose>` -> 次数），用于观测谁在消费哪些 expose。 */
+  exposeRefs?: Map<string, number>;
   /** 请求 URL 重写器（插件通过 `apply` 注册）。 */
   requestRewriters?: RequestRewriter[];
   /** 全局动态基址解析器（对所有未单独配置的远程生效）。 */

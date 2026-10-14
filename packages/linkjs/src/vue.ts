@@ -12,7 +12,7 @@ import {
   type Component,
   type ShallowRef,
 } from 'vue';
-import { getRemote, loadApp, loadRemote, subscribeRemoteUpdate, type LoadAppOptions } from './index';
+import { getRemote, loadApp, loadRemote, retainExpose, releaseExpose, subscribeRemoteUpdate, type LoadAppOptions } from './index';
 import { createShadowIsolation, isShadowSupported, type ShadowIsolation } from './sandbox/shadow';
 
 /**
@@ -250,10 +250,17 @@ function createRemoteComponent(entry: string, options?: CreateRemoteComponentOpt
         comp.value = (getRemote(entry) as Component | null) ?? null;
       };
 
+      const exposeName = entry.includes('/') ? entry.split('/')[1] : undefined;
+
       onMounted(() => {
         // 与渲染一致：默认以 shadow 加载，确保样式被捕获进影子树。
         loadRemote(entry, { ...options, shadow: options?.shadow !== false })
-          .then(resolve)
+          .then(() => {
+            resolve();
+            if (exposeName) {
+              retainExpose(entry); // expose 级引用计数
+            }
+          })
           .catch((error) => {
             console.error(`[linkjs] Failed to load remote component "${entry}":`, error);
           });
@@ -269,6 +276,9 @@ function createRemoteComponent(entry: string, options?: CreateRemoteComponentOpt
       const off = subscribeRemoteUpdate(entry, resolve);
       onUnmounted(() => {
         off();
+        if (exposeName) {
+          releaseExpose(entry);
+        }
         if (fallbackTimer) {
           clearTimeout(fallbackTimer);
         }

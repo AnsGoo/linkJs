@@ -305,7 +305,10 @@ const topoLabels = computed<Record<string, string>>(() => {
         <h3>Exposes（含 deps）({{ exposeRows.length }})</h3>
         <div v-if="!exposeRows.length" class="muted">（无 exposes 元数据）</div>
         <div v-for="row in exposeRows" :key="row.name" class="row">
-          <span class="k mono">{{ row.name }}</span>
+          <span class="k mono">
+            {{ row.name }}
+            <span v-if="row.refs" class="pill is-loaded" title="当前引用数">×{{ row.refs }}</span>
+          </span>
           <span class="v">
             shared:
             {{ row.deps?.shared && row.deps.shared.length ? row.deps.shared.join(', ') : '—' }}

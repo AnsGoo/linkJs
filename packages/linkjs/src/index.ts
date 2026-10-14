@@ -16,6 +16,7 @@ import { expose, shared } from './expose';
 import { loadShare, loadShareSync, registerShare, getShare } from './share';
 import type { ShareOption } from './share';
 import type { RmoteConfig } from './loader';
+import { retainExpose, releaseExpose } from './loader/deps';
 import type { LoadAppOptions } from './loader/app';
 import type { LoadLibOptions } from './loader/lib';
 import type { LoadOptions } from './loader/options';
@@ -225,6 +226,8 @@ export {
   expose,
   shared,
   getRemote,
+  retainExpose,
+  releaseExpose,
   clearRemoteCache,
   unloadRemote,
   unloadLib,
