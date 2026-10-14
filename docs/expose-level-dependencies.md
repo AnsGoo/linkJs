@@ -159,11 +159,16 @@ expose('remoteApp', {
 - 并发去重（按 appName）；`consumeTypes` 失败退避重试。
 - 测试：`expose-parse.test.ts`、`exposes-deps.integration.test.ts`、`remote-deps.test.ts`、`preload.test.ts`。
 
+- expose 级**引用计数**：`retainExpose/releaseExpose`（`instance.exposeRefs`）；`createRemoteComponent`
+  挂载 retain / 卸载 release；快照 `exposes[].refs`。
+- **DevTools**：RemoteView 展示「Exposes（含 deps + ×refs）」；`/exposes` 展示各远端 exposes。
+- **demo**：remote-lib 多 expose（HelloWorld / PiniaCounter）+ e2e 冒烟。
+
 **未实现**
 - **App 内 expose 的 chunk 定向加载**（App 壳仍整入口）。
-- expose 级**去重/引用计数/卸载**（`remoteCache` 仍 appName 级）。
+- expose 级**独立卸载**（一个远程作为整体加载；要真正独立卸载需按 expose 分包/MF remoteEntry）。
 - expose `assets.js.async` 的定向预取策略。
-- 分包示例/强制校验；DevTools expose 展示。
+- 分包示例/强制校验。
 
 ## 9. 决策
 

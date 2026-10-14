@@ -182,20 +182,23 @@ linkjs 的依赖按**载体**与**触发方式**两条轴展开，环会在不�
 
 ### 7.7 实现状态
 
-**已实现**（`packages/unplugin-linkjs/src/index.ts` + `remote-dep-graph.ts`）：
+**已实现**（`packages/unplugin-linkjs/src/index.ts` + `remote-dep-graph.ts` + `bin/linkjs-check.mjs`）：
 
 - **① remote 依赖图** + **② shared 依赖图** 均检测（`detectRemoteDependencyCycles`，迭代 DFS，深图安全）。
 - **传递扫描**：`collectRemoteDependencyGraph(roots, { fetch, timeout, maxNodes })` BFS 拉取下游 manifest；远端未起 → 视为叶子（不误报）。
+- **SCC（强连通分量）**：`findStronglyConnectedComponents`（Kosaraju，迭代）/ `findCyclicComponents`；报告“需并载的强连通分量”。
 - **策略**：`build` 抛错**阻断**；`dev` `console.error` 告警。
 - **时机**：Vite `buildStart`(build) / `configureServer`(dev)；Rolldown `buildStart`(build)。
-- 输出：环路径（`A → B → A`）。测试：`remote-dep-graph.test.ts` 覆盖 DAG / `A→B→A` / 不可达叶子。
+- **`linkjs-check` CLI**：`bin/linkjs-check.mjs --remote name=origin ...`（CI 可用，发现环 exit 1）；根脚本 `pnpm check:cycles`。
+- **运行时治本**：`hasDependencyCycle` + loader 检测到环时**并行加载所有可达依赖**（去重），
+  记录 `REMOTE_DEP_CYCLE` 诊断；无环保持拓扑顺序；每远程加载超时作为看门狗。
+- 测试：`remote-dep-graph.test.ts` 覆盖 DAG / `A→B→A` / 不可达叶子 / SCC；`remote-deps.test.ts` 覆盖 `hasDependencyCycle`。
 
 **未实现**：
 
 - **③ 静态导入图**单独检测（建议并入 ①，不单做）。
-- **Tarjan SCC**（当前为 DFS 多环）。
-- **`linkjs check` CLI**（CI 可用）。
 - 环路径附**来源**（manifest 地址）。
+- `linkjs check` 的 CLI 参数校验/多格式配置（当前为 `--remote name=origin`）。
 
 ## 8. 相关代码 / 文档
 

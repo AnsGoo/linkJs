@@ -89,17 +89,17 @@
 ## 7. 实现状态（截至本轮）
 
 **已实现**
-- 循环依赖 · 构建期检测：**remote 图（传递）+ shared 图**，build 阻断 / dev 告警（`remote-dep-graph.ts` / `unplugin index.ts`）。
+- 循环依赖 · 构建期检测：**remote 图（传递）+ shared 图**，输出**环路径 + 强连通分量（SCC）**，build 阻断 / dev 告警；**`linkjs-check` CLI**（CI 可用）。
+- 循环依赖 · 运行时治本：检测到环 → **并行加载所有可达依赖**（去重）+ `REMOTE_DEP_CYCLE` 诊断；无环保持拓扑；每远程超时作看门狗。
 - 依赖粒度 · expose 级（方案 b）：构建期 **`exposes[].deps`**（按 expose 模块闭包，原始导入判定）+ **自动解析 `expose()`**；宿主 `loadRemote('<r>/<E>')` 用 `exposes[E].deps.remotes`；**lib 按 expose assets 定向加载**。
 - 共享依赖 **按需加载**（用到才拿）。
-- 样式隔离默认开启（`shadow: true`）；并发加载去重；`consumeTypes` 失败退避重试。
+- expose 级**引用计数**（`retainExpose/releaseExpose`）；**DevTools** 展示 exposes（deps + refs）；`/exposes` 页 + 多 expose demo + **Playwright e2e**。
+- 样式隔离默认开启（`shadow: true`）；并发加载去重（`remoteLoadInflight`）；`consumeTypes` 失败退避重试。
 
-**未实现**
-- 运行时 SCC 并行 + 惰性环边 + 超时看门狗（循环依赖治本）。
-- **App 内 expose 的 chunk 定向加载**（App 壳仍整入口）。
-- expose 级**去重/引用计数/卸载**（缓存仍 appName 级）。
-- Tarjan SCC / `linkjs check` CLI；e2e 冒烟。
-- expose 级 **demo**（多 expose 可视化收益）与 DevTools expose 展示。
+**未实现（需更大改造）**
+- **App 内 expose 的 chunk 定向加载**（App 壳仍整入口，按决策）。
+- expose 级**独立卸载**（一个远程作为整体加载；需按 expose 分包 / MF remoteEntry 才能独立加载/卸载）。
+- 环路径附来源（manifest 地址）；`linkjs-check` 多格式配置。
 
 ## 8. 参考
 
