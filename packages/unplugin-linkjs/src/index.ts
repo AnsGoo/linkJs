@@ -181,6 +181,12 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
   const entrySharedDeps = new Set<string>();
 
   /**
+   * 解析 `expose('<remote>', { Name: <module> })` 得到的 **expose 名 → 模块** 映射。
+   * 用于把 manifest 的 `exposes[].name` 设为 expose 名，并按其模块闭包补全 `deps`。
+   */
+  const exposeRegistry = new Map<string, { file: string; source?: string }>();
+
+  /**
    * 共享依赖 import 重写。
    *
    * - build：共享产物内部用 `loadShare`（异步、带优先级），其余（宿主/入口/业务模块）用同步 `getShare`；
@@ -216,6 +222,8 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
       let hasModifications = false;
       // 是否在入口里调用了 expose（用于注入自接受边界，避免入口变更整页刷新）
       let hasExposeCall = false;
+      // 本文件里 `expose()` 的 expose名 → 本地标识符（用于解析到模块）
+      const exposeLocals: Array<{ name: string; local?: string }> = [];
 
       // 转换导入声明
       const transformImportDeclaration = (node: ImportDeclaration) => {
@@ -326,9 +334,27 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
 
         // 检查是否是调用表达式
         if (node.type === 'CallExpression') {
-          // 入口调用 expose：标记，后续注入自接受边界
+          // 入口调用 expose：标记 + 解析 expose 名 → 模块
           if (node.callee.type === 'Identifier' && node.callee.name === 'expose') {
             hasExposeCall = true;
+            const obj = (node as any).arguments?.[1];
+            if (obj && obj.type === 'ObjectExpression') {
+              for (const prop of obj.properties ?? []) {
+                if (prop?.type !== 'Property') {
+                  continue;
+                }
+                const keyName =
+                  prop.key?.type === 'Literal'
+                    ? prop.key.value
+                    : prop.key?.type === 'Identifier'
+                      ? prop.key.name
+                      : undefined;
+                const local = prop.value?.type === 'Identifier' ? prop.value.name : undefined;
+                if (keyName) {
+                  exposeLocals.push({ name: String(keyName), local });
+                }
+              }
+            }
           }
           // 检查是否是 shared 函数调用
           if (node.callee.type === 'Identifier' && node.callee.name === 'shared') {
@@ -405,10 +431,34 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
         }
       };
 
+      // 收集导入绑定：本地名 → 源模块说明符
+      const importSourceByLocal = new Map<string, string>();
+      const collectImports = (node: any) => {
+        if (!node || typeof node !== 'object') {
+          return;
+        }
+        if (node.type === 'ImportDeclaration') {
+          for (const spec of node.specifiers ?? []) {
+            if (spec?.local?.name && typeof node.source?.value === 'string') {
+              importSourceByLocal.set(spec.local.name, node.source.value);
+            }
+          }
+        }
+        if (Array.isArray(node.body)) {
+          node.body.forEach(collectImports);
+        }
+      };
+      collectImports(ast as any);
       // 分析 shared 函数调用
       analyzeSharedCall(ast as any);
       // 遍历AST处理导入
       walk(ast as any);
+
+      // 登记 expose 名 → 模块（file + 源说明符）
+      for (const entry of exposeLocals) {
+        const source = entry.local ? importSourceByLocal.get(entry.local) : undefined;
+        exposeRegistry.set(entry.name, { file: id, source });
+      }
 
       // 入口自接受：入口变更时重跑顶层 expose()（→ 广播 REMOTE_UPDATE），
       // 而不是冒泡成整页刷新。宿主据此重挂载/重解析。
@@ -569,16 +619,13 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
           };
         };
 
-        // 计算某入口 chunk 的依赖闭包（shared + remotes），用于补全 `exposes[].deps`。
+        // 计算给定模块集合的依赖闭包（shared + remotes），用于补全 `exposes[].deps`。
         const manifestRemotes = resolveManifestRemotes() ?? {};
-        const collectChunkDeps = (chunk: any): NonNullable<NonNullable<ManifestJson['exposes']>[number]['deps']> => {
+        const collectDepsFrom = (startIds: string[]): NonNullable<NonNullable<ManifestJson['exposes']>[number]['deps']> => {
           const sharedSet = new Set<string>();
           const remotes: Record<string, { host?: string }> = {};
           const seen = new Set<string>();
-          const queue: string[] = [
-            ...((chunk?.moduleIds as string[]) ?? []),
-            ...(chunk?.facadeModuleId ? [chunk.facadeModuleId as string] : []),
-          ];
+          const queue: string[] = [...startIds];
           while (queue.length > 0) {
             const mid = queue.shift()!;
             if (seen.has(mid)) {
@@ -609,6 +656,11 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
           }
           return { remotes, shared: [...sharedSet] };
         };
+        const collectChunkDeps = (chunk: any) =>
+          collectDepsFrom([
+            ...((chunk?.moduleIds as string[]) ?? []),
+            ...(chunk?.facadeModuleId ? [chunk.facadeModuleId as string] : []),
+          ]);
 
         const exposeAssets: NonNullable<ManifestJson['exposes']> = [];
         // d.ts 入口路径与内容哈希（供宿主类型转发 / 变更检测）。
@@ -632,12 +684,15 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
               if (!entry.js) entry.js = path.join(baseDir, key);
               const assets = collectAssets(bundleItem);
               if (!entry.assets) entry.assets = assets;
-              exposeAssets.push({
-                name: (bundleItem as any).name || key,
-                path: path.join(baseDir, key),
-                assets,
-                deps: collectChunkDeps(bundleItem),
-              });
+              // 回退：未解析到 expose() 映射时，按入口 chunk 生成 exposes 项。
+              if (exposeRegistry.size === 0) {
+                exposeAssets.push({
+                  name: (bundleItem as any).name || key,
+                  path: path.join(baseDir, key),
+                  assets,
+                  deps: collectChunkDeps(bundleItem),
+                });
+              }
             }
           } else if (bundleItem.type === 'asset') {
             if (key.endsWith('.map')) {
@@ -652,6 +707,22 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
             }
           }
         });
+
+        // 依据 `expose()` 解析结果生成 exposes[]：name = expose 名，deps = 该模块闭包。
+        if (exposeRegistry.size > 0) {
+          const allIds = this.getModuleIds().map((m) => String(m));
+          for (const [name, info] of exposeRegistry) {
+            const candidate = info.source ? path.resolve(path.dirname(info.file), info.source) : info.file;
+            const startId =
+              allIds.find((m) => m === candidate) ?? allIds.find((m) => m.startsWith(candidate)) ?? info.file;
+            exposeAssets.push({
+              name,
+              path: entry.js ?? '',
+              assets: entry.assets ?? { js: { sync: [], async: [] }, css: { sync: [], async: [] } },
+              deps: collectDepsFrom([startId]),
+            });
+          }
+        }
 
         // 回退：rolldown-vite 未在 chunk 上暴露 importedCss 时，把构建产出的 CSS 归到主入口，
         // 保证 `entry.assets.css.sync` 完整（供 preloadRemote 预加载样式）。
