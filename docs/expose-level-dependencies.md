@@ -42,6 +42,9 @@ expose('remoteApp', {
 
 ## 3.5 方案 a 与 b 的对比
 
+> **已定：采用方案 b（manifest 驱动 import chunk）** —— 宿主按 `manifest.exposes[<Expose>].assets` 直接 import 该 expose 的 chunk；`expose` 语义保持不变。
+> 方案 a 保留为备选（记录于下）。
+
 **核心差异一句话**：*谁持有「expose → chunk」的映射、谁主导加载*。
 - 方案 a：**远端运行时**持有映射（`B: () => import('./chunk-B')`），宿主按**名字**请求 → `getRemote('r/B')` await getter；**宿主不关心 chunk 路径**。
 - 方案 b：**宿主**持有映射（`manifest.exposes[B].assets`），按**URL**直接拉 chunk；chunk 执行时自暴露。
@@ -86,29 +89,48 @@ expose('remoteApp', {
 ## 4. 构建期（unplugin）产物
 
 1. **生成懒入口**（方案 a）：从 `exposes`/`exports` 生成 `A: () => import('./chunk-A')` 注册代码（方案 b：生成每 expose 独立入口）。
-2. **每 expose 依赖闭包**：用模块图分析每个 expose chunk 的 import 闭包，产出：
+2. **每 expose 依赖闭包**：用模块图分析每个 expose chunk 的 import 闭包，产出（**统一字段 `deps`**）：
    ```jsonc
-   exposes: [{ name: "B", assets: {…}, remotes: {}, shared: ["vue"] }]
+   exposes: [
+     { name: "A", assets: {…}, deps: { remotes: { LibA: { host: "…" } }, shared: ["vue", "pinia"] } },
+     { name: "B", assets: {…}, deps: { remotes: {},                      shared: ["vue"] } },
+     { name: "C", assets: {…}, deps: { remotes: {},                      shared: ["vue"] } }
+   ]
    ```
-   ——「B 不依赖 LibA」的落点：B 的 `remotes` 为空，A 的 `remotes` 才有 LibA。
+   ——「B 不依赖 LibA」的落点：B 的 `deps.remotes` 为空，A 的 `deps.remotes` 才有 LibA。
    （现有 `analyzeDependencies` 是**包级**闭包，需扩展为**按 expose 入口**的闭包。）
 
 ## 5. 宿主加载流程（`loadRemote('<remote>/<Expose>')`）
 
 1. 确保远端**薄入口**已加载（注册懒映射 / 拿到 `manifest.exposes`）；
 2. 读取 `exposes[Expose]`：
-   - 加载其 **shared**（仅列出的）；不再预加载 remote 级全部 shared；
-   - 加载其 **remotes**（仅列出的，走现有拓扑/去重）；不再加载 remote 级全部 remotes；
+   - 加载其 **`deps.shared`**（仅列出的）；不再预加载 remote 级全部 shared；
+   - 加载其 **`deps.remotes`**（仅列出的，走现有拓扑/去重）；不再加载 remote 级全部 remotes；
 3. 触发该 expose 的 **chunk**（方案 a：调 getter；方案 b：按 assets import）；
 4. 解析并渲染。
 
-## 6. 每 expose 的 shared / remotes
+## 6. 每 expose 的依赖（`exposes[].deps`）
 
-- **remotes**：由 remote 级 `remotes` 细化为 `exposes[].remotes`（缺失则回退 remote 级）。
-- **shared**：两种取径——
-  - ① 宿主按 `exposes[].shared` **预加载**（精确可控，推荐）；
-  - ② 不预加载，远端 chunk `import` 时 `register-share` **自然按需**（更省，singleton/版本协调需再确认）。
-  - 建议：①为主、②兜底（远端本地回退仍可用）。
+> **统一字段 `deps`**：`{ remotes?: Record<string,{host}>; shared?: string[] }`。
+
+- **deps.remotes**：由 remote 级 `remotes` 细化为 `exposes[].deps.remotes`（缺失则回退 remote 级）。
+- **shared（已定：② 按需，「用到才拿」）**：宿主**不做清单预加载**；由远端 chunk `import` 时触发
+  `register-share` / `loadShare` —— **用到哪个才加载哪个**。宿主只需保证自身 singleton 已**注册**
+  （`createInstance` 已注册），远端即命中宿主实例（`registerShare` 的 singleton 语义保证）。
+  - 备选 ①（宿主按 `deps.shared` 预加载）保留，仅用于“宿主 singleton + 远端同步使用”的**最小兜底**。
+
+### 6.1 实现要点（shared 按需）
+
+1. **收窄/移除预加载**：`loadApp`/`loadLib` 不再 `await` 预加载 `remoteInfo.shared` **全部**
+   （`packages/linkjs/src/loader/app.ts`、`lib.ts`）。改为不预加载（或仅对“关键项”做最小预加载兜底）。
+2. **远端构建接运行时**：远端对 shared 的 `import` 需接到运行时加载路径 ——
+   dev 走 `adaptiveRuntime` / `$linkjs`（现有 `unplugin-linkjs` 改写）；prod 走 `register-shares`
+   或运行时访问器，使“import 即触发 `loadShare`”。
+3. **同步访问时序**：若远端**顶层同步**使用 shared，需经 **top-level await** 或惰性引用；
+   “宿主 singleton + 同步使用”的项用 ① 做**最小预加载**兜底，避免拿到 null/回退。
+4. **singleton / 版本**：沿用现有策略 —— 宿主 `createInstance` 注册优先（先注册者胜出）；
+   `loadShare` 的候选/版本协调不变。
+5. **失败回退**：远端本地回退（`register-shares`）仍保留，宿主未提供时可用。
 
 ## 7. 与既有机制的关系（需一起改）
 
@@ -128,10 +150,14 @@ expose('remoteApp', {
 - **首屏与预加载**：入口变薄后，需「hover/prefetch 预取某 expose 的 chunk」补回体验（复用 `preloadRemote` 的 assets）。
 - **版本/共享协调**：按 expose 加载 shared 后，singleton「谁先注册」仍需全局一致（跨 expose/跨 remote）。
 
-## 9. 待决策
+## 9. 决策
 
-1. **契约**：方案 a（惰性 getter，MF 风格）还是方案 b（manifest 驱动 import chunk）？
-2. **shared 加载**：宿主按 `exposes[].shared` 预加载（①）还是远端 import 时按需 `register-share`（②）？
-3. **分包强制性**：unplugin 对「每 expose 独立 chunk」**强制校验**还是**建议+提示**？
-4. **App 边界**：是否承诺 App 也 expose 级？还是**仅 Lib** 承诺、App 保持整包？
-5. **数据字段**：`exposes[].remotes` / `exposes[].shared`，还是统一 `exposes[].deps`？
+**已定**
+1. **契约**：**方案 b（manifest 驱动 import chunk）**。
+2. **数据字段**：**统一 `exposes[].deps`**（`{ remotes?: Record<string,{host}>; shared?: string[] }`）。
+3. **shared 加载**：**② 按需（用到才拿）**（宿主不预加载；远端 import 触发 `loadShare`）。
+
+**待定**
+4. **分包强制性**：unplugin 对「每 expose 独立 chunk」**强制校验**还是**建议+提示**？
+5. **App 边界**：是否承诺 App 也 expose 级？还是**仅 Lib** 承诺、App 保持整包？
+6. **remotes 回退**：`exposes[].deps.remotes` 缺失时是否回退 remote 级 `remotes`？

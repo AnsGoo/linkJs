@@ -77,11 +77,12 @@
 5. 形态：只挂构建插件，还是**同时出 `linkjs check` CLI**？
 
 ### 依赖粒度（expose 级）
-6. 契约：惰性 getter（MF 风格）还是 manifest 驱动 import chunk？
-7. shared：宿主按清单预加载，还是远端 import 时按需 `register-share`？
-8. 分包：强制校验还是建议提示？
-9. App 边界：是否承诺 App 也 expose 级？
-10. 字段命名：`exposes[].remotes/shared` 还是统一 `deps`？
+6. **契约（已定）**：**方案 b（manifest 驱动 import chunk）**。
+7. **shared（已定）**：**② 按需（用到才拿）**——宿主不预加载，远端 import 触发 `loadShare`。
+8. **字段（已定）**：统一 **`exposes[].deps`**（`{ remotes?, shared? }`）。
+9. 分包：强制校验还是建议提示？（待定）
+10. App 边界：是否承诺 App 也 expose 级？（待定）
+11. remotes 回退：`exposes[].deps.remotes` 缺失是否回退 remote 级？（待定）
 
 ---
 
