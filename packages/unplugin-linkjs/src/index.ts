@@ -22,7 +22,7 @@ import {
   REMOTE_HOSTS_GLOBAL,
   selectRemoteImportNames,
 } from './runtime-bootstrap.js';
-import { collectRemoteDependencyGraph, detectRemoteDependencyCycles } from './remote-dep-graph.js';
+import { collectRemoteDependencyGraph, detectRemoteDependencyCycles, findCyclicComponents } from './remote-dep-graph.js';
 import { resolveExposeSources } from './expose-parse.js';
 import { linkjsVue, linkjsVueOptions } from './vue-plugin.js';
 import path from 'path';
@@ -135,19 +135,24 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
    * `mode==='build'` 时抛错阻断；dev 仅告警。
    */
   async function checkDependencyCycles(mode: 'build' | 'dev', result?: ConsumeTypesResult): Promise<void> {
-    const sharedCycles = detectRemoteDependencyCycles(analyzeDependencies(shared));
+    const sharedGraph = analyzeDependencies(shared);
+    const sharedCycles = detectRemoteDependencyCycles(sharedGraph);
     const remoteGraph = await collectRemoteGraph(result);
     const remoteCycles = detectRemoteDependencyCycles(remoteGraph);
     if (sharedCycles.length === 0 && remoteCycles.length === 0) {
       return;
     }
     const fmt = (cycles: string[][]) => cycles.map((c) => `  ${c.join(' → ')}`).join('\n');
+    const scc = (graph: Record<string, string[]>) => {
+      const comps = findCyclicComponents(graph);
+      return comps.length > 0 ? `\n  需并载的强连通分量：${comps.map((c) => `{ ${c.join(', ')} }`).join(' ')}` : '';
+    };
     const lines: string[] = [];
     if (remoteCycles.length > 0) {
-      lines.push(`[linkjs] 远程依赖环：\n${fmt(remoteCycles)}`);
+      lines.push(`[linkjs] 远程依赖环：\n${fmt(remoteCycles)}${scc(remoteGraph)}`);
     }
     if (sharedCycles.length > 0) {
-      lines.push(`[linkjs] 共享依赖环：\n${fmt(sharedCycles)}`);
+      lines.push(`[linkjs] 共享依赖环：\n${fmt(sharedCycles)}${scc(sharedGraph)}`);
     }
     const message = `${lines.join('\n')}\n（循环依赖会导致加载死锁，请拆分或抽第三模块打破环。详见 docs/remote-dependency-cycles.md）`;
     if (mode === 'build') {

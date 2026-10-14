@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { collectRemoteDependencyGraph, detectRemoteDependencyCycles } from '../src/remote-dep-graph';
+import { collectRemoteDependencyGraph, detectRemoteDependencyCycles, findCyclicComponents } from '../src/remote-dep-graph';
 
 /** 用「host -> remotes」映射伪造 fetch。 */
 function fakeFetch(map: Record<string, Record<string, { host?: string }>>): typeof fetch {
@@ -44,6 +44,32 @@ describe('detectRemoteDependencyCycles', () => {
     const graph: Record<string, string[]> = {};
     for (let i = 0; i < 20000; i++) graph[`n${i}`] = [`n${i + 1}`];
     expect(detectRemoteDependencyCycles(graph)).toEqual([]);
+  });
+});
+
+describe('findCyclicComponents (SCC)', () => {
+  const norm = (comps: string[][]) => comps.map((c) => [...c].sort()).sort();
+
+  test('empty for a DAG', () => {
+    expect(findCyclicComponents({ A: ['B'], B: ['C'], C: [] })).toEqual([]);
+  });
+
+  test('single SCC for A↔B', () => {
+    expect(norm(findCyclicComponents({ A: ['B'], B: ['A'] }))).toEqual([['A', 'B']]);
+  });
+
+  test('detects a self-loop', () => {
+    expect(findCyclicComponents({ A: ['A'] })).toEqual([['A']]);
+  });
+
+  test('two independent SCCs among a larger graph', () => {
+    const comps = norm(
+      findCyclicComponents({ A: ['B'], B: ['A', 'C'], C: ['D'], D: ['C'], E: ['A'] }),
+    );
+    expect(comps).toEqual([
+      ['A', 'B'],
+      ['C', 'D'],
+    ]);
   });
 });
 
