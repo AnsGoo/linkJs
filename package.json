@@ -17,6 +17,7 @@
     "build:ext": "pnpm --filter linkjs-devtools-extension build",
     "dev:ext": "pnpm --filter linkjs-devtools-extension dev",
     "dev:showcase": "pnpm --filter linkjs-showcase dev",
+    "check:cycles": "node packages/unplugin-linkjs/bin/linkjs-check.mjs",
     "prepare": "pnpm run build",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",

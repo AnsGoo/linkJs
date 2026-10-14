@@ -826,6 +826,13 @@ const unpluginLinkjsRollowPlugin = unpluginLinkjs.rolldown;
 export { unpluginLinkjsRollowPlugin };
 export { linkjsVue, linkjsVueOptions };
 export type { LinkjsVueOptions } from './vue-plugin.js';
+export {
+  collectRemoteDependencyGraph,
+  detectRemoteDependencyCycles,
+  findStronglyConnectedComponents,
+  findCyclicComponents,
+} from './remote-dep-graph.js';
+export type { RemoteRoot, CollectGraphOptions } from './remote-dep-graph.js';
 export { linkjsSharedVersions, LINKJS_SHARED_VIRTUAL_ID } from './shared-versions.js';
 export type { SharedVersionsOptions } from './shared-versions.js';
 export default unpluginLinkjs;

@@ -5,6 +5,9 @@
   "type": "module",
   "license": "ISC",
   "author": "",
+  "bin": {
+    "linkjs-check": "./bin/linkjs-check.mjs"
+  },
   "exports": {
     ".": "./dist/index.mjs",
     "./package.json": "./package.json"
