@@ -23,6 +23,7 @@ import {
   selectRemoteImportNames,
 } from './runtime-bootstrap.js';
 import { detectRemoteDependencyCycles } from './remote-dep-graph.js';
+import { resolveExposeSources } from './expose-parse.js';
 import { linkjsVue, linkjsVueOptions } from './vue-plugin.js';
 import path from 'path';
 
@@ -222,8 +223,6 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
       let hasModifications = false;
       // 是否在入口里调用了 expose（用于注入自接受边界，避免入口变更整页刷新）
       let hasExposeCall = false;
-      // 本文件里 `expose()` 的 expose名 → 本地标识符（用于解析到模块）
-      const exposeLocals: Array<{ name: string; local?: string }> = [];
 
       // 转换导入声明
       const transformImportDeclaration = (node: ImportDeclaration) => {
@@ -334,27 +333,9 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
 
         // 检查是否是调用表达式
         if (node.type === 'CallExpression') {
-          // 入口调用 expose：标记 + 解析 expose 名 → 模块
+          // 入口调用 expose：标记
           if (node.callee.type === 'Identifier' && node.callee.name === 'expose') {
             hasExposeCall = true;
-            const obj = (node as any).arguments?.[1];
-            if (obj && obj.type === 'ObjectExpression') {
-              for (const prop of obj.properties ?? []) {
-                if (prop?.type !== 'Property') {
-                  continue;
-                }
-                const keyName =
-                  prop.key?.type === 'Literal'
-                    ? prop.key.value
-                    : prop.key?.type === 'Identifier'
-                      ? prop.key.name
-                      : undefined;
-                const local = prop.value?.type === 'Identifier' ? prop.value.name : undefined;
-                if (keyName) {
-                  exposeLocals.push({ name: String(keyName), local });
-                }
-              }
-            }
           }
           // 检查是否是 shared 函数调用
           if (node.callee.type === 'Identifier' && node.callee.name === 'shared') {
@@ -431,33 +412,14 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
         }
       };
 
-      // 收集导入绑定：本地名 → 源模块说明符
-      const importSourceByLocal = new Map<string, string>();
-      const collectImports = (node: any) => {
-        if (!node || typeof node !== 'object') {
-          return;
-        }
-        if (node.type === 'ImportDeclaration') {
-          for (const spec of node.specifiers ?? []) {
-            if (spec?.local?.name && typeof node.source?.value === 'string') {
-              importSourceByLocal.set(spec.local.name, node.source.value);
-            }
-          }
-        }
-        if (Array.isArray(node.body)) {
-          node.body.forEach(collectImports);
-        }
-      };
-      collectImports(ast as any);
       // 分析 shared 函数调用
       analyzeSharedCall(ast as any);
       // 遍历AST处理导入
       walk(ast as any);
 
-      // 登记 expose 名 → 模块（file + 源说明符）
-      for (const entry of exposeLocals) {
-        const source = entry.local ? importSourceByLocal.get(entry.local) : undefined;
-        exposeRegistry.set(entry.name, { file: id, source });
+      // 解析 expose 名 → 源模块（供 build 期补全 exposes[].deps）
+      for (const [name, source] of resolveExposeSources(ast as any)) {
+        exposeRegistry.set(name, { file: id, source });
       }
 
       // 入口自接受：入口变更时重跑顶层 expose()（→ 广播 REMOTE_UPDATE），

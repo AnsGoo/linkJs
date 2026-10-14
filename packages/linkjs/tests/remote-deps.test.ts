@@ -107,6 +107,22 @@ describe('resolveRemoteDeps', () => {
     expect(linkInstance.remoteRefs?.get('B')).toBe(1);
     expect(linkInstance.remoteRefs?.get('C')).toBe(1);
   });
+
+  test('uses the provided deps map (expose-level), not the remote-level remotes', async () => {
+    register('A'); // 无 remote 级 remotes
+    register('B');
+    const order: string[] = [];
+    // 显式传入 deps（等价 exposes[E].deps.remotes）
+    await resolveRemoteDeps('A', { B: {} }, ctx(recorder(order)));
+    expect(order).toEqual(['B']);
+  });
+
+  test('honors host override from the provided deps map', async () => {
+    register('A');
+    const order: string[] = [];
+    await resolveRemoteDeps('A', { B: { host: 'http://localhost:9000' } }, ctx(recorder(order)));
+    expect(linkInstance.remotes.get('B')?.host).toBe('http://localhost:9000');
+  });
 });
 
 describe('reference counting', () => {

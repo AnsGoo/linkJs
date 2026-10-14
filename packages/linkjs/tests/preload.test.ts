@@ -168,3 +168,21 @@ test('createInstance auto-runs build-time injected preloads (__linkjs_preload__)
   expect((globalThis as any).__linkjs_preload__).toBeUndefined();
   await vi.waitFor(() => expect(created.some((l) => l.href.includes('/mf/lib.js'))).toBe(true));
 });
+
+test('records manifest exposes (with deps) onto the registered remote', async () => {
+  linkInstance.remotes.set('remote-lib', { name: 'remote-lib', entry: '', status: LOAD_STATUS.UNLOADED });
+  (globalThis as any).fetch = vi.fn(async () => ({
+    ok: true,
+    json: async () => ({
+      name: 'remote-lib',
+      entry: { assets: { js: { sync: ['/mf/lib.js'], async: [] }, css: { sync: [], async: [] } } },
+      exposes: [{ name: 'HelloWorld', path: '/mf/lib.js', deps: { remotes: {}, shared: [] } }],
+    }),
+  }));
+
+  await preloadRemote({ manifestUrl: 'http://localhost:4001/mf/manifest.json', name: 'remote-lib' });
+
+  const info = linkInstance.remotes.get('remote-lib');
+  expect(info?.exposes?.[0]?.name).toBe('HelloWorld');
+  expect(info?.exposes?.[0]?.deps).toEqual({ remotes: {}, shared: [] });
+});
