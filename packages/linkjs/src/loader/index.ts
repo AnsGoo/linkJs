@@ -54,6 +54,21 @@ function setRemoteStatus(appName: string, status: (typeof LOAD_STATUS)[keyof typ
   }
 }
 
+/** 远程自身加载的并发去重：同一 appName 正在加载时复用同一 Promise，避免重复 import（模块缓存→不再 expose）。 */
+function withLoadInflight<T>(appName: string, run: () => Promise<T>): Promise<T> {
+  const instance = getInstance();
+  const map = (instance.remoteLoadInflight ??= new Map());
+  const existing = map.get(appName);
+  if (existing) {
+    return existing as Promise<T>;
+  }
+  const task = run().finally(() => {
+    map.delete(appName);
+  });
+  map.set(appName, task);
+  return task;
+}
+
 /** 拓扑加载某远程声明的全部远程依赖（`deps:false` 时跳过）。 */
 function resolveDepsFor(appName: string, options?: { deps?: boolean; expose?: string }): Promise<void> {
   if (options?.deps === false) {
@@ -104,19 +119,21 @@ function loadApp(entry: string, options?: LoadAppOptions): Promise<RemoteModule 
   const appName = entry.split('/')[0];
   // 默认开启样式隔离（shadow: true）；显式 `{ shadow: false }` 才关闭。
   const opts: LoadAppOptions = { ...options, shadow: options?.shadow !== false };
-  return resolveDepsFor(appName, opts).then(() => {
-    setRemoteStatus(appName, LOAD_STATUS.LOADING);
-    return useLoadApp<RemoteModule>(remoteCache())(entry, opts).then(
-      (result) => {
-        setRemoteStatus(appName, LOAD_STATUS.LOADED);
-        return result;
-      },
-      (error) => {
-        setRemoteStatus(appName, LOAD_STATUS.UNLOADED);
-        throw error;
-      },
-    );
-  });
+  return withLoadInflight(appName, () =>
+    resolveDepsFor(appName, opts).then(() => {
+      setRemoteStatus(appName, LOAD_STATUS.LOADING);
+      return useLoadApp<RemoteModule>(remoteCache())(entry, opts).then(
+        (result) => {
+          setRemoteStatus(appName, LOAD_STATUS.LOADED);
+          return result;
+        },
+        (error) => {
+          setRemoteStatus(appName, LOAD_STATUS.UNLOADED);
+          throw error;
+        },
+      );
+    }),
+  );
 }
 
 function getRemote<M = unknown>(entry: string): M | null {
@@ -187,19 +204,21 @@ function loadLib(entry: string, options?: LoadLibOptions): Promise<RemoteModule 
   ensureRemoteUpdates();
   const appName = entry.split('/')[0];
   const opts: LoadLibOptions = { ...options, shadow: options?.shadow !== false };
-  return resolveDepsFor(appName, opts).then(() => {
-    setRemoteStatus(appName, LOAD_STATUS.LOADING);
-    return useLoadRemoteLib<RemoteModule>(remoteCache())(entry, opts).then(
-      (result) => {
-        setRemoteStatus(appName, LOAD_STATUS.LOADED);
-        return result;
-      },
-      (error) => {
-        setRemoteStatus(appName, LOAD_STATUS.UNLOADED);
-        throw error;
-      },
-    );
-  });
+  return withLoadInflight(appName, () =>
+    resolveDepsFor(appName, opts).then(() => {
+      setRemoteStatus(appName, LOAD_STATUS.LOADING);
+      return useLoadRemoteLib<RemoteModule>(remoteCache())(entry, opts).then(
+        (result) => {
+          setRemoteStatus(appName, LOAD_STATUS.LOADED);
+          return result;
+        },
+        (error) => {
+          setRemoteStatus(appName, LOAD_STATUS.UNLOADED);
+          throw error;
+        },
+      );
+    }),
+  );
 }
 
 /**

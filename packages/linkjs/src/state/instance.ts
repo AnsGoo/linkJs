@@ -164,6 +164,8 @@ export interface LinkjsInstance {
   shareInflight?: Map<string, Promise<RemoteModule>>;
   /** 远程依赖并发加载去重表（name -> 加载 Promise）。 */
   remoteInflight?: Map<string, Promise<unknown>>;
+  /** 远程**自身**并发加载去重表（appName -> 加载 Promise），避免同一远程被重复 import。 */
+  remoteLoadInflight?: Map<string, Promise<unknown>>;
   /** 远程被依赖的引用计数（name -> 次数），用于卸载时避免误删。 */
   remoteRefs?: Map<string, number>;
   /** 请求 URL 重写器（插件通过 `apply` 注册）。 */

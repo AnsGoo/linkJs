@@ -134,6 +134,8 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
     }
   }
 
+  let consumeRetry = 0;
+
   async function runConsumeTypes(): Promise<ConsumeTypesResult | undefined> {
     if (!consumeTypes?.remotes?.length) {
       return undefined;
@@ -142,9 +144,15 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
       const result = await consumeRemoteTypes(consumeTypes);
       syncRemoteImports(result);
       checkRemoteDependencyCycles(result);
+      consumeRetry = 0;
       return result;
     } catch (error) {
       console.warn(`[linkjs] consumeTypes failed: ${String((error as { message?: string })?.message ?? error)}`);
+      // 远端可能尚未启动：有限次退避重试，避免虚拟模块因 registry 为空而失效。
+      if (consumeRetry < 3) {
+        consumeRetry += 1;
+        setTimeout(() => void runConsumeTypes(), 1500 * consumeRetry);
+      }
       return undefined;
     }
   }
