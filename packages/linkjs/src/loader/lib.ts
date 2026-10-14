@@ -47,6 +47,7 @@ async function loadRemoteLib<M = unknown>(
   const host = await resolvePublicPath(remoteInfo, appName, options?.host);
   const entryName = options?.entryName || resolveEntryConfig(remoteInfo.entry).js;
   const jsUrl = rewriteRequestUrl(entryName ? new URL(entryName, host).href : host, appName);
+
   const timeout = options?.timeout ?? 10000;
 
   // Shadow DOM 隔离（默认开启；运行环境不支持 Shadow 时自动降级为非隔离）。
@@ -63,6 +64,23 @@ async function loadRemoteLib<M = unknown>(
   if (cssEntry) {
     const cssUrl = rewriteRequestUrl(new URL(cssEntry, host).href, appName);
     void loadCss(cssUrl, appName);
+  }
+
+  // expose 级：若 manifest 声明了该 expose 的 assets，则只加载其 chunk（可更细；未分包时即入口）。
+  const exposeAssets = options?.expose
+    ? getRemoteInfo(appName)?.exposes?.find((item) => item.name === options.expose)?.assets
+    : undefined;
+  const exposeJsSync = exposeAssets?.js?.sync;
+  const entryUrls: string[] =
+    exposeJsSync && exposeJsSync.length > 0
+      ? exposeJsSync.map((p: string) => rewriteRequestUrl(new URL(p, host).href, appName))
+      : [jsUrl];
+  const exposeCssSync = exposeAssets?.css?.sync ?? [];
+  for (const cssPath of exposeCssSync) {
+    if (cssPath === cssEntry) {
+      continue; // 与入口样式相同（未分包），前面已加载。
+    }
+    void loadCss(rewriteRequestUrl(new URL(cssPath, host).href, appName), appName);
   }
 
   // 按需加载：默认**不**预加载共享依赖（由远端 import 时 `await loadShare` 触发）。
@@ -93,7 +111,7 @@ async function loadRemoteLib<M = unknown>(
       reject(error);
     };
 
-    withShareProvider(appName, () => import(/* @vite-ignore */ jsUrl))
+    withShareProvider(appName, () => Promise.all(entryUrls.map((u: string) => import(/* @vite-ignore */ u))))
       .then(async () => {
         await runHook('afterLoadEntry', remoteInfo);
         extOption.timeoutId = setTimeout(() => {

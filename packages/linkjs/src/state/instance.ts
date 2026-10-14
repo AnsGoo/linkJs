@@ -86,6 +86,10 @@ export interface RemoteBase {
   exposes?: Array<{
     name: string;
     path?: string;
+    assets?: {
+      js?: { sync?: string[]; async?: string[] };
+      css?: { sync?: string[]; async?: string[] };
+    };
     deps?: { remotes?: Record<string, { host?: string }>; shared?: string[] };
   }>;
   /** 该远程关联的共享作用域（可多个，默认 `global`）。 */
