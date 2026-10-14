@@ -150,6 +150,21 @@ expose('remoteApp', {
 - **首屏与预加载**：入口变薄后，需「hover/prefetch 预取某 expose 的 chunk」补回体验（复用 `preloadRemote` 的 assets）。
 - **版本/共享协调**：按 expose 加载 shared 后，singleton「谁先注册」仍需全局一致（跨 expose/跨 remote）。
 
+## 8.5 实现状态（截至本轮）
+
+**已实现**
+- 构建期：自动解析 `expose()` → `exposes[].name` = expose 名；`exposes[].deps = { remotes, shared }` 按**该 expose 模块闭包**计算（用 transform 记录的原始导入判定，因改写会移除裸导入）。
+- 宿主：`loadRemote('<r>/<E>')` 优先用 `exposes[E].deps.remotes`（回退 remote 级）；**lib 按 `exposes[E].assets` 定向加载 chunk**。
+- 共享：**按需**（远端 import 触发 `loadShare`）。
+- 并发去重（按 appName）；`consumeTypes` 失败退避重试。
+- 测试：`expose-parse.test.ts`、`exposes-deps.integration.test.ts`、`remote-deps.test.ts`、`preload.test.ts`。
+
+**未实现**
+- **App 内 expose 的 chunk 定向加载**（App 壳仍整入口）。
+- expose 级**去重/引用计数/卸载**（`remoteCache` 仍 appName 级）。
+- expose `assets.js.async` 的定向预取策略。
+- 分包示例/强制校验；DevTools expose 展示。
+
 ## 9. 决策
 
 **已定**

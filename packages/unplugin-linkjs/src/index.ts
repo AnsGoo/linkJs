@@ -22,7 +22,7 @@ import {
   REMOTE_HOSTS_GLOBAL,
   selectRemoteImportNames,
 } from './runtime-bootstrap.js';
-import { detectRemoteDependencyCycles } from './remote-dep-graph.js';
+import { collectRemoteDependencyGraph, detectRemoteDependencyCycles } from './remote-dep-graph.js';
 import { resolveExposeSources } from './expose-parse.js';
 import { linkjsVue, linkjsVueOptions } from './vue-plugin.js';
 import path from 'path';
@@ -117,21 +117,43 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
     }
   }
 
-  /** 构建期检测远程依赖环（基于已拉取 manifest 的 `remotes` 声明）。 */
-  function checkRemoteDependencyCycles(result?: ConsumeTypesResult): void {
+  /**
+   * 收集**传递**的远程依赖图：从 consumeTypes 的远程出发，BFS 拉取各 manifest 的 `remotes`。
+   */
+  async function collectRemoteGraph(result?: ConsumeTypesResult): Promise<Record<string, string[]>> {
     if (!result) {
+      return {};
+    }
+    return collectRemoteDependencyGraph(
+      result.remotes.map((r) => ({ name: r.name, host: r.host })),
+      { timeout: consumeTypes?.timeout ?? 3000 },
+    );
+  }
+
+  /**
+   * 构建期循环依赖检测：**shared 依赖图** + **传递的 remote 依赖图**。
+   * `mode==='build'` 时抛错阻断；dev 仅告警。
+   */
+  async function checkDependencyCycles(mode: 'build' | 'dev', result?: ConsumeTypesResult): Promise<void> {
+    const sharedCycles = detectRemoteDependencyCycles(analyzeDependencies(shared));
+    const remoteGraph = await collectRemoteGraph(result);
+    const remoteCycles = detectRemoteDependencyCycles(remoteGraph);
+    if (sharedCycles.length === 0 && remoteCycles.length === 0) {
       return;
     }
-    const graph: Record<string, string[]> = {};
-    for (const info of result.remotes) {
-      graph[info.name] = info.dependencyNames;
+    const fmt = (cycles: string[][]) => cycles.map((c) => `  ${c.join(' → ')}`).join('\n');
+    const lines: string[] = [];
+    if (remoteCycles.length > 0) {
+      lines.push(`[linkjs] 远程依赖环：\n${fmt(remoteCycles)}`);
     }
-    const cycles = detectRemoteDependencyCycles(graph);
-    if (cycles.length > 0) {
-      console.error(
-        `[linkjs] 检测到远程依赖环：${cycles.map((cycle) => cycle.join(' -> ')).join('; ')}（详见 docs/remote-dependencies.md §15）`,
-      );
+    if (sharedCycles.length > 0) {
+      lines.push(`[linkjs] 共享依赖环：\n${fmt(sharedCycles)}`);
     }
+    const message = `${lines.join('\n')}\n（循环依赖会导致加载死锁，请拆分或抽第三模块打破环。详见 docs/remote-dependency-cycles.md）`;
+    if (mode === 'build') {
+      throw new Error(message);
+    }
+    console.error(message);
   }
 
   let consumeRetry = 0;
@@ -143,7 +165,6 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
     try {
       const result = await consumeRemoteTypes(consumeTypes);
       syncRemoteImports(result);
-      checkRemoteDependencyCycles(result);
       consumeRetry = 0;
       return result;
     } catch (error) {
@@ -509,7 +530,8 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
       // dev 由 configureServer 处理（初始对齐 + 订阅）；build 在此一次性对齐。
       async buildStart() {
         if (!isServe) {
-          await runConsumeTypes();
+          const result = await runConsumeTypes();
+          await checkDependencyCycles('build', result);
         }
       },
       async configureServer(server: any) {
@@ -538,6 +560,7 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
         if (result) {
           startTypeWatchers(result);
         }
+        await checkDependencyCycles('dev', result);
         server.httpServer?.on?.('close', () => {
           typeWatcher?.close();
           if (typeRefreshTimer) {
@@ -549,7 +572,8 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
 
     rolldown: {
       async buildStart() {
-        await runConsumeTypes();
+        const result = await runConsumeTypes();
+        await checkDependencyCycles('build', result);
       },
       buildEnd() {},
       async writeBundle(options, bundle) {

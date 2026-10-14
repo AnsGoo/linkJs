@@ -86,7 +86,22 @@
 
 ---
 
-## 7. 参考
+## 7. 实现状态（截至本轮）
+
+**已实现**
+- 循环依赖 · 构建期检测：**remote 图（传递）+ shared 图**，build 阻断 / dev 告警（`remote-dep-graph.ts` / `unplugin index.ts`）。
+- 依赖粒度 · expose 级（方案 b）：构建期 **`exposes[].deps`**（按 expose 模块闭包，原始导入判定）+ **自动解析 `expose()`**；宿主 `loadRemote('<r>/<E>')` 用 `exposes[E].deps.remotes`；**lib 按 expose assets 定向加载**。
+- 共享依赖 **按需加载**（用到才拿）。
+- 样式隔离默认开启（`shadow: true`）；并发加载去重；`consumeTypes` 失败退避重试。
+
+**未实现**
+- 运行时 SCC 并行 + 惰性环边 + 超时看门狗（循环依赖治本）。
+- **App 内 expose 的 chunk 定向加载**（App 壳仍整入口）。
+- expose 级**去重/引用计数/卸载**（缓存仍 appName 级）。
+- Tarjan SCC / `linkjs check` CLI；e2e 冒烟。
+- expose 级 **demo**（多 expose 可视化收益）与 DevTools expose 展示。
+
+## 8. 参考
 
 - `docs/remote-dependency-cycles.md`：循环依赖场景穷举 + 构建期检测细节
 - `docs/expose-level-dependencies.md`：expose 级依赖与共享加载

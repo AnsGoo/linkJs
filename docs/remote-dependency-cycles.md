@@ -180,14 +180,22 @@ linkjs 的依赖按**载体**与**触发方式**两条轴展开，环会在不�
 - 只看**图结构**，与版本 / singleton 无关。
 - **菱形**（A→B、A→C、B→D、C→D）不是环（去重即可）。
 
-### 7.7 待决策
+### 7.7 实现状态
 
-1. **范围**：①+②，还是也做 ③（静态导入）？
-2. **传递扫描**：是否接受构建期**拉下游 manifest**（网络）以发现 `A→B→A`？
-3. **策略**：build **失败** 还是仅**告警**？dev 是否也 fail？
-4. **输出**：只给环路径，还是附来源（manifest 地址）？
-5. **算法**：先 DFS 多环，还是直接 Tarjan SCC？
-6. **形态**：只挂构建插件，还是**同时提供 `linkjs check` CLI**（CI 可用）？
+**已实现**（`packages/unplugin-linkjs/src/index.ts` + `remote-dep-graph.ts`）：
+
+- **① remote 依赖图** + **② shared 依赖图** 均检测（`detectRemoteDependencyCycles`，迭代 DFS，深图安全）。
+- **传递扫描**：`collectRemoteDependencyGraph(roots, { fetch, timeout, maxNodes })` BFS 拉取下游 manifest；远端未起 → 视为叶子（不误报）。
+- **策略**：`build` 抛错**阻断**；`dev` `console.error` 告警。
+- **时机**：Vite `buildStart`(build) / `configureServer`(dev)；Rolldown `buildStart`(build)。
+- 输出：环路径（`A → B → A`）。测试：`remote-dep-graph.test.ts` 覆盖 DAG / `A→B→A` / 不可达叶子。
+
+**未实现**：
+
+- **③ 静态导入图**单独检测（建议并入 ①，不单做）。
+- **Tarjan SCC**（当前为 DFS 多环）。
+- **`linkjs check` CLI**（CI 可用）。
+- 环路径附**来源**（manifest 地址）。
 
 ## 8. 相关代码 / 文档
 
