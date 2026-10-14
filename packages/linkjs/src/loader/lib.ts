@@ -1,4 +1,4 @@
-import { getInstance, loadShare } from '..';
+import { getInstance } from '..';
 import { LIB_EXPOSE } from '../event-bus/constant';
 import { beginStyleCapture, endStyleCapture, ensureShadowTarget, isShadowSupported } from '../sandbox/shadow';
 import { runBeforeLoadRemote, runHook } from '../plugins';
@@ -9,7 +9,6 @@ import {
   loadCss,
   resolveEntryConfig,
   resolvePublicPath,
-  resolveShareScopes,
   rewriteRequestUrl,
   useGetRemote,
   useHandleExpose,
@@ -66,19 +65,7 @@ async function loadRemoteLib<M = unknown>(
     void loadCss(cssUrl, appName);
   }
 
-  // 预加载该远程声明的共享依赖（支持多个共享作用域）
-  const shared = remoteInfo.shared || {};
-  const shareScopes = resolveShareScopes(remoteInfo);
-  await Promise.all(
-    Object.keys(shared).flatMap((dep) =>
-      shareScopes.map(async (shareScope) => {
-        await runHook('beforeLoadShare', dep);
-        const start = Date.now();
-        const mod = await loadShare(dep, shareScope ? { scope: shareScope } : undefined).catch(() => null);
-        await runHook('afterLoadShare', dep, mod, Date.now() - start);
-      }),
-    ),
-  );
+  // 按需加载：默认**不**预加载共享依赖（由远端 import 时 `await loadShare` 触发）。
 
   // 加载共享依赖入口文件，注册远程提供的共享依赖。
   // 共享入口是可选产物，缺失或加载失败时不应阻塞主模块加载。

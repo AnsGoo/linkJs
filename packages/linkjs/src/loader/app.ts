@@ -83,7 +83,9 @@ async function loadApp<M = unknown>(
   const htmlUrl = entryPath ? new URL(entryPath, host).href : host;
   const timeout = options?.timeout ?? 10000;
   const retries = options?.retries ?? 0;
-  const preload = options?.preload || remoteInfo.shared || {};
+  // 按需加载：默认**不**预加载共享依赖（由远端 import 时 `await loadShare` 触发）；
+  // 如需强制预加载，显式传 `options.preload`。
+  const preload = options?.preload ?? {};
 
   const extOption: ExtOption = { modelName };
 

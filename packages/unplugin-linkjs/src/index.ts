@@ -8,7 +8,7 @@ import type { ManifestAsset, ManifestJson, UnpluginLinkjsOptions } from './types
 import { consumeRemoteTypes, type ConsumeTypesResult } from './consume-types.js';
 import { watchRemoteTypes, type TypeWatcher } from './type-watcher.js';
 import { generateManifestFile, updateManifestFile } from './build-manifest.js';
-import { generateDependencyGraph, analyzeDependencies, extractPkgName, buildSharedPackageMap } from './dependency-graph.js';
+import { generateDependencyGraph, analyzeDependencies, buildSharedPackageMap } from './dependency-graph.js';
 import { generateSharedEntryFile } from './build-shared.js';
 import {
   REMOTE_VIRTUAL_PREFIX,
@@ -268,15 +268,10 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
           return;
         }
 
-        // 当前模块是否属于某个共享依赖（即被打包为独立共享产物的模块）。
-        // 共享依赖内部、以及 dev 模式下的子应用模块，都需要异步加载共享依赖；
-        // build 模式下的业务/入口模块由宿主预加载，使用同步 getShare。
-        const ownerPkg = extractPkgName(id);
-        const ownerShared = ownerPkg ? sharedPkgMap.get(ownerPkg) : undefined;
-        const sourceShared = sharedPkgMap.get(source);
-        const insideSharedDep = ownerShared !== undefined && ownerShared !== sourceShared;
-        const useLoadShare = insideSharedDep || mode === 'dev';
-        const useAwait = isAdaptive || useLoadShare;
+        // 按需加载：共享依赖一律异步 `await loadShare`（宿主**不再**预加载共享），
+        // 由“用到才拿”触发；框架级依赖（adaptiveRuntime）仍走 `loadRuntime`。
+        const useLoadShare = true;
+        const useAwait = true;
         // 路线 B：框架级依赖走自适应 runtime（宿主 DEV 复用共享，宿主 PROD 用本地）。
         const accessor = isAdaptive
           ? `$linkjs.loadRuntime(${JSON.stringify(source)}, () => import(${JSON.stringify(source)}))`
