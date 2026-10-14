@@ -40,6 +40,49 @@ expose('remoteApp', {
 
 > 两者都需要：**入口瘦身 + 每 expose 独立 chunk**（rollup 多入口 / `import()` 分包）。
 
+## 3.5 方案 a 与 b 的对比
+
+**核心差异一句话**：*谁持有「expose → chunk」的映射、谁主导加载*。
+- 方案 a：**远端运行时**持有映射（`B: () => import('./chunk-B')`），宿主按**名字**请求 → `getRemote('r/B')` await getter；**宿主不关心 chunk 路径**。
+- 方案 b：**宿主**持有映射（`manifest.exposes[B].assets`），按**URL**直接拉 chunk；chunk 执行时自暴露。
+
+**时序**
+```
+方案 a：loadRemote('r/B') → 加载薄入口 → 入口 expose({B:()=>import('./chunk-B')})
+        → 运行时查映射 → await getter → import chunk-B → 组件
+方案 b：loadRemote('r/B') → fetch manifest → 取 exposes[B].assets → 按 URL 拉 chunk-B
+        → chunk-B 执行 expose('r',{B}) → host 等 LIB_EXPOSE → 组件
+```
+
+| 维度 | 方案 a（惰性 getter） | 方案 b（manifest 驱动） |
+|---|---|---|
+| 映射归属 | **远端**运行时 | **宿主**（读 manifest） |
+| 宿主是否知道 chunk 路径 | 不需要 | 需要（assets 清单） |
+| 入口角色 | 薄入口**先注册 getter**（两步：注册→请求） | 入口更薄/无需注册；**按 URL 直接拉 chunk** |
+| 加载主导权 | 远端 loader | 宿主 loader |
+| 预取/预热 | 弱（路径对宿主不透明） | **强**（manifest 有 assets，可 modulepreload/prefetch） |
+| SRI / CORS / 鉴权 | 宿主不便干预（远端发起） | **宿主可逐 chunk 施加**（manifest 有 integrity） |
+| 诊断 / 超时 | 远端主导，较难介入 | **宿主主导，可控** |
+| 与静态导入契合 | 天生契合（`import {B}` = `getRemote('r/B')` 走 getter） | 契合，但虚拟模块需依赖 manifest 路径 |
+| 缓存 / 去重 | 远端 ESM 缓存 + 运行时映射 | 宿主按 URL 缓存 |
+| 实现改动 | 改 `expose` 语义（支持 getter）+ `getRemote` 异步解析 | 新增“按 expose 拉脚本”加载器；约定“每 expose 自暴露”+ 入口瘦身 |
+| 依赖(remotes/shared)解析 | 在 `getRemote` 时按 expose 解析 | 在拉 chunk 前按 manifest 解析 |
+| App(HTML) | 偏 Lib（模块入口） | App 也可（按 expose 的 HTML/JS assets） |
+| 语义参照 | Module Federation `container.get('./B')` | 传统“清单 + 脚本注入”（linkjs 现有 `loadScript/loadCss` 路线） |
+
+**取舍**
+- **方案 a**：远端自治、宿主简洁、契合远程运行时与静态导入；但 chunk 路径对宿主**不透明** → 预取/SRI/网络干预弱，且 `getRemote` 需**异步化**、远端必须真正分包。
+- **方案 b**：宿主**完全掌控** → 易做预取/预热/SRI/超时诊断；linkjs **已有** `manifest.exposes[].assets`/`integrity` 数据；但**与构建产物清单强绑定**，需约定“每 expose 自暴露/入口瘦身”。
+
+**与现状契合度**
+- linkjs 已有 b 所需数据（`manifest.exposes[].assets`、`entry.assets`、`integrity`）与脚本/样式注入路径（`loadScript/loadCss/preloadModule`）→ **b 更贴近现状、改动更集中**。
+- linkjs 的 `expose` 目前是 **eager** → **a 需要扩展为支持 getter**，并让 `getRemote` 支持异步解析。
+
+**推荐（可组合）**
+- **正确性用 a，性能用 b**：以 a 的惰性 getter 定义消费语义（宿主简洁、远端自治），同时用 `exposes[].assets` 做预取/预热/SRI。
+- 若优先**尽快落地、少改运行时** → 先走 **b**（宿主按 manifest 拉 chunk），保持 `expose` 语义不变。
+- 一句话：想**远端自治、宿主不碰路径** → a；想**宿主掌控预取/安全/诊断、改动最小** → b。
+
 ## 4. 构建期（unplugin）产物
 
 1. **生成懒入口**（方案 a）：从 `exposes`/`exports` 生成 `A: () => import('./chunk-A')` 注册代码（方案 b：生成每 expose 独立入口）。
