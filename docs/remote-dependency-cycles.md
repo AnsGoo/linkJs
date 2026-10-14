@@ -140,7 +140,56 @@ linkjs 的依赖按**载体**与**触发方式**两条轴展开，环会在不�
 3. **shared 环**：允许“部分初始化”（ESM live binding）并文档化，还是同样构建期阻断？
 4. **诊断码**：统一 `REMOTE_DEP_CYCLE` / `SHARE_CYCLE`，还是更细的 `*_CYCLE_EDGE_SKIPPED`？
 
-## 6. 相关代码 / 文档
+## 7. 构建期检测（细节）
+
+### 7.1 检测的三张图
+
+| 图 | 边来源 | 可得性 | 难点 |
+|---|---|---|---|
+| **① remote 依赖图** | `remotes`（registry / consumeTypes 派生 / `manifest.remotes`） | 本构建直接拿到“我声明的依赖” | 环可能在下游：`A→B→A` 需读 **B 的 manifest.remotes** → 要**传递拉取** |
+| **② shared 依赖图** | `analyzeDependencies(shared)`（`shared[dep].dependencies` / package.json 闭包） | **纯本地**、零网络、最稳 | 无 |
+| **③ 静态导入图** | 源码 `import … from '<remote>'` | 单项目只知道“我 import 了谁” | 跨项目看不到对方；且与 ① 高度重合 |
+
+**建议**：②必做；①在**宿主侧/CLI**做传递图（宿主持有全部 remotes 的 host）；③并入①（静态导入本应同步进 `manifest.remotes`），不单独建图。
+
+### 7.2 算法
+
+- 复用 `detectRemoteDependencyCycles`（迭代式 DFS，深图安全）→ 返回环路径。
+- 若要「多环 / 最小环 / 对接运行时 SCC」，升级为 **Tarjan SCC**（输出强连通分量）。
+- 输出：`A → B → A`（可选附来源：`A(manifest=…)`）。
+
+### 7.3 挂载点（时机）
+
+- Vite：`configureServer`（dev）+ `buildStart`（build）
+- Rolldown/tsdown：`buildStart`
+- 统一放在**拉取 manifest 之后**（复用 consumeTypes 结果，避免二次请求）。
+
+### 7.4 报错策略
+
+- **build**：默认**失败**（throw），信息含环路径 + 修复建议（拆分 / 抽第三模块 / 惰性访问）。
+- **dev**：默认**告警**（不阻塞）。
+- 可配置：`cycleCheck: 'error' | 'warn' | 'off'`。
+
+### 7.5 性能与鲁棒性
+
+- 传递拉 manifest 必须**限节点数 / 限深 / 超时**；远端**未启动 → 该边视为未知、跳过**（避免假环/漏报）。
+- 与 consumeTypes 的 auth / host 解析保持一致（token、`host + /manifest.json`）。
+
+### 7.6 边界
+
+- 只看**图结构**，与版本 / singleton 无关。
+- **菱形**（A→B、A→C、B→D、C→D）不是环（去重即可）。
+
+### 7.7 待决策
+
+1. **范围**：①+②，还是也做 ③（静态导入）？
+2. **传递扫描**：是否接受构建期**拉下游 manifest**（网络）以发现 `A→B→A`？
+3. **策略**：build **失败** 还是仅**告警**？dev 是否也 fail？
+4. **输出**：只给环路径，还是附来源（manifest 地址）？
+5. **算法**：先 DFS 多环，还是直接 Tarjan SCC？
+6. **形态**：只挂构建插件，还是**同时提供 `linkjs check` CLI**（CI 可用）？
+
+## 8. 相关代码 / 文档
 
 - `packages/linkjs/src/loader/deps.ts`：远程依赖拓扑解析（`stack` 环检测、inflight 去重）
 - `packages/linkjs/src/share/index.ts`：`loadShare` 候选解析与加载
@@ -148,3 +197,4 @@ linkjs 的依赖按**载体**与**触发方式**两条轴展开，环会在不�
 - `packages/unplugin-linkjs/src/remote-dep-graph.ts`：`detectRemoteDependencyCycles`
 - `packages/unplugin-linkjs/src/dependency-graph.ts`：构建期依赖图
 - `docs/remote-dependencies.md`：远程间依赖实现方案
+- `docs/expose-level-dependencies.md`：expose 级依赖与共享加载（细粒度）
