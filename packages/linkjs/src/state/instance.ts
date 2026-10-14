@@ -82,6 +82,12 @@ export interface RemoteBase {
   shared?: Record<string, Omit<ShareInfo, 'name' | 'lib' | 'status'>>;
   /** 该远程声明的远程依赖（名 -> 配置）。 */
   remotes?: Record<string, RemoteDependency>;
+  /** 远程 manifest 的 exposes 清单（含每 expose 的 `deps`），供 expose 级依赖解析。 */
+  exposes?: Array<{
+    name: string;
+    path?: string;
+    deps?: { remotes?: Record<string, { host?: string }>; shared?: string[] };
+  }>;
   /** 该远程关联的共享作用域（可多个，默认 `global`）。 */
   shareScope?: string[];
   /** 产物 SRI 完整性（path -> `sha384-...`），键为远端 manifest 中的路径。 */

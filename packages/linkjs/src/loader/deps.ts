@@ -81,8 +81,11 @@ export function releaseRemote(name: string): number {
  * 拓扑解析并加载 `name` 的全部远程依赖（依赖先于自身）。
  * `ctx.stack` 用于环检测，`ctx.inflight` 用于并发去重。
  */
-export async function resolveRemoteDeps(name: string, ctx: ResolveDepsContext): Promise<void> {
-  const deps = getRemoteInfo(name)?.remotes ?? {};
+export async function resolveRemoteDeps(
+  name: string,
+  deps: Record<string, RemoteDependency>,
+  ctx: ResolveDepsContext,
+): Promise<void> {
   for (const [depName, dep] of Object.entries(deps)) {
     if (ctx.stack.includes(depName)) {
       recordDiagnostic({
@@ -107,7 +110,10 @@ export async function resolveRemoteDeps(name: string, ctx: ResolveDepsContext): 
 
     const task = (async () => {
       ensureRegistered(depName, dep);
-      await resolveRemoteDeps(depName, { ...ctx, stack: [...ctx.stack, name] });
+      await resolveRemoteDeps(depName, getRemoteInfo(depName)?.remotes ?? {}, {
+        ...ctx,
+        stack: [...ctx.stack, name],
+      });
       retainRemote(depName);
       await ctx.loadOne(depName, dep);
       verifyVersion(depName, dep.version);

@@ -14,6 +14,11 @@ export interface LoadBaseOptions {
   signal?: AbortSignal;
   /** 是否自动解析并拓扑加载该远程声明的远程依赖，默认 `true`。 */
   deps?: boolean;
+  /**
+   * 消费的具体 expose（如 `loadRemote('remoteApp/HelloWorld')` 的 `HelloWorld`）。
+   * 提供时优先使用 manifest `exposes[<expose>].deps.remotes` 做远程依赖解析（expose 级）。
+   */
+  expose?: string;
 }
 
 /** `loadApp` 选项（远程应用，走 HTML 入口）。 */

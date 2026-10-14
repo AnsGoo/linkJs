@@ -42,7 +42,7 @@ describe('resolveRemoteDeps', () => {
     register('B', { C: {} });
     register('C');
     const order: string[] = [];
-    await resolveRemoteDeps('A', ctx(recorder(order)));
+    await resolveRemoteDeps('A', linkInstance.remotes.get('A')?.remotes ?? {}, ctx(recorder(order)));
     expect(order).toEqual(['C', 'B']);
   });
 
@@ -52,7 +52,7 @@ describe('resolveRemoteDeps', () => {
     register('C', { D: {} });
     register('D');
     const order: string[] = [];
-    await resolveRemoteDeps('A', ctx(recorder(order)));
+    await resolveRemoteDeps('A', linkInstance.remotes.get('A')?.remotes ?? {}, ctx(recorder(order)));
     expect(order.filter((n) => n === 'D')).toHaveLength(1);
   });
 
@@ -61,7 +61,7 @@ describe('resolveRemoteDeps', () => {
     register('B', undefined, '1.0.0');
     linkInstance.remotes.get('B')!.status = LOAD_STATUS.LOADED;
     const order: string[] = [];
-    await resolveRemoteDeps('A', ctx(recorder(order)));
+    await resolveRemoteDeps('A', linkInstance.remotes.get('A')?.remotes ?? {}, ctx(recorder(order)));
     expect(order).toEqual([]);
   });
 
@@ -69,7 +69,7 @@ describe('resolveRemoteDeps', () => {
     register('A', { B: {} });
     register('B', { A: {} });
     const order: string[] = [];
-    await resolveRemoteDeps('A', ctx(recorder(order)));
+    await resolveRemoteDeps('A', linkInstance.remotes.get('A')?.remotes ?? {}, ctx(recorder(order)));
     expect(order).toEqual(['B']);
     expect(getDiagnostics().some((d) => d.code === 'REMOTE_DEP_CYCLE')).toBe(true);
   });
@@ -77,14 +77,14 @@ describe('resolveRemoteDeps', () => {
   test('reports version mismatch only when version is declared', async () => {
     register('A', { B: { version: '^1.0.0' } });
     register('B', undefined, '2.0.0');
-    await resolveRemoteDeps('A', ctx(recorder([], '2.0.0')));
+    await resolveRemoteDeps('A', linkInstance.remotes.get('A')?.remotes ?? {}, ctx(recorder([], '2.0.0')));
     expect(getDiagnostics().some((d) => d.code === 'REMOTE_DEP_VERSION_MISMATCH')).toBe(true);
   });
 
   test('does not check version when none declared', async () => {
     register('A', { B: {} });
     register('B', undefined, '9.9.9');
-    await resolveRemoteDeps('A', ctx(recorder([], '9.9.9')));
+    await resolveRemoteDeps('A', linkInstance.remotes.get('A')?.remotes ?? {}, ctx(recorder([], '9.9.9')));
     expect(getDiagnostics().some((d) => d.code === 'REMOTE_DEP_VERSION_MISMATCH')).toBe(false);
   });
 
@@ -94,8 +94,8 @@ describe('resolveRemoteDeps', () => {
     const boom = vi.fn(async () => {
       throw new Error('boom');
     });
-    await expect(resolveRemoteDeps('A', ctx(boom))).rejects.toThrow('boom');
-    await expect(resolveRemoteDeps('A2', ctx(boom))).resolves.toBeUndefined();
+    await expect(resolveRemoteDeps('A', linkInstance.remotes.get('A')?.remotes ?? {}, ctx(boom))).rejects.toThrow('boom');
+    await expect(resolveRemoteDeps('A2', linkInstance.remotes.get('A2')?.remotes ?? {}, ctx(boom))).resolves.toBeUndefined();
     expect(getDiagnostics().some((d) => d.code === 'REMOTE_DEP_ERROR' && d.level === 'warn')).toBe(true);
   });
 
@@ -103,7 +103,7 @@ describe('resolveRemoteDeps', () => {
     register('A', { B: {}, C: {} });
     register('B');
     register('C');
-    await resolveRemoteDeps('A', ctx(recorder([])));
+    await resolveRemoteDeps('A', linkInstance.remotes.get('A')?.remotes ?? {}, ctx(recorder([])));
     expect(linkInstance.remoteRefs?.get('B')).toBe(1);
     expect(linkInstance.remoteRefs?.get('C')).toBe(1);
   });

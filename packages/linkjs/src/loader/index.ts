@@ -55,17 +55,27 @@ function setRemoteStatus(appName: string, status: (typeof LOAD_STATUS)[keyof typ
 }
 
 /** 拓扑加载某远程声明的全部远程依赖（`deps:false` 时跳过）。 */
-function resolveDepsFor(appName: string, options?: { deps?: boolean }): Promise<void> {
+function resolveDepsFor(appName: string, options?: { deps?: boolean; expose?: string }): Promise<void> {
   if (options?.deps === false) {
     return Promise.resolve();
   }
+  const info = getRemoteInfo(appName);
+  // expose 级优先：`exposes[<expose>].deps.remotes`；否则回退 remote 级 `remotes`。
+  const exposeRemotes = options?.expose
+    ? info?.exposes?.find((item) => item.name === options.expose)?.deps?.remotes
+    : undefined;
+  const deps =
+    exposeRemotes && Object.keys(exposeRemotes).length > 0
+      ? Object.fromEntries(Object.entries(exposeRemotes).map(([n, c]) => [n, { host: c?.host }]))
+      : (info?.remotes ?? {});
+
   const instance = getInstance();
   const ctx: ResolveDepsContext = {
     stack: [appName],
     inflight: (instance.remoteInflight ??= new Map()),
     loadOne: loadOneRemote,
   };
-  return resolveRemoteDeps(appName, ctx);
+  return resolveRemoteDeps(appName, deps, ctx);
 }
 
 /** 按被依赖远程的注册类型选择 loadApp / loadLib（不再递归解析其依赖）。 */
@@ -219,17 +229,18 @@ function doUnloadLib(appName?: string): void {
 }
 
 function loadRemote(entry: string, options?: LoadOptions): Promise<RemoteModule | null> {
-  const [appName] = entry.split('/');
+  const [appName, expose] = entry.split('/');
   const remoteInfo = getRemoteInfo(appName);
   if (!remoteInfo) {
     return Promise.reject(new Error(`Remote module ${appName} not found`));
   }
+  const opts: LoadOptions = { ...options, expose: options?.expose ?? expose };
   const remoteType: string | undefined = remoteInfo.type;
   if (remoteType === 'lib') {
-    return loadLib(entry, options);
+    return loadLib(entry, opts);
   }
   if (remoteType === 'app') {
-    return loadApp(entry, options);
+    return loadApp(entry, opts);
   }
   return Promise.reject(new Error(`Remote module type ${remoteType} not supported`));
 }

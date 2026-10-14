@@ -29,7 +29,12 @@ export interface RemoteManifest {
     types?: string;
     assets?: ManifestAsset;
   };
-  exposes?: Array<{ name: string; path: string; assets?: ManifestAsset }>;
+  exposes?: Array<{
+    name: string;
+    path?: string;
+    assets?: ManifestAsset;
+    deps?: { remotes?: Record<string, { host?: string }>; shared?: string[] };
+  }>;
   /** 该远程参与的共享作用域（多作用域声明）。 */
   shareScope?: string[];
   /** 远程资源的静态 CDN 基址（供宿主解析资源位置）。 */
@@ -209,6 +214,10 @@ async function preloadRemote(options: PreloadRemoteOptions): Promise<RemoteManif
       if (manifest.remotes && typeof manifest.remotes === 'object') {
         // 合并 manifest 声明的远程依赖（注册表已声明的保留）。
         info.remotes = { ...(info.remotes || {}), ...manifest.remotes };
+      }
+      if (Array.isArray(manifest.exposes) && manifest.exposes.length > 0) {
+        // 记录 exposes（含每 expose 的 deps），供 expose 级依赖解析。
+        info.exposes = manifest.exposes;
       }
     }
   }
