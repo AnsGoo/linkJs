@@ -1,13 +1,14 @@
 import HelloWorld from './VerySimpleComponent.vue';
+import PiniaCounter from './PiniaCounter.vue';
 import { expose, shared } from 'linkjs';
 
-export { HelloWorld };
+export { HelloWorld, PiniaCounter };
 
 // 使用全局的 linkjs 实例
-
+// 两个 expose 的依赖不同：HelloWorld 仅 vue；PiniaCounter 还用到 pinia → 演示 expose 级 deps。
 expose(
   'remote-lib',
-  { HelloWorld },
+  { HelloWorld, PiniaCounter },
   {
     version: '1.0.0',
   },

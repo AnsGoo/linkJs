@@ -654,9 +654,12 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
             }
             const info = this.getModuleInfo(mid);
             if (info) {
+              // 只沿**本地相对模块**继续遍历（不深入 node_modules 包内部），
+              // 避免把依赖包内部的传递依赖（如 pinia→vue）过度计入该 expose。
+              const isLocal = (id: string) => !id.includes('/node_modules/') && !id.startsWith('\0');
               queue.push(
-                ...((info.importedIds as string[]) ?? []),
-                ...((info.dynamicallyImportedIds as string[]) ?? []),
+                ...((info.importedIds as string[]) ?? []).filter(isLocal),
+                ...((info.dynamicallyImportedIds as string[]) ?? []).filter(isLocal),
               );
             }
           }

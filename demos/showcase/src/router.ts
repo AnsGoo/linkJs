@@ -7,6 +7,7 @@ const router = createRouter({
     { path: '/runtime', name: 'runtime', component: () => import('./views/RuntimeView.vue'), meta: { label: '运行时加载' } },
     { path: '/static', name: 'static', component: () => import('./views/StaticView.vue'), meta: { label: '构建期 import' } },
     { path: '/topology', name: 'topology', component: () => import('./views/TopologyView.vue'), meta: { label: '依赖拓扑' } },
+    { path: '/exposes', name: 'exposes', component: () => import('./views/ExposesView.vue'), meta: { label: 'Expose 依赖' } },
     { path: '/preload', name: 'preload', component: () => import('./views/PreloadView.vue'), meta: { label: '路由级预取' } },
     { path: '/sources', name: 'sources', component: () => import('./views/SourcesView.vue'), meta: { label: '多源灰度' } },
     { path: '/shadow', name: 'shadow', component: () => import('./views/ShadowView.vue'), meta: { label: 'Shadow 隔离' } },
