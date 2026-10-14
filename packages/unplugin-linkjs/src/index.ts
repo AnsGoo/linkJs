@@ -616,6 +616,18 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
                 sharedSet.add(sharedName);
               }
             }
+            // transform 会把 shared/remote 的**裸导入改写掉**（模块图里没有该边），
+            // 因此改为读取 transform 期间记录的原始导入。
+            for (const dep of moduleImports.get(mid) ?? []) {
+              if (manifestRemotes[dep]) {
+                remotes[dep] = { host: manifestRemotes[dep].host };
+                continue;
+              }
+              const depShared = sharedPkgMap.get(dep);
+              if (depShared && shared[depShared]) {
+                sharedSet.add(depShared);
+              }
+            }
             const info = this.getModuleInfo(mid);
             if (info) {
               queue.push(
