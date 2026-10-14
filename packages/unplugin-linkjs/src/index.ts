@@ -8,7 +8,7 @@ import type { ManifestAsset, ManifestJson, UnpluginLinkjsOptions } from './types
 import { consumeRemoteTypes, type ConsumeTypesResult } from './consume-types.js';
 import { watchRemoteTypes, type TypeWatcher } from './type-watcher.js';
 import { generateManifestFile, updateManifestFile } from './build-manifest.js';
-import { generateDependencyGraph, analyzeDependencies, buildSharedPackageMap } from './dependency-graph.js';
+import { generateDependencyGraph, analyzeDependencies, extractPkgName, buildSharedPackageMap } from './dependency-graph.js';
 import { generateSharedEntryFile } from './build-shared.js';
 import {
   REMOTE_VIRTUAL_PREFIX,
@@ -569,6 +569,47 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
           };
         };
 
+        // 计算某入口 chunk 的依赖闭包（shared + remotes），用于补全 `exposes[].deps`。
+        const manifestRemotes = resolveManifestRemotes() ?? {};
+        const collectChunkDeps = (chunk: any): NonNullable<NonNullable<ManifestJson['exposes']>[number]['deps']> => {
+          const sharedSet = new Set<string>();
+          const remotes: Record<string, { host?: string }> = {};
+          const seen = new Set<string>();
+          const queue: string[] = [
+            ...((chunk?.moduleIds as string[]) ?? []),
+            ...(chunk?.facadeModuleId ? [chunk.facadeModuleId as string] : []),
+          ];
+          while (queue.length > 0) {
+            const mid = queue.shift()!;
+            if (seen.has(mid)) {
+              continue;
+            }
+            seen.add(mid);
+            if (mid.startsWith(REMOTE_VIRTUAL_PREFIX)) {
+              const name = mid.slice(REMOTE_VIRTUAL_PREFIX.length).split('/')[0];
+              if (name) {
+                remotes[name] = manifestRemotes[name] ? { host: manifestRemotes[name].host } : {};
+              }
+              continue;
+            }
+            const pkg = extractPkgName(mid);
+            if (pkg) {
+              const sharedName = sharedPkgMap.get(pkg);
+              if (sharedName && shared[sharedName]) {
+                sharedSet.add(sharedName);
+              }
+            }
+            const info = this.getModuleInfo(mid);
+            if (info) {
+              queue.push(
+                ...((info.importedIds as string[]) ?? []),
+                ...((info.dynamicallyImportedIds as string[]) ?? []),
+              );
+            }
+          }
+          return { remotes, shared: [...sharedSet] };
+        };
+
         const exposeAssets: NonNullable<ManifestJson['exposes']> = [];
         // d.ts 入口路径与内容哈希（供宿主类型转发 / 变更检测）。
         let typesHash: string | undefined;
@@ -595,6 +636,7 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
                 name: (bundleItem as any).name || key,
                 path: path.join(baseDir, key),
                 assets,
+                deps: collectChunkDeps(bundleItem),
               });
             }
           } else if (bundleItem.type === 'asset') {

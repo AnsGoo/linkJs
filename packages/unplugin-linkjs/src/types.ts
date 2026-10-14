@@ -44,6 +44,13 @@ export interface ManifestJson {
     name: string;
     path: string;
     assets: ManifestAsset;
+    /** 该 expose chunk 的依赖闭包（构建期按模块图补全）。 */
+    deps?: {
+      /** 该 expose 用到的远程依赖（名 -> 配置）。 */
+      remotes?: Record<string, { host?: string }>;
+      /** 该 expose 用到的共享依赖名。 */
+      shared?: string[];
+    };
   }>;
   /** 产物 SRI 完整性（path -> `sha384-...`），供宿主预加载/校验。 */
   integrity?: Record<string, string>;
