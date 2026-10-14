@@ -3,7 +3,8 @@ import { LIB_EXPOSE, LOAD_STATUS, REMOTE_UPDATE } from '../event-bus/constant';
 import { getRemoteInfo, useGetRemote, type RemoteCache } from './utils';
 import { useLoadRemoteLib, type LoadLibOptions } from './lib';
 import { useLoadApp, type LoadAppOptions } from './app';
-import { resolveRemoteDeps, releaseRemote, type ResolveDepsContext } from './deps';
+import { resolveRemoteDeps, releaseRemote, retainRemote, hasDependencyCycle, type ResolveDepsContext } from './deps';
+import { recordDiagnostic } from '../devtools';
 import type { RemoteDependency } from '../state/instance';
 import type { LoadOptions } from './options';
 import { deactivateAllSandboxes, deactivateSandbox } from '../sandbox';
@@ -70,27 +71,85 @@ function withLoadInflight<T>(appName: string, run: () => Promise<T>): Promise<T>
 }
 
 /** 拓扑加载某远程声明的全部远程依赖（`deps:false` 时跳过）。 */
+/** 取某远程的**根级**依赖：优先 expose 级 `exposes[<expose>].deps.remotes`，否则 remote 级 `remotes`。 */
+function pickRootDeps(appName: string, options?: { expose?: string }): Record<string, RemoteDependency> {
+  const info = getRemoteInfo(appName);
+  const exposeRemotes = options?.expose
+    ? info?.exposes?.find((item) => item.name === options.expose)?.deps?.remotes
+    : undefined;
+  return exposeRemotes && Object.keys(exposeRemotes).length > 0
+    ? Object.fromEntries(Object.entries(exposeRemotes).map(([n, c]) => [n, { host: c?.host }]))
+    : (info?.remotes ?? {});
+}
+
+/** 收集从 root 可达的远程依赖图（name -> 直接依赖名）与依赖配置。 */
+function collectDepGraph(
+  root: string,
+  options?: { expose?: string },
+): { graph: Record<string, string[]>; depMap: Map<string, RemoteDependency> } {
+  const graph: Record<string, string[]> = {};
+  const depMap = new Map<string, RemoteDependency>();
+  const seen = new Set<string>([root]);
+  const queue: string[] = [root];
+  let guard = 0;
+  while (queue.length > 0 && guard++ < 500) {
+    const cur = queue.shift()!;
+    const deps: Record<string, RemoteDependency> =
+      cur === root ? pickRootDeps(root, options) : (getRemoteInfo(cur)?.remotes ?? {});
+    graph[cur] = Object.keys(deps);
+    for (const [name, dep] of Object.entries(deps)) {
+      if (!depMap.has(name)) {
+        depMap.set(name, dep);
+      }
+      if (!seen.has(name)) {
+        seen.add(name);
+        queue.push(name);
+      }
+    }
+  }
+  return { graph, depMap };
+}
+
 function resolveDepsFor(appName: string, options?: { deps?: boolean; expose?: string }): Promise<void> {
   if (options?.deps === false) {
     return Promise.resolve();
   }
-  const info = getRemoteInfo(appName);
-  // expose 级优先：`exposes[<expose>].deps.remotes`；否则回退 remote 级 `remotes`。
-  const exposeRemotes = options?.expose
-    ? info?.exposes?.find((item) => item.name === options.expose)?.deps?.remotes
-    : undefined;
-  const deps =
-    exposeRemotes && Object.keys(exposeRemotes).length > 0
-      ? Object.fromEntries(Object.entries(exposeRemotes).map(([n, c]) => [n, { host: c?.host }]))
-      : (info?.remotes ?? {});
+  const { graph, depMap } = collectDepGraph(appName, options);
 
+  // 有环：改为**并行**加载所有可达依赖（去重），避免环上顺序 await 导致死锁。
+  if (hasDependencyCycle(graph)) {
+    recordDiagnostic({
+      level: 'warn',
+      code: 'REMOTE_DEP_CYCLE',
+      message: `remote dependency cycle involving "${appName}"；回退为并行加载：${JSON.stringify(graph)}`,
+    });
+    const instance = getInstance();
+    const tasks = [...depMap].map(async ([name, dep]) => {
+      if (!getRemoteInfo(name)) {
+        instance.remotes.set(name, {
+          name,
+          entry: '',
+          ...(dep.host ? { host: dep.host } : {}),
+          status: LOAD_STATUS.UNLOADED,
+        });
+      }
+      if (getRemoteInfo(name)?.status === LOAD_STATUS.LOADED) {
+        return;
+      }
+      retainRemote(name);
+      await loadOneRemote(name, dep);
+    });
+    return Promise.all(tasks).then(() => undefined);
+  }
+
+  // DAG：保持拓扑顺序（先依赖后自身）。
   const instance = getInstance();
   const ctx: ResolveDepsContext = {
     stack: [appName],
     inflight: (instance.remoteInflight ??= new Map()),
     loadOne: loadOneRemote,
   };
-  return resolveRemoteDeps(appName, deps, ctx);
+  return resolveRemoteDeps(appName, pickRootDeps(appName, options), ctx);
 }
 
 /** 按被依赖远程的注册类型选择 loadApp / loadLib（不再递归解析其依赖）。 */

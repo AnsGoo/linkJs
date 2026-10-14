@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { linkInstance } from '../src/state/instance';
 import { LOAD_STATUS } from '../src/event-bus/constant';
-import { resolveRemoteDeps, retainRemote, releaseRemote } from '../src/loader/deps';
+import { resolveRemoteDeps, retainRemote, releaseRemote, hasDependencyCycle } from '../src/loader/deps';
 import { clearDiagnostics, getDiagnostics } from '../src/devtools';
 
 function register(name: string, remotes?: Record<string, unknown>, version?: string) {
@@ -122,6 +122,23 @@ describe('resolveRemoteDeps', () => {
     const order: string[] = [];
     await resolveRemoteDeps('A', { B: { host: 'http://localhost:9000' } }, ctx(recorder(order)));
     expect(linkInstance.remotes.get('B')?.host).toBe('http://localhost:9000');
+  });
+});
+
+describe('hasDependencyCycle', () => {
+  test('false for a DAG', () => {
+    expect(hasDependencyCycle({ A: ['B'], B: ['C'], C: [] })).toBe(false);
+  });
+  test('true for a 2-node cycle', () => {
+    expect(hasDependencyCycle({ A: ['B'], B: ['A'] })).toBe(true);
+  });
+  test('true for a self-loop', () => {
+    expect(hasDependencyCycle({ A: ['A'] })).toBe(true);
+  });
+  test('handles deep chains without stack overflow', () => {
+    const graph: Record<string, string[]> = {};
+    for (let i = 0; i < 20000; i++) graph[`n${i}`] = [`n${i + 1}`];
+    expect(hasDependencyCycle(graph)).toBe(false);
   });
 });
 
