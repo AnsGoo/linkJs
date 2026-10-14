@@ -16,6 +16,8 @@ export interface RemoteSnapshot {
   shared?: Record<string, unknown>;
   /** 该远程声明的远程依赖。 */
   deps?: Array<{ name: string; version?: string; required?: boolean; status?: string; resolved?: string }>;
+  /** 该远程的 exposes（含每 expose 的 deps）。 */
+  exposes?: Array<{ name: string; deps?: { remotes?: Record<string, unknown>; shared?: string[] } }>;
   integrity?: Record<string, string>;
   [key: string]: unknown;
 }

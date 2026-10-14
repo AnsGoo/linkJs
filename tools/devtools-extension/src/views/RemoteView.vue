@@ -153,6 +153,7 @@ const metaRows = computed(() => {
 
 const integrityKeys = computed(() => Object.keys(selected.value?.integrity || {}));
 const remoteDeps = computed(() => selected.value?.deps || []);
+const exposeRows = computed(() => selected.value?.exposes || []);
 
 interface ShareRow {
   name: string;
@@ -299,6 +300,18 @@ const topoLabels = computed<Record<string, string>>(() => {
         <div v-for="row in remoteDeps" :key="row.name" class="row">
           <span class="k">{{ row.name }}</span>
           <span class="v">{{ row.version ? `req ${row.version} · ` : '' }}{{ row.resolved || '?' }} · {{ row.status || '-' }}</span>
+        </div>
+
+        <h3>Exposes（含 deps）({{ exposeRows.length }})</h3>
+        <div v-if="!exposeRows.length" class="muted">（无 exposes 元数据）</div>
+        <div v-for="row in exposeRows" :key="row.name" class="row">
+          <span class="k mono">{{ row.name }}</span>
+          <span class="v">
+            shared:
+            {{ row.deps?.shared && row.deps.shared.length ? row.deps.shared.join(', ') : '—' }}
+            · remotes:
+            {{ row.deps?.remotes ? Object.keys(row.deps.remotes).join(', ') || '—' : '—' }}
+          </span>
         </div>
 
         <h3>声明的共享依赖（本远程元数据）({{ sharedRows.length }})</h3>
