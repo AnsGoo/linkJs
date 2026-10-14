@@ -1,5 +1,11 @@
 node_modules
 dist
 
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
 # linkjs consumeTypes 生成的远程类型声明
 src/linkjs-remotes.d.ts
