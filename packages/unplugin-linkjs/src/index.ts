@@ -724,7 +724,7 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
 
         // 依据 `expose()` 解析结果生成 exposes[]：name = expose 名，deps = 该模块闭包。
         if (exposeRegistry.size > 0) {
-          const allIds = this.getModuleIds().map((m) => String(m));
+          const allIds = Array.from(this.getModuleIds(), (m) => String(m));
           for (const [name, info] of exposeRegistry) {
             const candidate = info.source ? path.resolve(path.dirname(info.file), info.source) : info.file;
             const startId =
