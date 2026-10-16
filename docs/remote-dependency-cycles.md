@@ -184,15 +184,11 @@ linkjs 的依赖按**载体**与**触发方式**两条轴展开，环会在不�
 
 **已实现**（`packages/unplugin-linkjs/src/index.ts` + `remote-dep-graph.ts` + `bin/linkjs-check.mjs`）：
 
-- **① remote 依赖图** + **② shared 依赖图** 均检测；环判定用 **SCC**（`findCyclicComponents`，Kosaraju 迭代）。
-- **边来源**：remote 图合并顶层 `manifest.remotes` 与各 expose 的 `manifest.exposes[].deps.remotes`（对齐运行时 `pickRootDeps`）。
-- **传递扫描**：`collectRemoteDependencyGraph(roots, { fetch, timeout, maxNodes, auth, onUnresolved, onTruncated })` BFS 拉取下游 manifest；与 consumeTypes 一致附鉴权 token；远端未起 / 404 → 上报 `onUnresolved` 告警（不再静默视为叶子）；超 `maxNodes`（`unpluginLinkjs.cycleMaxNodes`，缺省 200）→ `onTruncated` 告警。
-- **SCC（强连通分量）**：`findStronglyConnectedComponents`（Kosaraju，迭代）/ `findCyclicComponents`；报告“需并载的强连通分量”。
-- **策略**：`build` 抛错**阻断**；`dev` `console.error` 告警。
-- **时机**：Vite `buildStart`(build) / `configureServer`(dev)；Rolldown `buildStart`(build)。
-- **`linkjs-check` CLI**：`bin/linkjs-check.mjs --remote name=origin ...`（CI 可用，发现环 exit 1）；根脚本 `pnpm check:cycles`。输出 **SCC**（需并载的强连通分量），不再输出枚举不全的单条环路径。
+- **构建期只查「本项目自身声明」的图**（每个部分管好自己）：**shared 图**（`analyzeDependencies(shared)`，本地 package.json 闭包）**+ 本项目 `remotes` 声明的远程图**（以本项目名为根）。**不再传递拉取下游 remote 的 manifest** —— 各远程的依赖由其各自的构建负责。
+- **环判定用 SCC**（`findCyclicComponents`，Kosaraju 迭代）；`build` 抛错阻断，`dev` 告警。时机：Vite `buildStart`(build) / `configureServer`(dev)；Rolldown `buildStart`(build)。
+- **`linkjs-check` CLI**（可选，显式跨远程体检）：`bin/linkjs-check.mjs --remote name=origin ...` 会**传递拉取**下游 manifest 建图（`collectRemoteDependencyGraph`，合并顶层 `remotes` 与 `exposes[].deps.remotes`、附鉴权 token、对不可达/截断节点告警）；发现环 exit 1。根脚本 `pnpm check:cycles`。输出 **SCC**。
 - **运行时治本**：loader 用与构建期**同一份** `linkjs/graph`（`hasDependencyCycle` / `findCyclicComponents`）判定；检测到环时**并行加载所有可达依赖**（去重），记录含 SCC 的 `REMOTE_DEP_CYCLE` 诊断；无环保持拓扑顺序；每远程加载超时作为看门狗。
-- 测试：`remote-dep-graph.test.ts` 覆盖 DAG / `A→B→A` / 不可达叶子 / SCC；`remote-deps.test.ts` 覆盖 `hasDependencyCycle`。
+- 测试：`remote-dep-graph.test.ts` 覆盖建的图（DAG / `A→B→A` / 不可达 / SCC / 鉴权 / 截断 / expose 级边）；`remote-deps.test.ts` 覆盖 `hasDependencyCycle`。
 
 **未实现**：
 

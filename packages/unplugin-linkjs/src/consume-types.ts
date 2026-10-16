@@ -47,7 +47,7 @@ function resolveManifestUrl(target: RemoteTypeTarget): string {
   throw new Error(`[linkjs] consumeTypes: remote "${target.name}" requires \`manifestUrl\` or \`host\``);
 }
 
-export async function resolveToken(auth?: ConsumeTypesAuth): Promise<string | undefined> {
+async function resolveToken(auth?: ConsumeTypesAuth): Promise<string | undefined> {
   const provider = auth?.token;
   if (provider == null) {
     return undefined;

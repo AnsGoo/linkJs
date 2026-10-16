@@ -5,14 +5,14 @@ import { createHash } from 'crypto';
 import { readFileSync } from 'fs';
 
 import type { ManifestAsset, ManifestJson, UnpluginLinkjsOptions } from './types.js';
-import { consumeRemoteTypes, resolveToken, type ConsumeTypesResult } from './consume-types.js';
+import { consumeRemoteTypes, type ConsumeTypesResult } from './consume-types.js';
 import { watchRemoteTypes, type TypeWatcher } from './type-watcher.js';
 import { generateManifestFile, updateManifestFile } from './build-manifest.js';
 import { generateDependencyGraph, analyzeDependencies, extractPkgName, buildSharedPackageMap } from './dependency-graph.js';
 import { generateSharedEntryFile } from './build-shared.js';
 import { REMOTE_VIRTUAL_PREFIX, renderRemoteImport, toRemoteImportId, type RemoteImportRegistry } from './remote-imports.js';
 import { buildRuntimeBootstrap, PRELOAD_GLOBAL, REMOTE_HOSTS_GLOBAL, selectRemoteImportNames } from './runtime-bootstrap.js';
-import { collectRemoteDependencyGraph, findCyclicComponents } from './remote-dep-graph.js';
+import { findCyclicComponents } from './remote-dep-graph.js';
 import { resolveExposeSources } from './expose-parse.js';
 import { linkjsVue, linkjsVueOptions } from './vue-plugin.js';
 import path from 'path';
@@ -44,7 +44,6 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
     consumeTypes,
     remoteImports,
     remotes: declaredRemotes,
-    cycleMaxNodes = 200,
   } = options;
 
   /** 远程 manifest 的基址目录（用于派生依赖 host，保留子路径，使 `${host}/manifest.json` 可回指）。 */
@@ -54,6 +53,16 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
     }
     try {
       return new URL('.', url).href;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /** 读取本项目 package.json 的 name（作为本地依赖图的根；读不到则返回 undefined）。 */
+  function localPackageName(): string | undefined {
+    try {
+      const pkg = JSON.parse(readFileSync(path.resolve(process.cwd(), 'package.json'), 'utf-8'));
+      return typeof pkg.name === 'string' && pkg.name ? pkg.name : undefined;
     } catch {
       return undefined;
     }
@@ -149,50 +158,38 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
   }
 
   /**
-   * 收集**传递**的远程依赖图：从 consumeTypes 的远程出发，BFS 拉取各 manifest 的 `remotes`。
-   * 与 consumeTypes 一致地附加鉴权 token；并把「无法解析 / 图被截断」的节点收集为 `warnings`，
-   * 避免下游 manifest 未就绪时**静默漏检**环。
+   * 本项目自身声明的远程依赖图：以本项目名为根、指向写入 manifest 的 `remotes` 各项；
+   * **不递归下游**（各远程的依赖由其各自的构建负责）。
    */
-  async function collectRemoteGraph(result?: ConsumeTypesResult): Promise<{ graph: Record<string, string[]>; warnings: string[] }> {
-    if (!result) {
-      return { graph: {}, warnings: [] };
+  function localRemoteGraph(): Record<string, string[]> {
+    const declared = Object.keys(resolveManifestRemotes() ?? {});
+    const graph: Record<string, string[]> = {};
+    const self = localPackageName();
+    if (self) {
+      graph[self] = declared;
     }
-    const token = await resolveToken(consumeTypes?.auth);
-    const warnings: string[] = [];
-    const graph = await collectRemoteDependencyGraph(
-      result.remotes.map((r) => ({ name: r.name, host: r.host })),
-      {
-        timeout: consumeTypes?.timeout ?? 3000,
-        maxNodes: cycleMaxNodes,
-        auth: token ? { token, queryParam: consumeTypes?.auth?.queryParam ?? 'token' } : undefined,
-        onUnresolved: ({ name, host, reason, status }) => {
-          const detail =
-            reason === 'no-host' ? '未声明 host' : reason === 'http-error' ? `manifest 返回 ${status}` : 'manifest 不可达/超时';
-          warnings.push(`无法解析远程 "${name}"（${detail}${host ? `，host=${host}` : ''}）；其下游依赖未纳入环检测，可能漏检环。`);
-        },
-        onTruncated: ({ maxNodes, pending }) => {
-          warnings.push(`远程依赖图超过 ${maxNodes} 个节点被截断（剩余 ${pending} 个未处理），可能漏检环；可调大 \`cycleMaxNodes\`。`);
-        },
-      },
-    );
-    return { graph, warnings };
+    for (const name of declared) {
+      if (!graph[name]) {
+        graph[name] = [];
+      }
+    }
+    return graph;
   }
 
   /**
-   * 构建期循环依赖检测：**shared 依赖图** + **传递的 remote 依赖图**。
+   * 构建期循环依赖检测：仅针对**本项目自身声明**的依赖图。
    *
-   * 输出**强连通分量（SCC）**（而非单条环路径）：SCC 是「必须并载」的完整成员集合，
-   * 避免单点 DFS 枚举不全导致「环路径」与 SCC 不一致而误导拆环。
-   * `mode==='build'` 时抛错阻断；dev 仅告警。未解析/截断的节点始终以 warn 提示。
+   * - shared 图：`analyzeDependencies(shared)`（本地 package.json 闭包推导）；
+   * - remote 图：本项目声明的远程依赖（`remotes`），以本项目为根。
+   *
+   * 不再**传递拉取**下游 remote 的 manifest —— 每个部分管好自己：各远程的依赖由各自的构建校验。
+   * 需要显式做跨远程体检时，用 `linkjs-check` CLI（`pnpm check:cycles`）。
+   *
+   * 输出**强连通分量（SCC）**；`mode==='build'` 时抛错阻断，dev 仅告警。
    */
-  async function checkDependencyCycles(mode: 'build' | 'dev', result?: ConsumeTypesResult): Promise<void> {
-    const sharedGraph = analyzeDependencies(shared);
-    const sharedScc = findCyclicComponents(sharedGraph);
-    const { graph: remoteGraph, warnings } = await collectRemoteGraph(result);
-    const remoteScc = findCyclicComponents(remoteGraph);
-    for (const warning of warnings) {
-      console.warn(`[linkjs] ${warning}`);
-    }
+  async function checkDependencyCycles(mode: 'build' | 'dev'): Promise<void> {
+    const sharedScc = findCyclicComponents(analyzeDependencies(shared));
+    const remoteScc = findCyclicComponents(localRemoteGraph());
     if (sharedScc.length === 0 && remoteScc.length === 0) {
       return;
     }
@@ -633,8 +630,8 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
       // dev 由 configureServer 处理（初始对齐 + 订阅）；build 在此一次性对齐。
       async buildStart() {
         if (!isServe) {
-          const result = await runConsumeTypes();
-          await checkDependencyCycles('build', result);
+          await runConsumeTypes();
+          await checkDependencyCycles('build');
         }
       },
       async configureServer(server: any) {
@@ -663,7 +660,7 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
         if (result) {
           startTypeWatchers(result);
         }
-        await checkDependencyCycles('dev', result);
+        await checkDependencyCycles('dev');
         server.httpServer?.on?.('close', () => {
           typeWatcher?.close();
           if (typeRefreshTimer) {
@@ -675,8 +672,8 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
 
     rolldown: {
       async buildStart() {
-        const result = await runConsumeTypes();
-        await checkDependencyCycles('build', result);
+        await runConsumeTypes();
+        await checkDependencyCycles('build');
       },
       buildEnd() {},
       async writeBundle(options, bundle) {
