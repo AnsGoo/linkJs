@@ -206,8 +206,7 @@ const LinkjsShadowRoot = defineComponent({
   setup(props, { slots }) {
     const { host, mountPoint } = useShadowSlot(props.name);
 
-    return () =>
-      h('div', { ref: host }, mountPoint.value ? [h(Teleport as any, { to: mountPoint.value }, slots.default?.())] : []);
+    return () => h('div', { ref: host }, mountPoint.value ? [h(Teleport as any, { to: mountPoint.value }, slots.default?.())] : []);
   },
 });
 
@@ -285,9 +284,7 @@ function createRemoteComponent(entry: string, options?: CreateRemoteComponentOpt
       });
 
       return () => {
-        const inner = comp.value
-          ? h(comp.value, { ...attrs }, slots.default ? { default: () => slots.default!() } : undefined)
-          : null;
+        const inner = comp.value ? h(comp.value, { ...attrs }, slots.default ? { default: () => slots.default!() } : undefined) : null;
         if (!shadow || shadowFallback.value) {
           return inner;
         }

@@ -34,11 +34,13 @@
 ## 3. 建议方案（分层）
 
 ### 3.1 循环依赖
+
 - **构建期检测（先做）**：对 **remote 依赖图 / shared 依赖图 / 静态导入图** 做 SCC 环检测，**报错并打印环路径**（`A → B → A`）。build 失败、dev 告警。
 - **运行时治本**：把“加载期 await 依赖”改为 **SCC 并行 + 惰性环边**（环上不 await，改为使用时解析）；模块**先 expose 身份、再补依赖**。
 - **写法约束**：禁止模块顶层 `await` 跨远程；破坏环（抽第三模块 / 事件注入 / 共享包拆合）。
 
 ### 3.2 依赖粒度（expose 级）
+
 - **数据**：manifest 增 `exposes[].remotes` / `exposes[].shared`（构建期按 expose 的 import 闭包生成）。
 - **运行时契约**：惰性 expose（`expose('r', { B: () => import('./chunk-B') })`，MF 风格）。
 - **宿主**：`loadRemote('<r>/<E>')` 只加载该 expose 的 chunk + 其 remotes + 其 shared。
@@ -57,19 +59,20 @@
 
 ## 5. 风险与取舍
 
-| 项 | 取舍 |
-|---|---|
-| App 形态 | expose 级较难（HTML 入口含 app 全局）；建议**仅 Lib 承诺**，App 保持整包 |
-| 分包 | 入口若仍 `import` A/B/C，lazy 失效 → 需 unplugin **强制/校验** 每 expose 独立 chunk |
-| 首屏 | 入口变薄后需 **hover/prefetch 预取**该 expose chunk 补体验 |
-| 共享协调 | 按 expose 加载 shared 后，singleton「先注册者胜出」仍需全局一致 |
-| 环检测网络 | 传递拉下游 manifest 有网络成本；远端未启动的边视为未知、跳过 |
+| 项         | 取舍                                                                                |
+| ---------- | ----------------------------------------------------------------------------------- |
+| App 形态   | expose 级较难（HTML 入口含 app 全局）；建议**仅 Lib 承诺**，App 保持整包            |
+| 分包       | 入口若仍 `import` A/B/C，lazy 失效 → 需 unplugin **强制/校验** 每 expose 独立 chunk |
+| 首屏       | 入口变薄后需 **hover/prefetch 预取**该 expose chunk 补体验                          |
+| 共享协调   | 按 expose 加载 shared 后，singleton「先注册者胜出」仍需全局一致                     |
+| 环检测网络 | 传递拉下游 manifest 有网络成本；远端未启动的边视为未知、跳过                        |
 
 ---
 
 ## 6. 待决策清单（审阅重点）
 
 ### 循环依赖
+
 1. 检测范围：remote+shared 两图，还是也含静态导入图？
 2. 传递扫描：构建期是否**拉下游 manifest**（网络）以发现 `A→B→A`？
 3. 策略：build **失败** 还是仅**告警**？dev 是否 fail？
@@ -77,6 +80,7 @@
 5. 形态：只挂构建插件，还是**同时出 `linkjs check` CLI**？
 
 ### 依赖粒度（expose 级）
+
 6. **契约（已定）**：**方案 b（manifest 驱动 import chunk）**。
 7. **shared（已定）**：**② 按需（用到才拿）**——宿主不预加载，远端 import 触发 `loadShare`。
 8. **字段（已定）**：统一 **`exposes[].deps`**（`{ remotes?, shared? }`）。
@@ -89,6 +93,7 @@
 ## 7. 实现状态（截至本轮）
 
 **已实现**
+
 - 循环依赖 · 构建期检测：**remote 图（传递）+ shared 图**，输出**环路径 + 强连通分量（SCC）**，build 阻断 / dev 告警；**`linkjs-check` CLI**（CI 可用）。
 - 循环依赖 · 运行时治本：检测到环 → **并行加载所有可达依赖**（去重）+ `REMOTE_DEP_CYCLE` 诊断；无环保持拓扑；每远程超时作看门狗。
 - 依赖粒度 · expose 级（方案 b）：构建期 **`exposes[].deps`**（按 expose 模块闭包，原始导入判定）+ **自动解析 `expose()`**；宿主 `loadRemote('<r>/<E>')` 用 `exposes[E].deps.remotes`；**lib 按 expose assets 定向加载**。
@@ -97,6 +102,7 @@
 - 样式隔离默认开启（`shadow: true`）；并发加载去重（`remoteLoadInflight`）；`consumeTypes` 失败退避重试。
 
 **未实现（需更大改造）**
+
 - **App 内 expose 的 chunk 定向加载**（App 壳仍整入口，按决策）。
 - expose 级**独立卸载**（一个远程作为整体加载；需按 expose 分包 / MF remoteEntry 才能独立加载/卸载）。
 - 环路径附来源（manifest 地址）；`linkjs-check` 多格式配置。

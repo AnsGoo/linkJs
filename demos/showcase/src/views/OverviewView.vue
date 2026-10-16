@@ -41,7 +41,9 @@ const entries = [
       </p>
       <div class="metrics">
         <div class="metric">
-          <span class="m-val tnum">{{ loaded }}<em>/{{ remotes.length }}</em></span>
+          <span class="m-val tnum"
+            >{{ loaded }}<em>/{{ remotes.length }}</em></span
+          >
           <span class="m-k">已加载远程</span>
         </div>
         <div class="metric">
@@ -191,7 +193,9 @@ const entries = [
   padding: 16px 4px;
   border-bottom: 1px solid var(--line);
   text-decoration: none;
-  transition: background 0.2s var(--ease), transform 0.2s var(--ease);
+  transition:
+    background 0.2s var(--ease),
+    transform 0.2s var(--ease);
 }
 .entry:nth-child(odd) {
   padding-right: 24px;

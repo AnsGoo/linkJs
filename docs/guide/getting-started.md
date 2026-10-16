@@ -75,9 +75,7 @@ export default defineConfig({
     linkjsSharedVersions(), // 注入已安装共享依赖版本
     unpluginLinkjs.vite({
       consumeTypes: {
-        remotes: [
-          { name: 'remoteApp', manifestUrl: 'http://localhost:8081/mf/manifest.json', preload: true },
-        ],
+        remotes: [{ name: 'remoteApp', manifestUrl: 'http://localhost:8081/mf/manifest.json', preload: true }],
       },
       remoteImports: { shadow: true },
     }),

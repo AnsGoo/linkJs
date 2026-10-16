@@ -168,9 +168,7 @@ function serve(options: TsdownServeOptions | string | string[] = { contentBase: 
     if (e.code === 'EADDRINUSE') {
       // 端口占用不应终止调用方（例如 `tsdown --watch` / 构建进程）：告警并跳过静态服务。
       console.warn(
-        '[tsdown-plugin-server] ' +
-          url +
-          ' is in use, either stop the other server or use a different port. (static server disabled)',
+        '[tsdown-plugin-server] ' + url + ' is in use, either stop the other server or use a different port. (static server disabled)',
       );
       server = null;
     } else {

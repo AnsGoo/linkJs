@@ -129,7 +129,9 @@ function renderSnapshot(snapshot: LinkjsSnapshot, filter: string, onCopy: () => 
     return name;
   };
 
-  const remotes = snapshot.remotes.filter((remote) => match(`${remote.name} ${remote.displayName ?? ''} ${remote.type ?? ''} ${remote.status ?? ''} ${remote.host ?? ''}`));
+  const remotes = snapshot.remotes.filter((remote) =>
+    match(`${remote.name} ${remote.displayName ?? ''} ${remote.type ?? ''} ${remote.status ?? ''} ${remote.host ?? ''}`),
+  );
   const shareRows = snapshot.shares.flatMap((share) =>
     share.versions
       .filter((v) => match(`${share.name} ${share.scope} ${v.version}`))
@@ -142,8 +144,14 @@ function renderSnapshot(snapshot: LinkjsSnapshot, filter: string, onCopy: () => 
   );
   const conflicts = snapshot.conflicts.filter((c) => match(`${c.name} ${c.requiredVersion}`));
   const plugins = snapshot.availablePlugins.filter((p) => show(p.name));
-  const metrics = snapshot.metrics.filter((m) => match(`${m.entry} ${m.status} ${m.host ?? ''}`)).slice(-12).reverse();
-  const perf = snapshot.perf.filter((p) => show(p.name)).slice(-12).reverse();
+  const metrics = snapshot.metrics
+    .filter((m) => match(`${m.entry} ${m.status} ${m.host ?? ''}`))
+    .slice(-12)
+    .reverse();
+  const perf = snapshot.perf
+    .filter((p) => show(p.name))
+    .slice(-12)
+    .reverse();
   const events = snapshot.events
     .filter((e) => match(`${e.type} ${e.summary}`))
     .slice(-20)

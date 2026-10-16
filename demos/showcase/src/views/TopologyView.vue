@@ -56,8 +56,7 @@ const reload = () => location.reload();
       <div>
         <h1>依赖拓扑</h1>
         <p class="sub">
-          实时渲染 <code>HOST → 远程 → 共享依赖 / 远程依赖</code>。加载 remoteApp 时，
-          remote-lib 会作为它的远程依赖被先行加载。
+          实时渲染 <code>HOST → 远程 → 共享依赖 / 远程依赖</code>。加载 remoteApp 时， remote-lib 会作为它的远程依赖被先行加载。
         </p>
       </div>
       <div class="controls">
@@ -83,7 +82,9 @@ const reload = () => location.reload();
           <div class="thead"><span>远程</span><span>类型</span><span>状态</span><span>依赖的远程</span></div>
           <div v-for="r in rawRemotes" :key="r.name" class="trow">
             <span class="mono">{{ r.displayName || r.name }}</span>
-            <span><span class="pill" :class="r.type === 'lib' ? 'k-lib' : 'k-app'">{{ r.type || '-' }}</span></span>
+            <span
+              ><span class="pill" :class="r.type === 'lib' ? 'k-lib' : 'k-app'">{{ r.type || '-' }}</span></span
+            >
             <span><StatusPill :status="r.status" /></span>
             <span class="mono dep" v-if="r.deps && r.deps.length">
               {{ r.deps.map((d) => `${d.name} (${d.status || '?'})`).join(' · ') }}

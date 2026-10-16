@@ -5,6 +5,7 @@
 > 本文是 P6「远期：无刷新 HMR（宿主响应式重解析 expose）」的分析过程与实现思路，对应 `docs/development-plan.md` P6 条目。
 >
 > 全文分两大部分：
+>
 > - **集成模型**：路线 A（组件暴露 + 共享 runtime）、路线 B（自挂载 + 自适应 runtime）。
 > - **实现手段**：原生 Vue HMR、linkjs shim、自适应 runtime。
 
@@ -52,12 +53,12 @@ const RemoteComponent = defineAsyncComponent(async () => {
 
 ## 2. 场景矩阵
 
-| 场景 | 共享 Vue 来源 | `__VUE_HMR_RUNTIME__` | 原生 Vue HMR |
-| --- | --- | --- | --- |
-| 主 DEV + 子 DEV | 主应用 dev vue | 存在 | ✅ 就地更新 |
-| 主 PROD + 子 DEV | 主应用 prod vue | **不存在** | ❌ 报错 |
-| 主 DEV + 子 PROD | — | 子应用无 client | ❌ |
-| 主 PROD + 子 PROD | — | — | ❌ |
+| 场景              | 共享 Vue 来源   | `__VUE_HMR_RUNTIME__` | 原生 Vue HMR |
+| ----------------- | --------------- | --------------------- | ------------ |
+| 主 DEV + 子 DEV   | 主应用 dev vue  | 存在                  | ✅ 就地更新  |
+| 主 PROD + 子 DEV  | 主应用 prod vue | **不存在**            | ❌ 报错      |
+| 主 DEV + 子 PROD  | —               | 子应用无 client       | ❌           |
+| 主 PROD + 子 PROD | —               | —                     | ❌           |
 
 只有「主 DEV + 子 DEV」能靠原生 Vue HMR；「主 PROD + 子 DEV」需要额外机制。
 
@@ -126,16 +127,16 @@ if (!!(process.env.NODE_ENV !== "production")) {
 
 ## 5. 两种集成模型
 
-| | 路线 A：组件暴露 + 共享 runtime | 路线 B：自挂载 + 自适应 runtime |
-| --- | --- | --- |
-| 契约 | 子应用 `expose` 出 SFC 组件，宿主用自己的 runtime 渲染 | 子应用 `expose` 出 `mount/unmount`，自带 runtime 自己渲染 |
-| 框架 runtime | 始终共享主应用 vue | 主 DEV 共享；主 PROD 用子应用自有 vue |
-| 主 DEV 免刷新 | 原生 HMR | 原生 HMR |
-| 主 PROD 免刷新 | 靠 shim 重挂载 | 原生 HMR |
-| 跨应用 props/响应式 | 宿主 runtime 直传，天然响应 | 跨 runtime，需 props 快照 / `update()` / 事件桥 |
-| pinia/router 所有权 | 可共享（P3 待定） | 每应用自持，天然解决 |
-| framework 体积 | 共享一份 | 主 PROD 时多一份 |
-| 改动量 | 小 | 大（改契约 + unplugin + demo） |
+|                     | 路线 A：组件暴露 + 共享 runtime                        | 路线 B：自挂载 + 自适应 runtime                           |
+| ------------------- | ------------------------------------------------------ | --------------------------------------------------------- |
+| 契约                | 子应用 `expose` 出 SFC 组件，宿主用自己的 runtime 渲染 | 子应用 `expose` 出 `mount/unmount`，自带 runtime 自己渲染 |
+| 框架 runtime        | 始终共享主应用 vue                                     | 主 DEV 共享；主 PROD 用子应用自有 vue                     |
+| 主 DEV 免刷新       | 原生 HMR                                               | 原生 HMR                                                  |
+| 主 PROD 免刷新      | 靠 shim 重挂载                                         | 原生 HMR                                                  |
+| 跨应用 props/响应式 | 宿主 runtime 直传，天然响应                            | 跨 runtime，需 props 快照 / `update()` / 事件桥           |
+| pinia/router 所有权 | 可共享（P3 待定）                                      | 每应用自持，天然解决                                      |
+| framework 体积      | 共享一份                                               | 主 PROD 时多一份                                          |
+| 改动量              | 小                                                     | 大（改契约 + unplugin + demo）                            |
 
 两条路线都把「检测」交给 dev 应用（谁 dev 谁收 HMR 事件），差别在「应用/渲染」由谁承担：
 
@@ -210,20 +211,25 @@ const RemoteComponent = useRemoteModule('remote/HelloWorld');
 
 ```ts
 // 子应用（hosted 时）
-import { createApp } from 'vue'          // 由自适应 loader 决定共享 or 本地
-import App from './App.vue'
+import { createApp } from 'vue'; // 由自适应 loader 决定共享 or 本地
+import App from './App.vue';
 
-let app: App<Element> | null = null
+let app: App<Element> | null = null;
 
 export function mount(el: HTMLElement, props?: Record<string, any>) {
-  app = createApp(App, props)
-  app.use(myPinia).use(myRouter)         // 子应用自持生态
-  app.mount(el)
+  app = createApp(App, props);
+  app.use(myPinia).use(myRouter); // 子应用自持生态
+  app.mount(el);
 }
-export function update(props: Record<string, any>) { /* 可选：跨 runtime 传参 */ }
-export function unmount() { app?.unmount(); app = null }
+export function update(props: Record<string, any>) {
+  /* 可选：跨 runtime 传参 */
+}
+export function unmount() {
+  app?.unmount();
+  app = null;
+}
 
-expose('remote', { mount, update, unmount }, { version: '1.0.0' })
+expose('remote', { mount, update, unmount }, { version: '1.0.0' });
 ```
 
 宿主只提供一个容器节点，用自己的 runtime 渲染这个 `<div>`；子应用在**自己的 runtime** 里往该节点挂载。两个 Vue 实例通过 DOM 边界隔开，互不渲染对方组件。
@@ -237,10 +243,10 @@ expose('remote', { mount, update, unmount }, { version: '1.0.0' })
 
 冲突只发生在**两个都 dev**：
 
-| 场景 | 子应用用自有 dev vue 是否冲突 | 结论 |
-| --- | --- | --- |
-| 主 PROD + 子 DEV | 否（主 prod vue 不写全局） | 路线 B 天然可行 |
-| 主 DEV + 子 DEV | 是（两个 dev vue 抢全局） | 需自适应策略：复用共享 dev vue |
+| 场景             | 子应用用自有 dev vue 是否冲突 | 结论                           |
+| ---------------- | ----------------------------- | ------------------------------ |
+| 主 PROD + 子 DEV | 否（主 prod vue 不写全局）    | 路线 B 天然可行                |
+| 主 DEV + 子 DEV  | 是（两个 dev vue 抢全局）     | 需自适应策略：复用共享 dev vue |
 
 即：路线 B 的痛点恰好只在"两个都 dev"，而该场景下复用共享 runtime 本就无冲突。由此引出 7.3。
 
@@ -258,7 +264,7 @@ expose('remote', { mount, update, unmount }, { version: '1.0.0' })
 1. **主应用 mode 标识**：`createInstance` 时把自身模式（`import.meta.env.PROD` 编译期常量）写入实例；子应用经 `$linkjs` 读取。**不要**用"全局 `__VUE_HMR_RUNTIME__` 是否存在"判断——它是可变的、会竞态（子应用本地 vue 加载后同样会置位）。
 2. **unplugin dev 改写**：框架类依赖改写为自适应加载：
    ```ts
-   const vue = await $linkjs.loadRuntime('vue', () => import('vue'))
+   const vue = await $linkjs.loadRuntime('vue', () => import('vue'));
    ```
    `loadRuntime(name, localLoader)`：主 dev → 返回共享实例；主 prod → 执行 `localLoader` 返回子应用自己的 dev vue。结果按 (app, name) **缓存**，保证同一应用内一致。
 3. **框架生态必须同源**：`vue` / `vue-router` / `pinia` 必须解析到**同一份** runtime，否则 pinia 内部 `from 'vue'` 会指向另一实例。需把这一组作为"隔离组"整体决策——这是本路线最大的实现风险点。
@@ -267,7 +273,7 @@ expose('remote', { mount, update, unmount }, { version: '1.0.0' })
 ### 7.4 宿主适配组件（`linkjs/vue`）
 
 ```ts
-const RemoteApp = createRemoteApp('remote', { sandbox: true })
+const RemoteApp = createRemoteApp('remote', { sandbox: true });
 ```
 
 内部：
@@ -423,10 +429,10 @@ setup() {
 
 ### 13.3 实测结果（Playwright）
 
-| 场景 | 加载方式 | 结果 |
-| --- | --- | --- |
-| 主 DEV + 子 DEV | host dev `:5173` + remote dev `:8081` | 改 SFC 文案 → 就地更新，`nav 3→3`（无刷新） |
-| 主 PROD + 子 DEV | host 生产构建 + `vite preview :8090` + remote dev `:8081` | 改 SFC 文案 → shim 重挂载更新，无刷新 |
+| 场景             | 加载方式                                                  | 结果                                        |
+| ---------------- | --------------------------------------------------------- | ------------------------------------------- |
+| 主 DEV + 子 DEV  | host dev `:5173` + remote dev `:8081`                     | 改 SFC 文案 → 就地更新，`nav 3→3`（无刷新） |
+| 主 PROD + 子 DEV | host 生产构建 + `vite preview :8090` + remote dev `:8081` | 改 SFC 文案 → shim 重挂载更新，无刷新       |
 
 复现命令：
 

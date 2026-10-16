@@ -57,8 +57,16 @@ function timeStr(t: number) {
 }
 
 const HOOKS = [
-  'beforeLoadRemote', 'afterResolve', 'beforeLoadContainer', 'beforeLoadEntry', 'afterLoadEntry',
-  'onLoad', 'afterLoadRemote', 'beforeLoadShare', 'afterLoadShare', 'errorLoadRemote',
+  'beforeLoadRemote',
+  'afterResolve',
+  'beforeLoadContainer',
+  'beforeLoadEntry',
+  'afterLoadEntry',
+  'onLoad',
+  'afterLoadRemote',
+  'beforeLoadShare',
+  'afterLoadShare',
+  'errorLoadRemote',
 ];
 
 const code = `// 运行时注册一个插件（等价于 createInstance({ plugin }))
@@ -74,8 +82,8 @@ registerPlugin({
     <header class="head">
       <h1>插件机制</h1>
       <p class="sub">
-        <code>RuntimePlugin</code> 通过钩子介入远程加载的每个阶段（改写 remoteInfo、埋点、鉴权、降级…）。
-        本页注册了一个 <code>demo-inspector</code> 插件记录全部钩子；还可运行时再注册一个。
+        <code>RuntimePlugin</code> 通过钩子介入远程加载的每个阶段（改写 remoteInfo、埋点、鉴权、降级…）。 本页注册了一个
+        <code>demo-inspector</code> 插件记录全部钩子；还可运行时再注册一个。
       </p>
     </header>
 

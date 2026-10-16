@@ -142,9 +142,7 @@ function resetLoaded(): void {
   refresh();
 }
 
-const versionDiagnostics = computed(() =>
-  (snapshot.value.diagnostics || []).filter((d) => d.code.includes('SHARE')).slice(0, 6),
-);
+const versionDiagnostics = computed(() => (snapshot.value.diagnostics || []).filter((d) => d.code.includes('SHARE')).slice(0, 6));
 
 const code = `// 宿主注册（showcase/src/main.ts）
 createInstance({ shares: {
@@ -166,9 +164,9 @@ const same = loadShareSync('linkkit'); // 只取已加载；未加载且工厂�
     <header class="head">
       <h1>共享依赖协商</h1>
       <p class="sub">
-        同名共享库 <code>linkkit</code> 同时存在多个版本/作用域：宿主 <b>v1.0.0</b>、远端
-        <code>share-remote</code> 注入的 <b>v2.0.0</b>、以及 <code>tenant-a</code> 作用域的 <b>v3.0.0</b>。
-        <code>loadShare</code>/<code>getShare</code> 按 <code>shareStrategy</code> 协商；本页可切换策略/作用域并观察。
+        同名共享库 <code>linkkit</code> 同时存在多个版本/作用域：宿主 <b>v1.0.0</b>、远端 <code>share-remote</code> 注入的
+        <b>v2.0.0</b>、以及 <code>tenant-a</code> 作用域的 <b>v3.0.0</b>。 <code>loadShare</code>/<code>getShare</code> 按
+        <code>shareStrategy</code> 协商；本页可切换策略/作用域并观察。
       </p>
     </header>
 

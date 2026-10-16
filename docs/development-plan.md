@@ -17,15 +17,18 @@
 ## P1 共享依赖运行时正确性（高）✅
 
 ### 1.1 修复 `registerShare`
+
 - [x] 同 scope 同名、含 `singleton` 的已有注册：忽略后续注册（首个胜出）。
 - [x] 非 `singleton`：追加多版本，不再 `push` 后被覆盖。
 - 文件：`packages/linkjs/src/share/index.ts`
 
 ### 1.2 并发加载去重
+
 - [x] 同一 `scope::name@version` 的并发 `loadShare` 复用同一 in-flight Promise。
 - 文件：`packages/linkjs/src/share/index.ts`
 
 ### 1.3 明确并实现两种共享策略语义
+
 - [x] 统一解析器，删除两份完全相同的实现。
 - [x] `loaded-first`（现存行为）：优先已加载实例；无可用已加载时才加载。
 - [x] `version-first`：在「已加载 + 可用」候选中选满足条件的最高版本，必要时升级加载。
@@ -33,6 +36,7 @@
 - [x] 更新 `packages/linkjs/development/version-compare.md`。
 
 ### 1.4 测试
+
 - [x] `registerShare` 单例/多版本。
 - [x] 并发去重。
 - [x] 两种策略在「已加载旧版 + 可用新版」下的差异。
@@ -43,19 +47,23 @@
 ## P2 远程加载健壮性（高）✅
 
 ### 2.1 `loadApp` 资源加载
+
 - [x] 明确 `entry`（默认 host）与 `host` 语义，支持 `remoteInfo.entry.html`。
 - [x] 加载 CSS（`link[rel=stylesheet]`）。
 - [x] `link[rel=modulepreload]` 预加载。
 - 文件：`packages/linkjs/src/loader/app.ts`、`loader/utils.ts`
 
 ### 2.2 错误传播
+
 - [x] `loadScript` 失败默认 reject，提供 `ignoreError` 开关。
 - [x] `Promise.all(preload)` 已 `await`，消除竞态。
 
 ### 2.3 超时与重试
+
 - [x] expose 超时可配置（`timeout`）；网络/脚本加载支持 `retries`。
 
 ### 2.4 测试
+
 - [x] 覆盖：CSS/脚本注入 + expose 解析；脚本失败 reject。
 - 文件：`packages/linkjs/tests/loader.test.ts`
 
@@ -128,6 +136,7 @@
 ## P9 运行时插件与服务化（本轮增量）
 
 ### 9.1 运行时插件生命周期补全
+
 - [x] 支持注册**多个**插件（`registerPlugin(plugin | plugin[])`，同名去重，按注册顺序执行）。
 - [x] 补全并接入全部钩子：`beforeInit`/`afterInit`（`createInstance`）、`beforeLoadRemote`/`afterLoadRemote`/`errorLoadRemote`、`beforeLoadShare`/`afterLoadShare`、`beforeLoadEntry`/`afterLoadEntry`。
 - [x] app/lib 对称：`loadApp` 与 `loadLib` 均触发上述钩子；`beforeLoadRemote` 的返回值串联改写 `remoteInfo`。
@@ -135,6 +144,7 @@
 - 测试：`packages/linkjs/tests/plugins.test.ts`（8 用例）。
 
 ### 9.2 构建产物与工程化
+
 - [x] dist 漂移根治：所有包 `exports` 只指向 dist；移除 tsdown 的 `exports.devExports`（改 `exports: false`），避免构建时回写 `development` 条件。
 - [x] demo `dev`/`build` 先构建所用 workspace 包；根 `build` 纳入 `runtime-registry`；根 `prepare` 安装后构建。
 - [x] `pnpm.overrides` 迁移到 `pnpm-workspace.yaml`；新增 `.npmrc` 关闭 run 前自动安装。
@@ -142,6 +152,7 @@
 - [x] `share-runtime` 修正描述与 ESM（`createRequire` / `import.meta.url`）。
 
 ### 9.3 测试与 CI
+
 - [x] 修复会失败的 e2e 模板（host/remote）。
 - [x] 新增 `.github/workflows/ci.yml`：install → build → typecheck → test → lint。
 
@@ -170,11 +181,13 @@
 ## P12 插件生命周期扩展 & 共享选项（借鉴 Module Federation）
 
 ### 12.1 Runtime 插件（container / module 级）
+
 - [x] 新增 `apply(instance)`（注册时装填）、`afterResolve`（remoteInfo 解析后）、`beforeLoadContainer`/`afterLoadContainer`（容器加载边界）、`onLoad`（暴露模块就绪，容器级）。
 - [x] 在 `loadApp`/`loadLib` 全流程触发；`apply` 在 `registerPlugin` 时调用。
 - 测试：`tests/plugins.test.ts`（apply）、`tests/loader.test.ts`（钩子触发顺序）。
 
 ### 12.2 共享依赖选项与多作用域
+
 - [x] `ShareOption` 新增 `eager`（注册即加载）、`requiredVersion`（版本要求）、`strictVersion`（不满足则抛错，否则告警）。
 - [x] `RemoteBase.shareScope?: string[]`：远程可关联多个共享作用域；`loadApp`/`loadLib` 预加载时按作用域逐个加载。
 - [x] **A9 多 shareScope 声明式配置**：unplugin 生成 `manifest.shareScope`（显式 `shareScope` 选项，缺省由 `shared[*].scope` 推导，默认 `["global"]`）；运行时 `preloadRemote` / `loadOverride` 读取 manifest 并写回远程注册表；`loadApp`/`loadLib` 在缺省时由 `shared` 各依赖的 `scope` 推导。
@@ -281,18 +294,19 @@
 
 ## 执行记录（本轮）
 
-| 阶段 | 状态 | 说明 |
-| --- | --- | --- |
-| P1 | 完成 | 重写 `share/index.ts`；新增 12 条策略/并发测试 |
-| P2 | 完成 | 重写 `loader/app.ts`/`utils.ts`；新增 2 条 loader 测试 |
-| P3 | 完成 | 新增 `unloadRemote` + 资源归属标记；`loadLib` 反模式修复 |
-| P4 | 完成 | entry 联合类型 + 选项接口 + 导出补齐；runtime-registry 去重 |
-| P5 | 完成 | manifest 分类确定化 + `workspace:*` 版本解析 |
-| P6 | 完成 | dev 共享重写 + 子应用更新刷新宿主 |
-| P7 | 部分 | overrideRemote 校验 + CSS 隔离 + JS 快照沙箱完成；CSP/SRI 远期 |
-| P8 | 完成 | linkjs 38 + unplugin 17 用例；根脚本齐全 |
+| 阶段 | 状态 | 说明                                                           |
+| ---- | ---- | -------------------------------------------------------------- |
+| P1   | 完成 | 重写 `share/index.ts`；新增 12 条策略/并发测试                 |
+| P2   | 完成 | 重写 `loader/app.ts`/`utils.ts`；新增 2 条 loader 测试         |
+| P3   | 完成 | 新增 `unloadRemote` + 资源归属标记；`loadLib` 反模式修复       |
+| P4   | 完成 | entry 联合类型 + 选项接口 + 导出补齐；runtime-registry 去重    |
+| P5   | 完成 | manifest 分类确定化 + `workspace:*` 版本解析                   |
+| P6   | 完成 | dev 共享重写 + 子应用更新刷新宿主                              |
+| P7   | 部分 | overrideRemote 校验 + CSS 隔离 + JS 快照沙箱完成；CSP/SRI 远期 |
+| P8   | 完成 | linkjs 38 + unplugin 17 用例；根脚本齐全                       |
 
 ### 验证命令
+
 ```bash
 pnpm -r --filter "./packages/*" build
 pnpm test

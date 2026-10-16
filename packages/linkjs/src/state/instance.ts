@@ -239,8 +239,7 @@ function createInstanceObject(): LinkjsInstance {
 
 const globalObject = globalThis as Record<string, unknown>;
 
-export const linkInstance: LinkjsInstance =
-  (globalObject[__LINKJS_INSTANCE__] as LinkjsInstance | undefined) ?? createInstanceObject();
+export const linkInstance: LinkjsInstance = (globalObject[__LINKJS_INSTANCE__] as LinkjsInstance | undefined) ?? createInstanceObject();
 
 globalObject[__LINKJS_INSTANCE__] = linkInstance;
 globalObject['$linkjs'] = {

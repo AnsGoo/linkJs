@@ -74,9 +74,7 @@ function withLoadInflight<T>(appName: string, run: () => Promise<T>): Promise<T>
 /** 取某远程的**根级**依赖：优先 expose 级 `exposes[<expose>].deps.remotes`，否则 remote 级 `remotes`。 */
 function pickRootDeps(appName: string, options?: { expose?: string }): Record<string, RemoteDependency> {
   const info = getRemoteInfo(appName);
-  const exposeRemotes = options?.expose
-    ? info?.exposes?.find((item) => item.name === options.expose)?.deps?.remotes
-    : undefined;
+  const exposeRemotes = options?.expose ? info?.exposes?.find((item) => item.name === options.expose)?.deps?.remotes : undefined;
   return exposeRemotes && Object.keys(exposeRemotes).length > 0
     ? Object.fromEntries(Object.entries(exposeRemotes).map(([n, c]) => [n, { host: c?.host }]))
     : (info?.remotes ?? {});
@@ -94,8 +92,7 @@ function collectDepGraph(
   let guard = 0;
   while (queue.length > 0 && guard++ < 500) {
     const cur = queue.shift()!;
-    const deps: Record<string, RemoteDependency> =
-      cur === root ? pickRootDeps(root, options) : (getRemoteInfo(cur)?.remotes ?? {});
+    const deps: Record<string, RemoteDependency> = cur === root ? pickRootDeps(root, options) : (getRemoteInfo(cur)?.remotes ?? {});
     graph[cur] = Object.keys(deps);
     for (const [name, dep] of Object.entries(deps)) {
       if (!depMap.has(name)) {

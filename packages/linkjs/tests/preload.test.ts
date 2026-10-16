@@ -157,9 +157,7 @@ test('createInstance auto-runs build-time injected preloads (__linkjs_preload__)
     }),
   }));
   (globalThis as any).fetch = fetchMock;
-  (globalThis as any).__linkjs_preload__ = [
-    { name: 'remoteApp', manifestUrl: 'http://localhost:8081/manifest.json', prefetch: true },
-  ];
+  (globalThis as any).__linkjs_preload__ = [{ name: 'remoteApp', manifestUrl: 'http://localhost:8081/manifest.json', prefetch: true }];
 
   createInstance({});
 

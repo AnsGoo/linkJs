@@ -38,9 +38,7 @@ describe('resolvePublicPath', () => {
   });
 
   it('falls back to the registered host', async () => {
-    expect(await resolvePublicPath({ name: 'r', entry: '', host: 'http://localhost:4001' }, 'r')).toBe(
-      'http://localhost:4001',
-    );
+    expect(await resolvePublicPath({ name: 'r', entry: '', host: 'http://localhost:4001' }, 'r')).toBe('http://localhost:4001');
   });
 
   it('falls back to the build-time injected remote host', async () => {
@@ -51,9 +49,7 @@ describe('resolvePublicPath', () => {
 
   it('prefers the registered host over the injected one', async () => {
     (globalThis as any).__linkjs_remote_hosts__ = { r: 'http://localhost:8081' };
-    expect(await resolvePublicPath({ name: 'r', entry: '', host: 'http://localhost:4001' }, 'r')).toBe(
-      'http://localhost:4001',
-    );
+    expect(await resolvePublicPath({ name: 'r', entry: '', host: 'http://localhost:4001' }, 'r')).toBe('http://localhost:4001');
     delete (globalThis as any).__linkjs_remote_hosts__;
   });
 

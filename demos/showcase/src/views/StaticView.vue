@@ -28,13 +28,12 @@ export default { HelloWorld };`;
       <h1>构建期 import</h1>
       <p class="sub">
         直接 <code>import { HelloWorld } from 'remoteApp'</code>。unplugin-linkjs 在构建期把
-        <code>&lt;remote&gt;</code> 解析成虚拟模块（内部为 <code>createRemoteComponent</code>），
-        远程在 <code>consumeTypes.remotes</code> 声明 <code>preload</code> 后还会被提前预加载。
+        <code>&lt;remote&gt;</code> 解析成虚拟模块（内部为 <code>createRemoteComponent</code>）， 远程在
+        <code>consumeTypes.remotes</code> 声明 <code>preload</code> 后还会被提前预加载。
       </p>
       <p class="sub">
         本示例构建期开启 <code>remoteImports: { shadow: true }</code>：导入的远程组件**连同其样式**
-        自动进入影子树、与宿主样式互相隔离（对照见
-        <RouterLink to="/shadow" class="inline-link">Shadow 隔离</RouterLink>）。关闭时则注入
+        自动进入影子树、与宿主样式互相隔离（对照见 <RouterLink to="/shadow" class="inline-link">Shadow 隔离</RouterLink>）。关闭时则注入
         document（可能全局互相影响）。
       </p>
     </header>

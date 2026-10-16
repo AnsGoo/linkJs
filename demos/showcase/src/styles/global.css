@@ -62,8 +62,7 @@ body::before {
   z-index: -2;
   background:
     radial-gradient(900px 520px at 78% -10%, rgba(124, 140, 255, 0.16), transparent 60%),
-    radial-gradient(760px 460px at 6% 108%, rgba(76, 230, 164, 0.12), transparent 60%),
-    linear-gradient(180deg, var(--bg-glow), var(--bg));
+    radial-gradient(760px 460px at 6% 108%, rgba(76, 230, 164, 0.12), transparent 60%), linear-gradient(180deg, var(--bg-glow), var(--bg));
 }
 body::after {
   content: '';

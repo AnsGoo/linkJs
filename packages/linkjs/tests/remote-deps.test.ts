@@ -1,14 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { linkInstance } from '../src/state/instance';
 import { LOAD_STATUS } from '../src/event-bus/constant';
-import {
-  resolveRemoteDeps,
-  retainRemote,
-  releaseRemote,
-  hasDependencyCycle,
-  retainExpose,
-  releaseExpose,
-} from '../src/loader/deps';
+import { resolveRemoteDeps, retainRemote, releaseRemote, hasDependencyCycle, retainExpose, releaseExpose } from '../src/loader/deps';
 import { clearDiagnostics, getDiagnostics } from '../src/devtools';
 
 function register(name: string, remotes?: Record<string, unknown>, version?: string) {

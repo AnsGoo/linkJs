@@ -102,8 +102,8 @@ const code = `{
     <header class="head">
       <h1>多源灰度</h1>
       <p class="sub">
-        同一远程可声明多个候选源；<code>first-healthy</code> 先探测健康度、跳过不可用源；
-        <code>weighted</code> 则在健康源中按 <code>weight</code> 随机挑选（灰度）。
+        同一远程可声明多个候选源；<code>first-healthy</code> 先探测健康度、跳过不可用源； <code>weighted</code> 则在健康源中按
+        <code>weight</code> 随机挑选（灰度）。
       </p>
     </header>
 
@@ -117,7 +117,9 @@ const code = `{
         </div>
         <p v-if="error" class="error mono">{{ error }}</p>
         <p class="hint mono faint" v-if="checks">已探测 {{ checks }} 个源</p>
-        <p class="chosen mono" v-if="chosen">解析结果 → <b>{{ chosen }}</b></p>
+        <p class="chosen mono" v-if="chosen">
+          解析结果 → <b>{{ chosen }}</b>
+        </p>
         <p class="faint" v-if="loaded">remote-lib 已从解析到的源加载完成。</p>
       </div>
 

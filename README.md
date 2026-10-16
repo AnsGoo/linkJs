@@ -21,11 +21,7 @@
 // remote/src/expose.ts
 import HelloWorld from './components/HelloWorld.vue';
 
-$linkjs.expose(
-  'remote',
-  { HelloWorld },
-  { version: '0.0.0' }
-);
+$linkjs.expose('remote', { HelloWorld }, { version: '0.0.0' });
 ```
 
 ### 2. 宿主应用（Host App）
@@ -35,7 +31,7 @@ $linkjs.expose(
 ```typescript
 // 加载远程应用
 const remoteApp = await loadApp('remoteApp', {
-  host: 'http://localhost:3001'
+  host: 'http://localhost:3001',
 });
 
 // 获取远程模块
@@ -55,10 +51,10 @@ export default {
     unpluginLinkjs({
       shared: {
         vue: { singleton: true, requiredVersion: '^3.0.0' },
-        pinia: { singleton: true }
-      }
-    })
-  ]
+        pinia: { singleton: true },
+      },
+    }),
+  ],
 };
 ```
 
@@ -89,17 +85,17 @@ export default defineConfig({
       generateExposeFile: true,
       exposeOptions: {
         './Button': './src/components/Button.vue',
-        './utils': './src/utils/index.ts'
+        './utils': './src/utils/index.ts',
       },
       shared: {
-        vue: { singleton: true }
-      }
-    })
+        vue: { singleton: true },
+      },
+    }),
   ],
   build: {
     target: 'esnext',
-    minify: false
-  }
+    minify: false,
+  },
 });
 ```
 
@@ -112,12 +108,10 @@ import { createInstance, loadApp, getRemote } from 'linkjs';
 // 创建 LinkJS 实例
 const instance = createInstance({
   shareStrategy: 'version-first',
-  remotes: [
-    { name: 'remoteApp', entry: 'http://localhost:3001/manifest.json' }
-  ],
+  remotes: [{ name: 'remoteApp', entry: 'http://localhost:3001/manifest.json' }],
   shares: {
-    vue: { singleton: true, lib: () => import('vue') }
-  }
+    vue: { singleton: true, lib: () => import('vue') },
+  },
 });
 
 // 加载远程应用
@@ -154,11 +148,11 @@ init();
 
 ## 包结构
 
-| 包名 | 说明 |
-|------|------|
-| `linkjs` | 核心运行时，提供模块加载、共享依赖管理等功能 |
+| 包名              | 说明                                              |
+| ----------------- | ------------------------------------------------- |
+| `linkjs`          | 核心运行时，提供模块加载、共享依赖管理等功能      |
 | `unplugin-linkjs` | 构建插件，支持 Vite、Webpack、Rolldown 等构建工具 |
-| `share-runtime` | 共享运行时，管理共享依赖的加载和版本协调 |
+| `share-runtime`   | 共享运行时，管理共享依赖的加载和版本协调          |
 
 ## 示例
 

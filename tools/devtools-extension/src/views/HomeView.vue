@@ -30,10 +30,30 @@ const plugins = computed(() => {
   const all = props.snapshot.availablePlugins || [];
   return { list: all.filter((p) => show(p.name)), enabled: all.filter((p) => p.enabled).length, total: all.length };
 });
-const metrics = computed(() => (props.snapshot.metrics || []).filter((m) => match(`${m.entry} ${m.status} ${m.host || ''}`)).slice(-12).reverse());
-const perf = computed(() => (props.snapshot.perf || []).filter((p) => show(p.name)).slice(-12).reverse());
-const events = computed(() => (props.snapshot.events || []).filter((e) => match(`${e.type} ${e.summary}`)).slice(-20).reverse());
-const diagnostics = computed(() => (props.snapshot.diagnostics || []).filter((d) => match(`${d.code} ${d.message}`)).slice(-20).reverse());
+const metrics = computed(() =>
+  (props.snapshot.metrics || [])
+    .filter((m) => match(`${m.entry} ${m.status} ${m.host || ''}`))
+    .slice(-12)
+    .reverse(),
+);
+const perf = computed(() =>
+  (props.snapshot.perf || [])
+    .filter((p) => show(p.name))
+    .slice(-12)
+    .reverse(),
+);
+const events = computed(() =>
+  (props.snapshot.events || [])
+    .filter((e) => match(`${e.type} ${e.summary}`))
+    .slice(-20)
+    .reverse(),
+);
+const diagnostics = computed(() =>
+  (props.snapshot.diagnostics || [])
+    .filter((d) => match(`${d.code} ${d.message}`))
+    .slice(-20)
+    .reverse(),
+);
 </script>
 
 <template>
@@ -44,7 +64,11 @@ const diagnostics = computed(() => (props.snapshot.diagnostics || []).filter((d)
     <span class="actions">
       <span class="pill" :class="{ loaded: r.status === 'loaded' }">{{ r.status || '-' }}</span>
       <button class="mini" title="按 manifest 预取资源" @click="onAction('preload', { name: r.name })">预取</button>
-      <button class="mini" :title="r.type === 'lib' ? '卸载远程库' : '卸载远程应用'" @click="onAction(r.type === 'lib' ? 'unloadLib' : 'unload', r.name)">
+      <button
+        class="mini"
+        :title="r.type === 'lib' ? '卸载远程库' : '卸载远程应用'"
+        @click="onAction(r.type === 'lib' ? 'unloadLib' : 'unload', r.name)"
+      >
         卸载
       </button>
     </span>
@@ -75,7 +99,9 @@ const diagnostics = computed(() => (props.snapshot.diagnostics || []).filter((d)
   <h3>加载指标</h3>
   <div v-if="!metrics.length" class="muted">（启用 logger 插件后可见）</div>
   <div v-for="(m, i) in metrics" :key="`${m.entry}:${m.time}:${i}`" class="row">
-    <span class="k" :title="`${m.entry}${m.host ? ' @' + m.host : ''}`">加载{{ kindLabel(m.kind) }}「{{ prettyEntry(m.entry, map) }}」</span>
+    <span class="k" :title="`${m.entry}${m.host ? ' @' + m.host : ''}`"
+      >加载{{ kindLabel(m.kind) }}「{{ prettyEntry(m.entry, map) }}」</span
+    >
     <span class="pill" :class="m.status === 'error' ? 'error' : 'loaded'">{{ ms(m.durationMs) }}</span>
   </div>
 

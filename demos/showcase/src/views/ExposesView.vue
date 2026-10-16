@@ -43,15 +43,17 @@ onMounted(async () => {
     <header class="head">
       <h1>Expose 级依赖</h1>
       <p class="sub">
-        远端构建期按每个 expose 的模块闭包补全 <code>exposes[].deps</code>；消费某 expose 时只解析其
-        <code>deps</code>（远程 + 共享），不再拖入其它 expose 的依赖。
+        远端构建期按每个 expose 的模块闭包补全 <code>exposes[].deps</code>；消费某 expose 时只解析其 <code>deps</code>（远程 +
+        共享），不再拖入其它 expose 的依赖。
       </p>
     </header>
 
     <p v-if="loading" class="faint">加载中…</p>
 
     <section v-for="r in data" :key="r.name" class="block">
-      <h3 class="sec">{{ r.name }} <span class="faint mono">· {{ r.manifestUrl }}</span></h3>
+      <h3 class="sec">
+        {{ r.name }} <span class="faint mono">· {{ r.manifestUrl }}</span>
+      </h3>
       <p v-if="r.error" class="error mono">{{ r.error }}</p>
       <div v-else-if="!r.exposes.length" class="faint">（无 exposes）</div>
       <div v-else class="table">
@@ -75,8 +77,8 @@ onMounted(async () => {
     </section>
 
     <p class="note faint">
-      对照：remote-lib 的 <code>HelloWorld</code> 仅依赖 <code>vue</code>；<code>PiniaCounter</code> 还依赖
-      <code>pinia</code> —— 消费前者不会加载后者的 pinia。
+      对照：remote-lib 的 <code>HelloWorld</code> 仅依赖 <code>vue</code>；<code>PiniaCounter</code> 还依赖 <code>pinia</code> ——
+      消费前者不会加载后者的 pinia。
     </p>
   </div>
 </template>

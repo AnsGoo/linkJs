@@ -35,8 +35,6 @@ test('honors origins filter', async () => {
   registerPlugin(authPlugin({ token: 'T', origins: ['https://cdn.example.com'] }));
   await linkInstance.plugins[0].beforeLoadRemote({ name: 'remote' });
 
-  expect(rewriteRequestUrl('https://cdn.example.com/app.js', 'remote')).toBe(
-    'https://cdn.example.com/app.js?token=T',
-  );
+  expect(rewriteRequestUrl('https://cdn.example.com/app.js', 'remote')).toBe('https://cdn.example.com/app.js?token=T');
   expect(rewriteRequestUrl('https://other.example.com/app.js', 'remote')).toBe('https://other.example.com/app.js');
 });

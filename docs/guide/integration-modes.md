@@ -4,12 +4,12 @@ LinkJS 提供三种消费远程组件的方式，按「谁来渲染、何时加�
 
 ## 对比
 
-| 模式 | API | 谁来渲染 | 何时加载 | 需要构建期配置 |
-| --- | --- | --- | --- | --- |
-| 路线 B | `createRemoteApp` | 子应用自己的 runtime | 挂载时 | 否 |
-| 路线 A · import | `import { X } from '<remote>'` | 宿主 | 挂载时 | 是（`preload`） |
-| 路线 A · 工厂 | `createRemoteComponent` | 宿主 | 挂载时 | 否 |
-| 运行时 | `loadRemote` / `loadLib` | 宿主 | 手动触发 | 否 |
+| 模式            | API                            | 谁来渲染             | 何时加载 | 需要构建期配置  |
+| --------------- | ------------------------------ | -------------------- | -------- | --------------- |
+| 路线 B          | `createRemoteApp`              | 子应用自己的 runtime | 挂载时   | 否              |
+| 路线 A · import | `import { X } from '<remote>'` | 宿主                 | 挂载时   | 是（`preload`） |
+| 路线 A · 工厂   | `createRemoteComponent`        | 宿主                 | 挂载时   | 否              |
+| 运行时          | `loadRemote` / `loadLib`       | 宿主                 | 手动触发 | 否              |
 
 ## 路线 B · `createRemoteApp`
 

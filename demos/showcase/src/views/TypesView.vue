@@ -49,8 +49,8 @@ const tsconfigCode = `// tsconfig.json —— 让 IDE / tsc 纳入聚合声明
 
     <div class="notes">
       <p class="note">
-        <b>内联而非 re-export</b>：ambient <code>declare module</code> 里对相对路径的
-        <code>export *</code> 不会解析，因此 unplugin 直接把远端 <code>.d.ts</code> 内容内联进来。
+        <b>内联而非 re-export</b>：ambient <code>declare module</code> 里对相对路径的 <code>export *</code> 不会解析，因此 unplugin
+        直接把远端 <code>.d.ts</code> 内容内联进来。
       </p>
       <p class="note mono faint">共 {{ lines.length }} 行 · 源文件 src/linkjs-remotes.d.ts（consumeTypes 生成）</p>
     </div>

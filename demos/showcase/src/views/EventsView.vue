@@ -91,10 +91,13 @@ const triggerUpdate = () =>
 // once：订阅一次性监听，再触发
 const onceCount = ref(0);
 function subscribeOnce(): void {
-  bus.once('libExpose' as never, (() => {
-    onceCount.value++;
-    push('once', 'once(libExpose) 触发一次后自动移除', 'once');
-  }) as never);
+  bus.once(
+    'libExpose' as never,
+    (() => {
+      onceCount.value++;
+      push('once', 'once(libExpose) 触发一次后自动移除', 'once');
+    }) as never,
+  );
   push('bus', '已注册 once(libExpose)');
 }
 
@@ -102,8 +105,9 @@ function timeStr(t: number): string {
   return new Date(t).toLocaleTimeString();
 }
 
-const typeClass = computed(() => (type: string) =>
-  type === 'remoteUpdate' ? 'warn' : type === 'SharedExpose' ? 'accent' : type === 'bus' || type === 'once' ? 'faint' : 'indigo',
+const typeClass = computed(
+  () => (type: string) =>
+    type === 'remoteUpdate' ? 'warn' : type === 'SharedExpose' ? 'accent' : type === 'bus' || type === 'once' ? 'faint' : 'indigo',
 );
 
 const code = `import { getInstance } from 'linkjs';
@@ -123,8 +127,8 @@ bus.clear();                 // 清空所有监听`;
     <header class="head">
       <h1>事件总线时间线</h1>
       <p class="sub">
-        订阅 linkjs 实例事件总线：<code>libExpose</code> / <code>SharedExpose</code> / <code>remoteUpdate</code>，
-        并演示 <code>once</code>（一次性）与 <code>clear</code>（清空全部监听）。
+        订阅 linkjs 实例事件总线：<code>libExpose</code> / <code>SharedExpose</code> / <code>remoteUpdate</code>， 并演示
+        <code>once</code>（一次性）与 <code>clear</code>（清空全部监听）。
       </p>
     </header>
 
@@ -133,7 +137,9 @@ bus.clear();                 // 清空所有监听`;
         <section class="panel block">
           <h3 class="sec">触发</h3>
           <div class="controls">
-            <button class="btn btn-primary" :disabled="!!busy" @click="triggerLib">加载 remote-lib（首次 libExpose + SharedExpose；重复点击 re-expose）</button>
+            <button class="btn btn-primary" :disabled="!!busy" @click="triggerLib">
+              加载 remote-lib（首次 libExpose + SharedExpose；重复点击 re-expose）
+            </button>
             <button class="btn" :disabled="!!busy" @click="triggerUpdate">re-expose shareRemote（remoteUpdate）</button>
           </div>
           <div class="controls">
@@ -142,9 +148,7 @@ bus.clear();                 // 清空所有监听`;
             <button class="btn" :disabled="!!busy" @click="clearListeners">clear()</button>
             <button class="btn" :disabled="subscribed" @click="subscribe">重新订阅</button>
           </div>
-          <p class="hint mono faint">
-            本页监听：{{ subscribed ? '已订阅' : '部分/全部取消' }} · once 已触发 {{ onceCount }} 次
-          </p>
+          <p class="hint mono faint">本页监听：{{ subscribed ? '已订阅' : '部分/全部取消' }} · once 已触发 {{ onceCount }} 次</p>
         </section>
 
         <CodeBlock title="订阅 / 取消" :code="code" />

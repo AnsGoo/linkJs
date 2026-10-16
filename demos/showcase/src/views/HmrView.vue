@@ -88,9 +88,8 @@ const off = subscribeRemoteUpdate('remoteApp', (payload) => {
           </span>
         </div>
         <p class="howto">
-          在远端运行中编辑 <code>demos/remote/src/components/HelloWorld.vue</code> 并保存：
-          预览区即时更新，同时下方「订阅到的更新」计数 +1（远端在 HMR 后重新 expose，linkjs 广播
-          <code>REMOTE_UPDATE</code>）。
+          在远端运行中编辑 <code>demos/remote/src/components/HelloWorld.vue</code> 并保存： 预览区即时更新，同时下方「订阅到的更新」计数
+          +1（远端在 HMR 后重新 expose，linkjs 广播 <code>REMOTE_UPDATE</code>）。
         </p>
       </div>
 

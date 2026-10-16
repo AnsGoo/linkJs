@@ -58,10 +58,12 @@ function overrideRemote() {
   });
 
   return Promise.all(
-    entries.map((entry) => loadOverride(entry).catch((error) => {
-      console.warn(`[linkjs] Failed to apply override for "${entry.name}":`, error);
-      return null;
-    })),
+    entries.map((entry) =>
+      loadOverride(entry).catch((error) => {
+        console.warn(`[linkjs] Failed to apply override for "${entry.name}":`, error);
+        return null;
+      }),
+    ),
   );
 }
 

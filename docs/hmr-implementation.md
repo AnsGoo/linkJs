@@ -3,6 +3,7 @@
 > 配套文档：`docs/hmr-design.md`（分析与设计）。本篇聚焦**已落地的实现**：API、文件、数据流、配置与约束。
 >
 > 覆盖两条集成路线：
+>
 > - **路线 A**：组件暴露 + 共享 runtime（`useRemoteModule`）
 > - **路线 B**：子应用自挂载 + 自适应 runtime（`createRemoteApp`，推荐）
 
@@ -10,11 +11,11 @@
 
 ## 1. 目标与结论
 
-| 场景 | 路线 A | 路线 B |
-| --- | --- | --- |
-| 主 DEV + 子 DEV | 原生就地 HMR | 原生就地 HMR |
-| 主 PROD + 子 DEV | shim 重挂载 | **原生就地 HMR** |
-| 主 DEV/PROD + 子 PROD | 无（子应用无 HMR client） | 无 |
+| 场景                  | 路线 A                    | 路线 B           |
+| --------------------- | ------------------------- | ---------------- |
+| 主 DEV + 子 DEV       | 原生就地 HMR              | 原生就地 HMR     |
+| 主 PROD + 子 DEV      | shim 重挂载               | **原生就地 HMR** |
+| 主 DEV/PROD + 子 PROD | 无（子应用无 HMR client） | 无               |
 
 两条路线均已实现并实测：改子应用 SFC 文案 → 宿主视图就地更新、**无整页刷新**。
 
@@ -46,7 +47,9 @@ const REMOTE_UPDATE = 'remoteUpdate';
 `unplugin-linkjs` dev transform 检测到模块里调用了 `expose(` 时，会在模块顶部注入：
 
 ```js
-if (import.meta.hot) { import.meta.hot.accept(); }
+if (import.meta.hot) {
+  import.meta.hot.accept();
+}
 ```
 
 这样入口（如 `index.ts`）变更时**自接受**：Vite 重新求值入口 → 顶层 `expose()` 重跑 → 持久监听刷新缓存并广播 `REMOTE_UPDATE` → 宿主的 `createRemoteApp`（重挂载）/`useRemoteModule`（重解析）就地更新，而不是冒泡成整页刷新。
@@ -67,11 +70,11 @@ if (import.meta.hot) { import.meta.hot.accept(); }
 
 ### 3.1 `linkjs` 根导出（新增/变更）
 
-| API | 说明 |
-| --- | --- |
-| `subscribeRemoteUpdate(entry, cb)` | 订阅远程更新，返回退订函数 |
-| `loadRuntime(name, localLoader)` | 路线 B：自适应加载框架 runtime |
-| `createInstance({ mode })` | 新增 `mode?: 'development' \| 'production'`，默认自动探测 |
+| API                                | 说明                                                      |
+| ---------------------------------- | --------------------------------------------------------- |
+| `subscribeRemoteUpdate(entry, cb)` | 订阅远程更新，返回退订函数                                |
+| `loadRuntime(name, localLoader)`   | 路线 B：自适应加载框架 runtime                            |
+| `createInstance({ mode })`         | 新增 `mode?: 'development' \| 'production'`，默认自动探测 |
 
 `createInstance` 的 `mode` 探测顺序（`packages/linkjs/src/index.ts` `detectMode`）：
 
@@ -110,7 +113,7 @@ unpluginLinkjs({
 `adaptiveRuntime` 命中的依赖在 dev 下改写为：
 
 ```ts
-await $linkjs.loadRuntime('vue', () => import('vue'))
+await $linkjs.loadRuntime('vue', () => import('vue'));
 ```
 
 > 一组耦合框架依赖必须一起列出，保证解析到**同一份** runtime。
@@ -228,7 +231,7 @@ const linkjsVitePlugin = unpluginLinkjs.vite({
   adaptiveRuntime: ['vue', 'vue-router', 'pinia'], // 路线 B
 });
 export default defineConfig({
-  plugins: [vue(), ...([linkjsVitePlugin].flat().map((p) => ({ ...p, apply: 'serve' })))],
+  plugins: [vue(), ...[linkjsVitePlugin].flat().map((p) => ({ ...p, apply: 'serve' }))],
   server: { cors: true, headers: { 'Access-Control-Allow-Origin': '*' } },
 });
 ```
@@ -386,12 +389,12 @@ HMR 只可能发生在**处于 Vite dev 模式**的一侧；已部署的静态�
 
 ### 12.1 四组合矩阵
 
-| 宿主 | 子应用 | 改**宿主**源码 | 改**子应用**源码 |
-| --- | --- | --- | --- |
-| DEV | DEV | ✅ 就地更新 | ✅ 就地更新 |
-| DEV | PROD（已部署） | ✅ 就地更新 | ❌（静态产物，需重建） |
-| PROD（静态） | DEV | ❌（静态产物，需重建） | ✅ 就地更新（本地联调线上） |
-| PROD | PROD | ❌ | ❌ |
+| 宿主         | 子应用         | 改**宿主**源码         | 改**子应用**源码            |
+| ------------ | -------------- | ---------------------- | --------------------------- |
+| DEV          | DEV            | ✅ 就地更新            | ✅ 就地更新                 |
+| DEV          | PROD（已部署） | ✅ 就地更新            | ❌（静态产物，需重建）      |
+| PROD（静态） | DEV            | ❌（静态产物，需重建） | ✅ 就地更新（本地联调线上） |
+| PROD         | PROD           | ❌                     | ❌                          |
 
 > 想联调哪个应用，就让**它**跑本地 Vite dev，另一个用已部署/静态版本即可。
 

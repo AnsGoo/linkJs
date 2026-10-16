@@ -24,11 +24,7 @@ export function useLoadRemoteLib<M = unknown>(remoteCache: RemoteCache) {
   return (entry: string, options?: LoadLibOptions) => loadRemoteLib<M>(remoteCache, entry, options);
 }
 
-async function loadRemoteLib<M = unknown>(
-  remoteCache: RemoteCache,
-  entry: string,
-  options?: LoadLibOptions,
-): Promise<M | null> {
+async function loadRemoteLib<M = unknown>(remoteCache: RemoteCache, entry: string, options?: LoadLibOptions): Promise<M | null> {
   const [appName, modelName] = entry.split('/');
   const cached = useGetRemote<M>(remoteCache)(entry);
   if (cached) {
@@ -67,14 +63,10 @@ async function loadRemoteLib<M = unknown>(
   }
 
   // expose 级：若 manifest 声明了该 expose 的 assets，则只加载其 chunk（可更细；未分包时即入口）。
-  const exposeAssets = options?.expose
-    ? getRemoteInfo(appName)?.exposes?.find((item) => item.name === options.expose)?.assets
-    : undefined;
+  const exposeAssets = options?.expose ? getRemoteInfo(appName)?.exposes?.find((item) => item.name === options.expose)?.assets : undefined;
   const exposeJsSync = exposeAssets?.js?.sync;
   const entryUrls: string[] =
-    exposeJsSync && exposeJsSync.length > 0
-      ? exposeJsSync.map((p: string) => rewriteRequestUrl(new URL(p, host).href, appName))
-      : [jsUrl];
+    exposeJsSync && exposeJsSync.length > 0 ? exposeJsSync.map((p: string) => rewriteRequestUrl(new URL(p, host).href, appName)) : [jsUrl];
   const exposeCssSync = exposeAssets?.css?.sync ?? [];
   for (const cssPath of exposeCssSync) {
     if (cssPath === cssEntry) {

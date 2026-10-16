@@ -23,6 +23,7 @@
 ## 3. 运行时契约：惰性 expose
 
 ### 方案 a（MF 风格，推荐）
+
 ```ts
 expose('remoteApp', {
   A: () => import('./chunk-A'),
@@ -30,10 +31,12 @@ expose('remoteApp', {
   C: () => import('./chunk-C'),
 });
 ```
+
 - `getRemote('remoteApp/B')` 解析**惰性值**（await getter）→ 只触发 B 的 chunk。
 - 入口不 import A/B/C → 天然变薄。
 
 ### 方案 b（不改 API，manifest 驱动）
+
 - 每个 expose 是**独立入口 chunk**，chunk 内自行 `expose('remoteApp', { B })`。
 - 宿主按 `manifest.exposes[B].assets` 只 `import` B 的 chunk（执行即 expose）。
 - 优点：`expose` 语义不变；缺点：宿主需要「按 expose 拉 chunk」的加载路径。
@@ -45,11 +48,13 @@ expose('remoteApp', {
 > **已定：采用方案 b（manifest 驱动 import chunk）** —— 宿主按 `manifest.exposes[<Expose>].assets` 直接 import 该 expose 的 chunk；`expose` 语义保持不变。
 > 方案 a 保留为备选（记录于下）。
 
-**核心差异一句话**：*谁持有「expose → chunk」的映射、谁主导加载*。
+**核心差异一句话**：_谁持有「expose → chunk」的映射、谁主导加载_。
+
 - 方案 a：**远端运行时**持有映射（`B: () => import('./chunk-B')`），宿主按**名字**请求 → `getRemote('r/B')` await getter；**宿主不关心 chunk 路径**。
 - 方案 b：**宿主**持有映射（`manifest.exposes[B].assets`），按**URL**直接拉 chunk；chunk 执行时自暴露。
 
 **时序**
+
 ```
 方案 a：loadRemote('r/B') → 加载薄入口 → 入口 expose({B:()=>import('./chunk-B')})
         → 运行时查映射 → await getter → import chunk-B → 组件
@@ -57,31 +62,34 @@ expose('remoteApp', {
         → chunk-B 执行 expose('r',{B}) → host 等 LIB_EXPOSE → 组件
 ```
 
-| 维度 | 方案 a（惰性 getter） | 方案 b（manifest 驱动） |
-|---|---|---|
-| 映射归属 | **远端**运行时 | **宿主**（读 manifest） |
-| 宿主是否知道 chunk 路径 | 不需要 | 需要（assets 清单） |
-| 入口角色 | 薄入口**先注册 getter**（两步：注册→请求） | 入口更薄/无需注册；**按 URL 直接拉 chunk** |
-| 加载主导权 | 远端 loader | 宿主 loader |
-| 预取/预热 | 弱（路径对宿主不透明） | **强**（manifest 有 assets，可 modulepreload/prefetch） |
-| SRI / CORS / 鉴权 | 宿主不便干预（远端发起） | **宿主可逐 chunk 施加**（manifest 有 integrity） |
-| 诊断 / 超时 | 远端主导，较难介入 | **宿主主导，可控** |
-| 与静态导入契合 | 天生契合（`import {B}` = `getRemote('r/B')` 走 getter） | 契合，但虚拟模块需依赖 manifest 路径 |
-| 缓存 / 去重 | 远端 ESM 缓存 + 运行时映射 | 宿主按 URL 缓存 |
-| 实现改动 | 改 `expose` 语义（支持 getter）+ `getRemote` 异步解析 | 新增“按 expose 拉脚本”加载器；约定“每 expose 自暴露”+ 入口瘦身 |
-| 依赖(remotes/shared)解析 | 在 `getRemote` 时按 expose 解析 | 在拉 chunk 前按 manifest 解析 |
-| App(HTML) | 偏 Lib（模块入口） | App 也可（按 expose 的 HTML/JS assets） |
-| 语义参照 | Module Federation `container.get('./B')` | 传统“清单 + 脚本注入”（linkjs 现有 `loadScript/loadCss` 路线） |
+| 维度                     | 方案 a（惰性 getter）                                   | 方案 b（manifest 驱动）                                        |
+| ------------------------ | ------------------------------------------------------- | -------------------------------------------------------------- |
+| 映射归属                 | **远端**运行时                                          | **宿主**（读 manifest）                                        |
+| 宿主是否知道 chunk 路径  | 不需要                                                  | 需要（assets 清单）                                            |
+| 入口角色                 | 薄入口**先注册 getter**（两步：注册→请求）              | 入口更薄/无需注册；**按 URL 直接拉 chunk**                     |
+| 加载主导权               | 远端 loader                                             | 宿主 loader                                                    |
+| 预取/预热                | 弱（路径对宿主不透明）                                  | **强**（manifest 有 assets，可 modulepreload/prefetch）        |
+| SRI / CORS / 鉴权        | 宿主不便干预（远端发起）                                | **宿主可逐 chunk 施加**（manifest 有 integrity）               |
+| 诊断 / 超时              | 远端主导，较难介入                                      | **宿主主导，可控**                                             |
+| 与静态导入契合           | 天生契合（`import {B}` = `getRemote('r/B')` 走 getter） | 契合，但虚拟模块需依赖 manifest 路径                           |
+| 缓存 / 去重              | 远端 ESM 缓存 + 运行时映射                              | 宿主按 URL 缓存                                                |
+| 实现改动                 | 改 `expose` 语义（支持 getter）+ `getRemote` 异步解析   | 新增“按 expose 拉脚本”加载器；约定“每 expose 自暴露”+ 入口瘦身 |
+| 依赖(remotes/shared)解析 | 在 `getRemote` 时按 expose 解析                         | 在拉 chunk 前按 manifest 解析                                  |
+| App(HTML)                | 偏 Lib（模块入口）                                      | App 也可（按 expose 的 HTML/JS assets）                        |
+| 语义参照                 | Module Federation `container.get('./B')`                | 传统“清单 + 脚本注入”（linkjs 现有 `loadScript/loadCss` 路线） |
 
 **取舍**
+
 - **方案 a**：远端自治、宿主简洁、契合远程运行时与静态导入；但 chunk 路径对宿主**不透明** → 预取/SRI/网络干预弱，且 `getRemote` 需**异步化**、远端必须真正分包。
 - **方案 b**：宿主**完全掌控** → 易做预取/预热/SRI/超时诊断；linkjs **已有** `manifest.exposes[].assets`/`integrity` 数据；但**与构建产物清单强绑定**，需约定“每 expose 自暴露/入口瘦身”。
 
 **与现状契合度**
+
 - linkjs 已有 b 所需数据（`manifest.exposes[].assets`、`entry.assets`、`integrity`）与脚本/样式注入路径（`loadScript/loadCss/preloadModule`）→ **b 更贴近现状、改动更集中**。
 - linkjs 的 `expose` 目前是 **eager** → **a 需要扩展为支持 getter**，并让 `getRemote` 支持异步解析。
 
 **推荐（可组合）**
+
 - **正确性用 a，性能用 b**：以 a 的惰性 getter 定义消费语义（宿主简洁、远端自治），同时用 `exposes[].assets` 做预取/预热/SRI。
 - 若优先**尽快落地、少改运行时** → 先走 **b**（宿主按 manifest 拉 chunk），保持 `expose` 语义不变。
 - 一句话：想**远端自治、宿主不碰路径** → a；想**宿主掌控预取/安全/诊断、改动最小** → b。
@@ -134,13 +142,13 @@ expose('remoteApp', {
 
 ## 7. 与既有机制的关系（需一起改）
 
-| 机制 | 现状 | 需改为 |
-|---|---|---|
-| 去重 | `remoteCache`/inflight 按 **remote** | 扩到 **expose 级**（同 expose 多消费者只 import 一次） |
-| 引用计数/卸载 | remote 级 | expose 级（卸载 B 不影响同 remote 的 A/C） |
-| 环检测 | remote 级图 | **expose 级**图 |
-| 观测/DevTools | remotes 列表 | 列出 **exposes 及其状态/依赖** |
-| 静态导入 | `RemoteApp/B` | 天然 expose 级（前提入口瘦身） |
+| 机制          | 现状                                 | 需改为                                                 |
+| ------------- | ------------------------------------ | ------------------------------------------------------ |
+| 去重          | `remoteCache`/inflight 按 **remote** | 扩到 **expose 级**（同 expose 多消费者只 import 一次） |
+| 引用计数/卸载 | remote 级                            | expose 级（卸载 B 不影响同 remote 的 A/C）             |
+| 环检测        | remote 级图                          | **expose 级**图                                        |
+| 观测/DevTools | remotes 列表                         | 列出 **exposes 及其状态/依赖**                         |
+| 静态导入      | `RemoteApp/B`                        | 天然 expose 级（前提入口瘦身）                         |
 
 ## 8. 关键取舍 / 风险
 
@@ -153,6 +161,7 @@ expose('remoteApp', {
 ## 8.5 实现状态（截至本轮）
 
 **已实现**
+
 - 构建期：自动解析 `expose()` → `exposes[].name` = expose 名；`exposes[].deps = { remotes, shared }` 按**该 expose 模块闭包**计算（用 transform 记录的原始导入判定，因改写会移除裸导入）。
 - 宿主：`loadRemote('<r>/<E>')` 优先用 `exposes[E].deps.remotes`（回退 remote 级）；**lib 按 `exposes[E].assets` 定向加载 chunk**。
 - 共享：**按需**（远端 import 触发 `loadShare`）。
@@ -165,6 +174,7 @@ expose('remoteApp', {
 - **demo**：remote-lib 多 expose（HelloWorld / PiniaCounter）+ e2e 冒烟。
 
 **未实现**
+
 - **App 内 expose 的 chunk 定向加载**（App 壳仍整入口）。
 - expose 级**独立卸载**（一个远程作为整体加载；要真正独立卸载需按 expose 分包/MF remoteEntry）。
 - expose `assets.js.async` 的定向预取策略。
@@ -173,11 +183,9 @@ expose('remoteApp', {
 ## 9. 决策
 
 **已定**
+
 1. **契约**：**方案 b（manifest 驱动 import chunk）**。
 2. **数据字段**：**统一 `exposes[].deps`**（`{ remotes?: Record<string,{host}>; shared?: string[] }`）。
 3. **shared 加载**：**② 按需（用到才拿）**（宿主不预加载；远端 import 触发 `loadShare`）。
 
-**待定**
-4. **分包强制性**：unplugin 对「每 expose 独立 chunk」**强制校验**还是**建议+提示**？
-5. **App 边界**：是否承诺 App 也 expose 级？还是**仅 Lib** 承诺、App 保持整包？
-6. **remotes 回退**：`exposes[].deps.remotes` 缺失时是否回退 remote 级 `remotes`？
+**待定** 4. **分包强制性**：unplugin 对「每 expose 独立 chunk」**强制校验**还是**建议+提示**？5. **App 边界**：是否承诺 App 也 expose 级？还是**仅 Lib** 承诺、App 保持整包？6. **remotes 回退**：`exposes[].deps.remotes` 缺失时是否回退 remote 级 `remotes`？

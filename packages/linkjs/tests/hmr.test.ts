@@ -1,12 +1,6 @@
 import { expect, test, afterEach } from 'vitest';
 import { linkInstance } from '../src/state/instance';
-import {
-  installVueHmrRuntimeShim,
-  indexExposedLib,
-  applyComponentUpdate,
-  clearAppHmr,
-  subscribeRemoteUpdate,
-} from '../src/hmr';
+import { installVueHmrRuntimeShim, indexExposedLib, applyComponentUpdate, clearAppHmr, subscribeRemoteUpdate } from '../src/hmr';
 
 afterEach(() => {
   delete (globalThis as any).__VUE_HMR_RUNTIME__;

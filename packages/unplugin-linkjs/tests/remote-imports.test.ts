@@ -1,15 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import {
-  REMOTE_VIRTUAL_PREFIX,
-  renderRemoteImport,
-  toRemoteImportId,
-  type RemoteImportRegistry,
-} from '../src/remote-imports';
+import { REMOTE_VIRTUAL_PREFIX, renderRemoteImport, toRemoteImportId, type RemoteImportRegistry } from '../src/remote-imports';
 
 function registry(): RemoteImportRegistry {
-  return new Map([
-    ['remoteApp', { name: 'remoteApp', host: 'http://localhost:8081', exposes: ['HelloWorld', 'Counter'] }],
-  ]);
+  return new Map([['remoteApp', { name: 'remoteApp', host: 'http://localhost:8081', exposes: ['HelloWorld', 'Counter'] }]]);
 }
 
 describe('toRemoteImportId', () => {

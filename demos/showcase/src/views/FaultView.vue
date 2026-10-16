@@ -87,9 +87,7 @@ const runRetry = () =>
 
 const runFallback = () =>
   run('fallback', async () => {
-    const mod = (await loadApp('faultDead', { host: DEAD, entry: 'index.html' })) as
-      | { __linkjsFallback?: boolean }
-      | null;
+    const mod = (await loadApp('faultDead', { host: DEAD, entry: 'index.html' })) as { __linkjsFallback?: boolean } | null;
     return mod?.__linkjsFallback ? '✓ 已降级为兜底模块（__linkjsFallback）' : '（非兜底返回）';
   });
 
@@ -134,8 +132,8 @@ createInstance({
       <h1>故障注入 / 官方插件</h1>
       <p class="sub">
         点击下方按钮，用**不可达地址**触发真实故障，观察 5 个内置插件如何介入：
-        <code>timeout</code> 中止、<code>retry</code> 候补 host 重试、<code>fallback</code> 优雅降级、
-        <code>auth</code> 统一注入 token、<code>logger</code> 采集加载指标。
+        <code>timeout</code> 中止、<code>retry</code> 候补 host 重试、<code>fallback</code> 优雅降级、 <code>auth</code> 统一注入
+        token、<code>logger</code> 采集加载指标。
       </p>
     </header>
 
@@ -149,7 +147,9 @@ createInstance({
               <button class="btn btn-primary" :disabled="!!busy" @click="runTimeout">触发超时</button>
             </div>
             <div class="scn">
-              <div class="scn-head"><b>retry</b><span class="faint">{{ DEAD }} → :8091</span></div>
+              <div class="scn-head">
+                <b>retry</b><span class="faint">{{ DEAD }} → :8091</span>
+              </div>
               <button class="btn btn-primary" :disabled="!!busy" @click="runRetry">触发重试</button>
             </div>
             <div class="scn">

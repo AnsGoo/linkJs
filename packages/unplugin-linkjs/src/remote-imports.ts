@@ -45,11 +45,7 @@ export function toRemoteImportId(source: string, registry: RemoteImportRegistry)
 }
 
 /** 生成虚拟模块源码；非虚拟 id 或未注册时返回 `null`。 */
-export function renderRemoteImport(
-  id: string,
-  registry: RemoteImportRegistry,
-  options: RenderRemoteImportOptions,
-): string | null {
+export function renderRemoteImport(id: string, registry: RemoteImportRegistry, options: RenderRemoteImportOptions): string | null {
   if (!id.startsWith(REMOTE_VIRTUAL_PREFIX)) {
     return null;
   }
@@ -75,9 +71,7 @@ export function renderRemoteImport(
 
   const names = entry.exposes.filter(isIdentifier);
   for (const ex of names) {
-    lines.push(
-      `export const ${ex} = /* @__PURE__ */ createRemoteComponent(${JSON.stringify(`${name}/${ex}`)}, ${opts});`,
-    );
+    lines.push(`export const ${ex} = /* @__PURE__ */ createRemoteComponent(${JSON.stringify(`${name}/${ex}`)}, ${opts});`);
   }
   lines.push(`export default { ${names.join(', ')} };`);
   return lines.join('\n');

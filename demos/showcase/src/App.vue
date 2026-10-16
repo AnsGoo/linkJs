@@ -61,7 +61,8 @@ const hasError = computed(() => (snapshot.value.diagnostics || []).some((d) => d
         </div>
         <div class="status-right">
           <span class="count mono">
-            <b>{{ loadedCount }}</b><span class="faint">/{{ totalCount }} remotes</span>
+            <b>{{ loadedCount }}</b
+            ><span class="faint">/{{ totalCount }} remotes</span>
           </span>
           <span class="live-dot" :class="{ err: hasError }" />
         </div>
@@ -135,7 +136,9 @@ const hasError = computed(() => (snapshot.value.diagnostics || []).some((d) => d
   font-size: 13.5px;
   font-weight: 500;
   position: relative;
-  transition: color 0.18s var(--ease), background 0.18s var(--ease);
+  transition:
+    color 0.18s var(--ease),
+    background 0.18s var(--ease);
 }
 .nav-item:hover {
   color: var(--text);
@@ -221,7 +224,10 @@ const hasError = computed(() => (snapshot.value.diagnostics || []).some((d) => d
 
 .page-enter-active,
 .page-leave-active {
-  transition: opacity 0.24s var(--ease), transform 0.24s var(--ease), filter 0.24s var(--ease);
+  transition:
+    opacity 0.24s var(--ease),
+    transform 0.24s var(--ease),
+    filter 0.24s var(--ease);
 }
 .page-enter-from {
   opacity: 0;

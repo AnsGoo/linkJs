@@ -1,4 +1,5 @@
 # entry打包自动处理依赖
+
 我希望在打包过程中可以自动处理依赖
 
 以remote-lib为例，entry文件内容为：
@@ -27,19 +28,18 @@ shared(
     version: '1.0.0',
   },
 );
-
 ```
 
 最终的打包制品为:
 
->  `lib.js`
->  `manifest.json`
->  `vue-[hash].js`
->  `vue-router-[hash].js`
->  `pinia-[hash].js`
-
+> `lib.js`
+> `manifest.json`
+> `vue-[hash].js`
+> `vue-router-[hash].js`
+> `pinia-[hash].js`
 
 lib.js 文件内容如下：
+
 ```js
 
 
@@ -80,8 +80,8 @@ shared(
 
 ```
 
-
 vue-[hash].js 文件内容如下：
+
 ```js
 const Vue = await $linjs.loadShared('vue');
 // vue-router 的编译内容，这里只是示例
@@ -89,6 +89,3 @@ const Vue = await $linjs.loadShared('vue');
 ```
 
 因为vue 为entry 文件的直接依赖，因此 使用`$linjs.getShared('vue')` 来加载vue
-
-
-

@@ -8,16 +8,16 @@
 
 ## 1. 现状盘点（先对齐已有能力）
 
-| 能力 | 位置 | 面向 |
-|---|---|---|
-| **声明式消费** `import { X } from '<remote>'` → 虚拟模块（`createRemoteComponent`） | `packages/unplugin-linkjs/src/remote-imports.ts`、`index.ts`（`resolveId`/`load`/`vite.config.alias`） | 宿主 |
-| **构建期运行时引导**：`__linkjs_remote_hosts__`（名→host）、`__linkjs_preload__`（启动预加载）经 `transformIndexHtml` 内联注入 | `runtime-bootstrap.ts`、`unplugin-linkjs/src/index.ts` | 宿主入口 HTML |
-| **运行时回退注入 host** | `loader/utils.ts`（`getInjectedRemoteHost` → `resolvePublicPath`）、`preload/index.ts` | 宿主 |
-| **启动自动预加载**：`createInstance` 消费 `__linkjs_preload__` | `packages/linkjs/src/index.ts`（`runBootPreloads`） | 宿主 |
-| **声明式预加载**：`consumeTypes.remotes[].preload`（bool/对象） | `unplugin-linkjs/src/types.ts` | 宿主构建期 |
-| **运行时消费**：`loadRemote` / `loadLib` / `getRemote` / `createRemoteComponent` / `createRemoteApp` | `linkjs/src/index.ts`、`linkjs/src/vue.ts` | 宿主 + 远程 |
-| **多应用样式隔离**：scoped id（`linkjsVueOptions`）、shadow 捕获按 appName | `vue-plugin.ts`、`sandbox/shadow.ts` | 宿主 |
-| **共享 npm 包依赖**（`shared` + 拓扑上报） | `loader/app.ts:85`、`loader/lib.ts:59` | 宿主 |
+| 能力                                                                                                                           | 位置                                                                                                   | 面向          |
+| ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ | ------------- |
+| **声明式消费** `import { X } from '<remote>'` → 虚拟模块（`createRemoteComponent`）                                            | `packages/unplugin-linkjs/src/remote-imports.ts`、`index.ts`（`resolveId`/`load`/`vite.config.alias`） | 宿主          |
+| **构建期运行时引导**：`__linkjs_remote_hosts__`（名→host）、`__linkjs_preload__`（启动预加载）经 `transformIndexHtml` 内联注入 | `runtime-bootstrap.ts`、`unplugin-linkjs/src/index.ts`                                                 | 宿主入口 HTML |
+| **运行时回退注入 host**                                                                                                        | `loader/utils.ts`（`getInjectedRemoteHost` → `resolvePublicPath`）、`preload/index.ts`                 | 宿主          |
+| **启动自动预加载**：`createInstance` 消费 `__linkjs_preload__`                                                                 | `packages/linkjs/src/index.ts`（`runBootPreloads`）                                                    | 宿主          |
+| **声明式预加载**：`consumeTypes.remotes[].preload`（bool/对象）                                                                | `unplugin-linkjs/src/types.ts`                                                                         | 宿主构建期    |
+| **运行时消费**：`loadRemote` / `loadLib` / `getRemote` / `createRemoteComponent` / `createRemoteApp`                           | `linkjs/src/index.ts`、`linkjs/src/vue.ts`                                                             | 宿主 + 远程   |
+| **多应用样式隔离**：scoped id（`linkjsVueOptions`）、shadow 捕获按 appName                                                     | `vue-plugin.ts`、`sandbox/shadow.ts`                                                                   | 宿主          |
+| **共享 npm 包依赖**（`shared` + 拓扑上报）                                                                                     | `loader/app.ts:85`、`loader/lib.ts:59`                                                                 | 宿主          |
 
 **关键结论**：现有「声明式远程消费」工具链完整，但**只面向宿主**。远程没有声明依赖的入口，
 也没有拓扑/顺序/去重/环/版本处理。
@@ -64,13 +64,15 @@
 
 ```ts
 export interface RemoteDependency {
-  version?: string;      // semver range，缺省不校验
-  required?: boolean;    // 默认 true
-  host?: string;         // 覆盖（多环境/CDN）
-  entryName?: string;    // 覆盖入口
-  expose?: string[];     // 用到的 expose（校验 + 预取提示）
+  version?: string; // semver range，缺省不校验
+  required?: boolean; // 默认 true
+  host?: string; // 覆盖（多环境/CDN）
+  entryName?: string; // 覆盖入口
+  expose?: string[]; // 用到的 expose（校验 + 预取提示）
 }
-export interface RemoteBase { /* ...existing */ remotes?: Record<string, RemoteDependency>; }
+export interface RemoteBase {
+  /* ...existing */ remotes?: Record<string, RemoteDependency>;
+}
 ```
 
 ### 5.2 manifest（`unplugin-linkjs/src/types.ts` 的 `ManifestJson`）
@@ -99,19 +101,28 @@ async function resolveRemoteDeps(name, ctx: { stack: string[]; inflight: Map<str
   for (const [depName, dep] of Object.entries(getRemoteInfo(name)?.remotes ?? {})) {
     if (ctx.stack.includes(depName)) {
       // 防御性兜底：环应在构建期被拦截（§15），运行时不作为主方案。
-      recordDiagnostic({ level:'warn', code:'REMOTE_DEP_CYCLE', message:[...ctx.stack,depName].join(' -> ') });
+      recordDiagnostic({ level: 'warn', code: 'REMOTE_DEP_CYCLE', message: [...ctx.stack, depName].join(' -> ') });
       continue;
     }
-    if (isLoaded(depName)) { verifyVersion(depName, dep.version); continue; }
-    if (ctx.inflight.has(depName)) { await ctx.inflight.get(depName)!; continue; } // 去重
-    const p = (async () => {
-      ensureRegistered(depName, dep);             // 未注册则兜底注册（host 可用 __linkjs_remote_hosts__）
-      await resolveRemoteDeps(depName, { stack: [...ctx.stack, name], inflight: ctx.inflight }); // 递归：拓扑
-      await loadOne(depName, dep);                // 按 type 选 loadApp/loadLib
+    if (isLoaded(depName)) {
       verifyVersion(depName, dep.version);
-    })().catch((err) => { if (dep.required !== false) throw err;
-      recordDiagnostic({ level:'warn', code:'REMOTE_DEP_ERROR', message:`optional "${depName}" failed` }); });
-    ctx.inflight.set(depName, p); await p;
+      continue;
+    }
+    if (ctx.inflight.has(depName)) {
+      await ctx.inflight.get(depName)!;
+      continue;
+    } // 去重
+    const p = (async () => {
+      ensureRegistered(depName, dep); // 未注册则兜底注册（host 可用 __linkjs_remote_hosts__）
+      await resolveRemoteDeps(depName, { stack: [...ctx.stack, name], inflight: ctx.inflight }); // 递归：拓扑
+      await loadOne(depName, dep); // 按 type 选 loadApp/loadLib
+      verifyVersion(depName, dep.version);
+    })().catch((err) => {
+      if (dep.required !== false) throw err;
+      recordDiagnostic({ level: 'warn', code: 'REMOTE_DEP_ERROR', message: `optional "${depName}" failed` });
+    });
+    ctx.inflight.set(depName, p);
+    await p;
   }
 }
 ```
@@ -154,14 +165,14 @@ async function resolveRemoteDeps(name, ctx: { stack: string[]; inflight: Map<str
 
 ## 11. 分阶段落地
 
-| 阶段 | 内容 | 主要文件 | 验收 |
-|---|---|---|---|
-| **P1 模型** | `RemoteDependency`；manifest/registry/options 字段；由 `consumeTypes.remotes` 派生 `manifest.remotes`；**构建期环检测**（§15.1） | `linkjs/src/state/instance.ts`、`unplugin-linkjs/src/{types,build-manifest,index}.ts` | manifest 出现 `remotes`；环报错；零行为变更 |
-| **P2 运行时解析** | `loader/deps.ts`（拓扑/去重/版本）+ 接入 + `remoteInflight` | `linkjs/src/loader/{deps,index,app,lib,options}.ts` | 单测：顺序/去重/版本（仅声明时校验）/required |
-| **P3 消费** | 复用 `remoteImports`（不新增 API，除非 §14 决定） | 文档 | `import { X } from '<dep>'` 在依赖方可用 |
-| **P4 生命周期** | 引用计数 + HMR + 卸载顺序 | `linkjs/src/loader/*`、`state/instance.ts` | 不误卸；HMR 传播 |
-| **P5 观测** | 快照 `deps`、拓扑加边、诊断、面板区块 | `devtools/index.ts`、`RemoteView.vue` | 面板显示依赖与边 |
-| **P6 Demo/测试** | `remoteApp` 依赖 `remote-lib`（H3.2）+ 单测 | `demos/*`、`tests/*` | `pnpm -r test` 全绿 |
+| 阶段              | 内容                                                                                                                             | 主要文件                                                                              | 验收                                          |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | --------------------------------------------- |
+| **P1 模型**       | `RemoteDependency`；manifest/registry/options 字段；由 `consumeTypes.remotes` 派生 `manifest.remotes`；**构建期环检测**（§15.1） | `linkjs/src/state/instance.ts`、`unplugin-linkjs/src/{types,build-manifest,index}.ts` | manifest 出现 `remotes`；环报错；零行为变更   |
+| **P2 运行时解析** | `loader/deps.ts`（拓扑/去重/版本）+ 接入 + `remoteInflight`                                                                      | `linkjs/src/loader/{deps,index,app,lib,options}.ts`                                   | 单测：顺序/去重/版本（仅声明时校验）/required |
+| **P3 消费**       | 复用 `remoteImports`（不新增 API，除非 §14 决定）                                                                                | 文档                                                                                  | `import { X } from '<dep>'` 在依赖方可用      |
+| **P4 生命周期**   | 引用计数 + HMR + 卸载顺序                                                                                                        | `linkjs/src/loader/*`、`state/instance.ts`                                            | 不误卸；HMR 传播                              |
+| **P5 观测**       | 快照 `deps`、拓扑加边、诊断、面板区块                                                                                            | `devtools/index.ts`、`RemoteView.vue`                                                 | 面板显示依赖与边                              |
+| **P6 Demo/测试**  | `remoteApp` 依赖 `remote-lib`（H3.2）+ 单测                                                                                      | `demos/*`、`tests/*`                                                                  | `pnpm -r test` 全绿                           |
 
 ## 12. 测试计划
 

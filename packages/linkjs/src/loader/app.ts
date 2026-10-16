@@ -58,11 +58,7 @@ function useLoadApp<M = unknown>(remoteCache: RemoteCache) {
   return (entry: string, options?: LoadAppOptions) => loadApp<M>(remoteCache, entry, options);
 }
 
-async function loadApp<M = unknown>(
-  remoteCache: RemoteCache,
-  entry: string,
-  options?: LoadAppOptions,
-): Promise<M | null> {
+async function loadApp<M = unknown>(remoteCache: RemoteCache, entry: string, options?: LoadAppOptions): Promise<M | null> {
   const [appName, modelName] = entry.split('/');
   const cached = useGetRemote<M>(remoteCache)(entry);
   if (cached) {

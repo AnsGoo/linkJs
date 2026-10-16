@@ -273,8 +273,7 @@ function buildSnapshot(instance: LinkjsInstance): LinkjsSnapshot {
           const loadedModule = loadedScope?.get(versionKey);
           // 未声明 version 时，尽量从已加载模块暴露的 `version` 读取（如 vue）；
           // 读不到则标记为 unknown，避免误显示 0.0.0。
-          const exposed =
-            loadedModule?.version ?? (loadedModule as { default?: { version?: unknown } })?.default?.version;
+          const exposed = loadedModule?.version ?? (loadedModule as { default?: { version?: unknown } })?.default?.version;
           const actualVersion = declared || (typeof exposed === 'string' ? exposed : 'unknown');
           return {
             version: actualVersion,

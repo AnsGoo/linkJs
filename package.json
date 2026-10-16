@@ -19,7 +19,7 @@
     "dev:showcase": "node scripts/dev-all.mjs",
     "dev:host": "pnpm --filter linkjs-showcase dev",
     "dev:all": "node scripts/dev-all.mjs",
-    "check:cycles": "node packages/unplugin-linkjs/bin/linkjs-check.mjs",
+    "check:cycles": "node packages/unplugin-linkjs/bin/linkjs-check.mjs --remote remoteApp=http://localhost:8081 --remote remote-lib=http://localhost:4001 --remote ShareRemote=http://localhost:8091",
     "prepare": "pnpm run build",
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",

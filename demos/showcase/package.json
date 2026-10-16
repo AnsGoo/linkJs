@@ -1,9 +1,9 @@
 {
   "name": "linkjs-showcase",
-  "private": true,
   "version": "0.0.0",
-  "type": "module",
+  "private": true,
   "description": "LinkJS 精美示例集（深色科技感）：远程间依赖 / 运行时加载 / 构建期静态 import / 依赖拓扑 / 可观测。",
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

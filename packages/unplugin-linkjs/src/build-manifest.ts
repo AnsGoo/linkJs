@@ -151,9 +151,7 @@ function generateManifestFile(
 
 function updateManifestFile(
   outDir: string,
-  content?: Partial<
-    Pick<ManifestJson, 'expose' | 'entry' | 'dependencies' | 'exposes' | 'integrity' | 'metaData' | 'mode' | 'remotes'>
-  >,
+  content?: Partial<Pick<ManifestJson, 'expose' | 'entry' | 'dependencies' | 'exposes' | 'integrity' | 'metaData' | 'mode' | 'remotes'>>,
   sharedDeps: Record<string, string[]> = {},
 ) {
   const manifestJsonPath = resolve(outDir, 'manifest.json');
@@ -191,7 +189,7 @@ function updateManifestFile(
     // 更新 shared 依赖的 dependencies 字段
     if (Object.keys(sharedDeps).length > 0) {
       manifestJson.shared = manifestJson.shared || {};
-      Object.keys(sharedDeps).forEach(depName => {
+      Object.keys(sharedDeps).forEach((depName) => {
         if (manifestJson.shared[depName]) {
           manifestJson.shared[depName].dependencies = sharedDeps[depName] || [];
         }

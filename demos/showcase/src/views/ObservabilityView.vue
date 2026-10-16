@@ -15,9 +15,7 @@ const perf = computed(() => (snapshot.value.perf || []).slice(0, 8));
 const conflicts = computed(() => snapshot.value.conflicts || []);
 
 const diagFilter = ref<'all' | 'warn' | 'error'>('all');
-const filteredDiag = computed(() =>
-  diagnostics.value.filter((d) => diagFilter.value === 'all' || d.level === diagFilter.value),
-);
+const filteredDiag = computed(() => diagnostics.value.filter((d) => diagFilter.value === 'all' || d.level === diagFilter.value));
 
 function timeStr(t: number) {
   const d = new Date(t);
@@ -35,12 +33,30 @@ function timeStr(t: number) {
     <section class="block">
       <h2>实例</h2>
       <dl class="defs">
-        <div><dt>id</dt><dd class="mono">{{ instance.id }}</dd></div>
-        <div><dt>name</dt><dd class="mono">{{ instance.name }}</dd></div>
-        <div><dt>version</dt><dd class="mono">{{ instance.version }}</dd></div>
-        <div><dt>mode</dt><dd class="mono">{{ instance.mode }}</dd></div>
-        <div><dt>shareStrategy</dt><dd class="mono">{{ instance.shareStrategy }}</dd></div>
-        <div><dt>origin</dt><dd class="mono">{{ instance.origin }}</dd></div>
+        <div>
+          <dt>id</dt>
+          <dd class="mono">{{ instance.id }}</dd>
+        </div>
+        <div>
+          <dt>name</dt>
+          <dd class="mono">{{ instance.name }}</dd>
+        </div>
+        <div>
+          <dt>version</dt>
+          <dd class="mono">{{ instance.version }}</dd>
+        </div>
+        <div>
+          <dt>mode</dt>
+          <dd class="mono">{{ instance.mode }}</dd>
+        </div>
+        <div>
+          <dt>shareStrategy</dt>
+          <dd class="mono">{{ instance.shareStrategy }}</dd>
+        </div>
+        <div>
+          <dt>origin</dt>
+          <dd class="mono">{{ instance.origin }}</dd>
+        </div>
       </dl>
     </section>
 
@@ -130,7 +146,9 @@ function timeStr(t: number) {
         <div class="diag-head">
           <h2>诊断</h2>
           <div class="seg">
-            <button v-for="f in ['all', 'warn', 'error'] as const" :key="f" :class="{ on: diagFilter === f }" @click="diagFilter = f">{{ f }}</button>
+            <button v-for="f in ['all', 'warn', 'error'] as const" :key="f" :class="{ on: diagFilter === f }" @click="diagFilter = f">
+              {{ f }}
+            </button>
           </div>
         </div>
         <ul class="feed" v-if="filteredDiag.length">

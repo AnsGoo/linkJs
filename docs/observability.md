@@ -6,14 +6,14 @@
 
 ## 1. 运行时 API
 
-| API | 说明 |
-| --- | --- |
-| `getSnapshot()` | 返回当前实例的结构化快照（见第 2 节） |
-| `getDiagnostics()` / `clearDiagnostics()` / `onDiagnostic(cb)` | 诊断读取 / 清空 / 订阅 |
-| `getLoadMetrics()` / `clearLoadMetrics()` | logger 插件收集的加载指标 |
-| `getPerfEntries()` / `clearPerfEntries()` | 各阶段性能标记 |
-| `getEvents()` / `clearEvents()` | 事件总线记录（`LIB_EXPOSE` / `SHARED_EXPOSE` / `REMOTE_UPDATE`） |
-| `installDevtoolsUI()` / `uninstallDevtoolsUI()` | 手动挂载/卸载页内 DevTools |
+| API                                                            | 说明                                                             |
+| -------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `getSnapshot()`                                                | 返回当前实例的结构化快照（见第 2 节）                            |
+| `getDiagnostics()` / `clearDiagnostics()` / `onDiagnostic(cb)` | 诊断读取 / 清空 / 订阅                                           |
+| `getLoadMetrics()` / `clearLoadMetrics()`                      | logger 插件收集的加载指标                                        |
+| `getPerfEntries()` / `clearPerfEntries()`                      | 各阶段性能标记                                                   |
+| `getEvents()` / `clearEvents()`                                | 事件总线记录（`LIB_EXPOSE` / `SHARED_EXPOSE` / `REMOTE_UPDATE`） |
+| `installDevtoolsUI()` / `uninstallDevtoolsUI()`                | 手动挂载/卸载页内 DevTools                                       |
 
 ```ts
 import { getSnapshot, getDiagnostics, onDiagnostic, getLoadMetrics, getPerfEntries } from 'linkjs';
@@ -38,7 +38,13 @@ LinkjsSnapshot
 ## 3. 诊断（Diagnostics）
 
 ```ts
-interface Diagnostic { level: 'warn' | 'error'; code: string; message: string; time: number; context?: Record<string, unknown>; }
+interface Diagnostic {
+  level: 'warn' | 'error';
+  code: string;
+  message: string;
+  time: number;
+  context?: Record<string, unknown>;
+}
 ```
 
 - 内置错误码：`SHARE_VERSION_MISMATCH`、`LOAD_REMOTE_ERROR`。
@@ -47,10 +53,10 @@ interface Diagnostic { level: 'warn' | 'error'; code: string; message: string; t
 
 ## 4. 全局入口
 
-| 全局 | 内容 |
-| --- | --- |
-| `globalThis.__LINKJS__` | `getSnapshot` / `remotes()` / `shares()` / `conflicts()` / `metrics()` / `perf()` / `events()` / `clearEvents` / `getDiagnostics` / `clearDiagnostics` / `onDiagnostic`，以及操作：`load(entry, opts)` / `preload(opts)` / `clearCache(name?)` / `unload(name?)` / `loadLib(entry, opts)` / `unloadLib(entry?)` / `getRemote(entry)` / `getShare(name, opts?)` / `loadShare(name, opts?)` |
-| `globalThis.$linkjs.debug` | 同上 |
+| 全局                       | 内容                                                                                                                                                                                                                                                                                                                                                                                      |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `globalThis.__LINKJS__`    | `getSnapshot` / `remotes()` / `shares()` / `conflicts()` / `metrics()` / `perf()` / `events()` / `clearEvents` / `getDiagnostics` / `clearDiagnostics` / `onDiagnostic`，以及操作：`load(entry, opts)` / `preload(opts)` / `clearCache(name?)` / `unload(name?)` / `loadLib(entry, opts)` / `unloadLib(entry?)` / `getRemote(entry)` / `getShare(name, opts?)` / `loadShare(name, opts?)` |
+| `globalThis.$linkjs.debug` | 同上                                                                                                                                                                                                                                                                                                                                                                                      |
 
 ```js
 __LINKJS__.conflicts();
@@ -73,18 +79,26 @@ __LINKJS__.clearCache('remote');
 
 用 `performance.mark/measure` 记录，`getPerfEntries()` 读取（无 `performance` 时降级为空操作）。每条含 `label`（人类可读，**用远程 manifest 名**）与 `name`（技术名）。
 
-| 阶段名 | 含义 |
-| --- | --- |
-| `linkjs:load:app:<name>` | 远程应用整体加载 |
-| `linkjs:load:app:<name>:fetch` | 入口 HTML fetch |
-| `linkjs:load:app:<name>:scripts` | 脚本加载 |
-| `linkjs:load:lib:<name>` | 远程库整体加载 |
-| `linkjs:share:<name>` | **共享依赖加载**（缓存命中/并发复用不计） |
+| 阶段名                           | 含义                                      |
+| -------------------------------- | ----------------------------------------- |
+| `linkjs:load:app:<name>`         | 远程应用整体加载                          |
+| `linkjs:load:app:<name>:fetch`   | 入口 HTML fetch                           |
+| `linkjs:load:app:<name>:scripts` | 脚本加载                                  |
+| `linkjs:load:lib:<name>`         | 远程库整体加载                            |
+| `linkjs:share:<name>`            | **共享依赖加载**（缓存命中/并发复用不计） |
 
 ## 7. 加载指标（logger 插件）
 
 ```ts
-interface LoadMetric { entry: string; kind: 'app' | 'lib' | 'remote'; host?: string; durationMs: number; status: 'loaded' | 'error'; error?: unknown; time: number; }
+interface LoadMetric {
+  entry: string;
+  kind: 'app' | 'lib' | 'remote';
+  host?: string;
+  durationMs: number;
+  status: 'loaded' | 'error';
+  error?: unknown;
+  time: number;
+}
 ```
 
 - 记录每次远程加载耗时/结果（含 retry 各次尝试）；`afterLoadShare(name, module, durationMs)` 记录共享依赖耗时。

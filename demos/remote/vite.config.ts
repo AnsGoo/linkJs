@@ -48,9 +48,10 @@ const linkjsVitePlugin = unpluginLinkjs.vite({
   // 允许 remoteApp 用 `import { HelloWorld } from 'remote-lib'`（静态 import）。
   remoteImports: { shadow: true },
 });
-const linkjsDevPlugins = (Array.isArray(linkjsVitePlugin) ? linkjsVitePlugin : [linkjsVitePlugin]).map(
-  (plugin) => ({ ...plugin, apply: 'serve' as const }),
-);
+const linkjsDevPlugins = (Array.isArray(linkjsVitePlugin) ? linkjsVitePlugin : [linkjsVitePlugin]).map((plugin) => ({
+  ...plugin,
+  apply: 'serve' as const,
+}));
 
 // https://vite.dev/config/
 export default defineConfig({

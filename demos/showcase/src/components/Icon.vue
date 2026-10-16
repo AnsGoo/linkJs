@@ -5,11 +5,7 @@ defineProps<{ name: string }>();
 const paths: Record<string, string[]> = {
   grid: ['M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z'],
   zap: ['M13 2 4 14h6l-1 8 9-12h-6z'],
-  link: [
-    'M9.5 14.5 14.5 9.5',
-    'M8 12 6 14a3.5 3.5 0 0 0 5 5l2-2',
-    'M16 12l2-2a3.5 3.5 0 0 0-5-5l-2 2',
-  ],
+  link: ['M9.5 14.5 14.5 9.5', 'M8 12 6 14a3.5 3.5 0 0 0 5 5l2-2', 'M16 12l2-2a3.5 3.5 0 0 0-5-5l-2 2'],
   flow: ['M6 6h5a3 3 0 0 1 3 3v0a3 3 0 0 0 3 3h1', 'M6 6v12', 'M4 6h4M8 12h2', 'M18 12h2'],
   activity: ['M3 12h4l3 8 4-16 3 8h4'],
   play: ['M7 4.5v15l13-7.5z'],

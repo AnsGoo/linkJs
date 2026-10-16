@@ -13,9 +13,7 @@ async function load(kind: 'ok' | 'bad'): Promise<void> {
   // ok / bad 用不同 appName；bad 走独立脚本 URL（见 bad.html）以绕开模块缓存做 SRI 校验。
   const name = kind === 'ok' ? 'sriOk' : 'sriBad';
   try {
-    const mod = (await loadApp(name, { host: sriHost, entry: kind === 'ok' ? 'ok.html' : 'bad.html' })) as
-      | { hello?: () => string }
-      | null;
+    const mod = (await loadApp(name, { host: sriHost, entry: kind === 'ok' ? 'ok.html' : 'bad.html' })) as { hello?: () => string } | null;
     result.value = `✓ 加载成功：${mod?.hello?.() ?? '(已暴露模块)'}`;
   } catch (error) {
     result.value = `✗ 加载失败（SRI 校验未通过）：${String((error as Error).message || error)}`;
@@ -48,8 +46,9 @@ const code = `<!-- 远程入口 HTML 声明 SRI（宿主 loadApp 会读取并透
     <header class="head">
       <h1>安全：CSP nonce / SRI</h1>
       <p class="sub">
-        远程入口 HTML 中的 <code>&lt;script integrity&gt;</code> 会被 <code>loadApp</code> 读取并透传到
-        动态注入的脚本（<b>子资源完整性 SRI</b>）；<code>&lt;script nonce&gt;</code> / <code>&lt;link nonce&gt;</code>
+        远程入口 HTML 中的 <code>&lt;script integrity&gt;</code> 会被 <code>loadApp</code> 读取并透传到 动态注入的脚本（<b
+          >子资源完整性 SRI</b
+        >）；<code>&lt;script nonce&gt;</code> / <code>&lt;link nonce&gt;</code>
         同样透传，配合服务端 CSP 白名单放行。下面用同一脚本 + 正确/错误哈希演示 SRI 拦截。
       </p>
     </header>
@@ -74,11 +73,11 @@ const code = `<!-- 远程入口 HTML 声明 SRI（宿主 loadApp 会读取并透
           <h3 class="sec">说明</h3>
           <ul class="notes">
             <li><b>SRI</b>：比对脚本哈希，防篡改；不匹配则浏览器拒绝执行，<code>loadApp</code> 抛错。</li>
-            <li><b>CSP nonce</b>：<code>&lt;script nonce&gt;</code> / <code>&lt;link nonce&gt;</code> 由 loader 透传，
-              需服务端下发 <code>Content-Security-Policy: script-src 'nonce-…'</code> 才能生效（本机未配 CSP 头，
-              故仅演示透传语义）。</li>
-            <li><b>构建期生成</b>：<code>unplugin-linkjs</code> 可产出 manifest 的 <code>integrity</code> 映射，
-              运行时按路径匹配校验。</li>
+            <li>
+              <b>CSP nonce</b>：<code>&lt;script nonce&gt;</code> / <code>&lt;link nonce&gt;</code> 由 loader 透传， 需服务端下发
+              <code>Content-Security-Policy: script-src 'nonce-…'</code> 才能生效（本机未配 CSP 头， 故仅演示透传语义）。
+            </li>
+            <li><b>构建期生成</b>：<code>unplugin-linkjs</code> 可产出 manifest 的 <code>integrity</code> 映射， 运行时按路径匹配校验。</li>
           </ul>
         </section>
 

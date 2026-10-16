@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MyButton } from '../../src'
+import { MyButton } from '../../src';
 </script>
 
 <template>

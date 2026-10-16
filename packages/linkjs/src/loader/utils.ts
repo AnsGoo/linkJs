@@ -291,12 +291,7 @@ function withShareProvider<T>(provider: string, fn: () => Promise<T>): Promise<T
   });
 }
 
-function useHandleExpose<M = unknown>(
-  remoteCache: RemoteCache,
-  resolve: (value: M | null) => void,
-  appName: string,
-  options: ExtOption,
-) {
+function useHandleExpose<M = unknown>(remoteCache: RemoteCache, resolve: (value: M | null) => void, appName: string, options: ExtOption) {
   const handler = (data: { libName: string; lib: RemoteModule }) => {
     if (data.libName !== appName || !data.lib) {
       return;
@@ -317,5 +312,18 @@ function useHandleExpose<M = unknown>(
   return handler;
 }
 
-export { loadCss, preloadModule, loadScript, rewriteRequestUrl, getRemoteInfo, getInjectedRemoteHost, resolveEntryConfig, resolveShareScopes, resolvePublicPath, useGetRemote, useHandleExpose, withShareProvider };
+export {
+  loadCss,
+  preloadModule,
+  loadScript,
+  rewriteRequestUrl,
+  getRemoteInfo,
+  getInjectedRemoteHost,
+  resolveEntryConfig,
+  resolveShareScopes,
+  resolvePublicPath,
+  useGetRemote,
+  useHandleExpose,
+  withShareProvider,
+};
 export type { LoadScriptOptions, ResourceSecurityOptions, RemoteCache };

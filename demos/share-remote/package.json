@@ -1,9 +1,9 @@
 {
   "name": "ShareRemote",
-  "private": true,
   "version": "0.0.0",
-  "type": "module",
+  "private": true,
   "description": "LinkJS 共享依赖协商演示远端：注册不同版本的共享库并提供消费探针。",
+  "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

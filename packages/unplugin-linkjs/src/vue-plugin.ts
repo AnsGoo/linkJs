@@ -84,14 +84,11 @@ function createVuePlugin(specifier: string, options: LinkjsVueOptions = {}): any
  *
  * 未显式传 `componentIdGenerator` 时才会注入；用户自己的生成器优先。
  */
-export const linkjsVue = Object.assign(
-  (options: LinkjsVueOptions = {}): any => createVuePlugin('@vitejs/plugin-vue', options),
-  {
-    /** tsdown / rolldown 变体（基于 `unplugin-vue/rolldown`）。 */
-    rolldown: (options: LinkjsVueOptions = {}): any => createVuePlugin('unplugin-vue/rolldown', options),
-    /** rollup 变体（基于 `unplugin-vue/rollup`）。 */
-    rollup: (options: LinkjsVueOptions = {}): any => createVuePlugin('unplugin-vue/rollup', options),
-  },
-);
+export const linkjsVue = Object.assign((options: LinkjsVueOptions = {}): any => createVuePlugin('@vitejs/plugin-vue', options), {
+  /** tsdown / rolldown 变体（基于 `unplugin-vue/rolldown`）。 */
+  rolldown: (options: LinkjsVueOptions = {}): any => createVuePlugin('unplugin-vue/rolldown', options),
+  /** rollup 变体（基于 `unplugin-vue/rollup`）。 */
+  rollup: (options: LinkjsVueOptions = {}): any => createVuePlugin('unplugin-vue/rollup', options),
+});
 
 export type LinkjsVue = typeof linkjsVue;

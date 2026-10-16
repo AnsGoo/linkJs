@@ -7,9 +7,7 @@ import { HelloWorld as RemoteLibHelloWorld } from 'remote-lib';
 
 <template>
   <div class="lib-static">
-    <p class="hint">
-      以下组件是 remoteApp 在<strong>构建期静态 import</strong> 自 <code>remote-lib</code>：
-    </p>
+    <p class="hint">以下组件是 remoteApp 在<strong>构建期静态 import</strong> 自 <code>remote-lib</code>：</p>
     <RemoteLibHelloWorld />
   </div>
 </template>

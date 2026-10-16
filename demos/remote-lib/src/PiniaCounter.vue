@@ -16,7 +16,5 @@ const counter = useCounter();
 </script>
 
 <template>
-  <button class="pinia-counter" type="button" @click="counter.inc()">
-    remote-lib pinia counter: {{ counter.n }}
-  </button>
+  <button class="pinia-counter" type="button" @click="counter.inc()">remote-lib pinia counter: {{ counter.n }}</button>
 </template>

@@ -35,15 +35,11 @@ describe('buildRuntimeBootstrap', () => {
         preload: { manifestUrl: 'http://localhost:8081/manifest.json' },
       },
     ]);
-    expect(preloads).toEqual([
-      { name: 'remoteApp', manifestUrl: 'http://localhost:8081/manifest.json', host: 'http://localhost:8081' },
-    ]);
+    expect(preloads).toEqual([{ name: 'remoteApp', manifestUrl: 'http://localhost:8081/manifest.json', host: 'http://localhost:8081' }]);
   });
 
   it('treats preload: true as defaults (no prefetch key)', () => {
-    const { preloads } = buildRuntimeBootstrap([
-      { name: 'r', manifestUrl: 'http://cdn/r/manifest.json', preload: true },
-    ]);
+    const { preloads } = buildRuntimeBootstrap([{ name: 'r', manifestUrl: 'http://cdn/r/manifest.json', preload: true }]);
     expect(preloads).toEqual([{ name: 'r', manifestUrl: 'http://cdn/r/manifest.json', host: 'http://cdn' }]);
   });
 });

@@ -10,11 +10,7 @@ function makeFixture(): string {
   mkdirSync(join(dir, 'src'), { recursive: true });
   writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'fixture-remote', version: '1.2.3' }), 'utf-8');
   // 组件：依赖 vue（计入 expose 闭包 shared）
-  writeFileSync(
-    join(dir, 'src', 'HelloWorld.ts'),
-    `import { h } from 'vue';\nexport default { render: () => h('div', 'hi') };\n`,
-    'utf-8',
-  );
+  writeFileSync(join(dir, 'src', 'HelloWorld.ts'), `import { h } from 'vue';\nexport default { render: () => h('div', 'hi') };\n`, 'utf-8');
   // 入口：expose('fixture', { HelloWorld })，只 HelloWorld 依赖 vue
   writeFileSync(
     join(dir, 'src', 'entry.ts'),

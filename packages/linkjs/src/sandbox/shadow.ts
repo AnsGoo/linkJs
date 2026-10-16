@@ -174,10 +174,7 @@ function patchDom(): void {
     return originalInsertBefore.call(this, node, child) as T;
   };
 
-  Element.prototype.insertAdjacentElement = function (
-    position: InsertPosition,
-    element: Element,
-  ): Element | null {
+  Element.prototype.insertAdjacentElement = function (position: InsertPosition, element: Element): Element | null {
     if (isStyleOrStylesheetLink(element)) {
       const target = routeStyleTarget(element);
       if (target) {
@@ -355,11 +352,7 @@ export interface CreateShadowIsolationOptions {
  * 同一远程）：宿主元素只在首次挂载时插入真实容器，之后不再搬运；引用计数归零才拆除。
  * 各消费者应各自在 `iso.shadow` 内追加独立挂载节点，避免互相清空内容。
  */
-export function createShadowIsolation(
-  container: HTMLElement,
-  name: string,
-  options: CreateShadowIsolationOptions = {},
-): ShadowIsolation {
+export function createShadowIsolation(container: HTMLElement, name: string, options: CreateShadowIsolationOptions = {}): ShadowIsolation {
   const target = ensureShadowTarget(name, options.mode ?? 'open');
   target.refs += 1;
   // 只在宿主元素尚未接入真实 DOM 时插入，避免多个消费者互相搬运元素。

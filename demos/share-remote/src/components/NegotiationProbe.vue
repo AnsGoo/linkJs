@@ -33,10 +33,7 @@ function label(mod: KitModule | null | undefined): string {
 async function resolve(): Promise<void> {
   const instance = getInstance();
   strategy.value = instance.shareStrategy;
-  const mod = (await loadShare(
-    'linkkit',
-    requirement.value ? { version: requirement.value } : undefined,
-  )) as KitModule | null;
+  const mod = (await loadShare('linkkit', requirement.value ? { version: requirement.value } : undefined)) as KitModule | null;
   log.value.unshift({
     at: new Date().toLocaleTimeString(),
     strategy: instance.shareStrategy,

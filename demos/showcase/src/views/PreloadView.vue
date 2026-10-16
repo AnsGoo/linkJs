@@ -102,8 +102,8 @@ await preloadRemote({
     <header class="head">
       <h1>路由级预取</h1>
       <p class="sub">
-        在进入某路由**之前**用 <code>preloadRemote</code> 拉取远端 manifest 并预热 JS/CSS，
-        使真正 <code>loadApp</code> 时命中缓存、瞬间完成。
+        在进入某路由**之前**用 <code>preloadRemote</code> 拉取远端 manifest 并预热 JS/CSS， 使真正
+        <code>loadApp</code> 时命中缓存、瞬间完成。
       </p>
     </header>
 
@@ -136,9 +136,15 @@ await preloadRemote({
 
       <div class="col">
         <div class="panel stat">
-          <div class="row"><span class="faint mono">remote-lib.prefetched</span><span class="mono tnum">{{ snap?.prefetched ? 'yes' : 'no' }}</span></div>
-          <div class="row"><span class="faint mono">remote-lib.assets</span><span class="mono tnum">{{ snap?.assets?.length || 0 }}</span></div>
-          <div class="row"><span class="faint mono">globalSnapshot.version</span><span class="mono tnum">{{ all.version }}</span></div>
+          <div class="row">
+            <span class="faint mono">remote-lib.prefetched</span><span class="mono tnum">{{ snap?.prefetched ? 'yes' : 'no' }}</span>
+          </div>
+          <div class="row">
+            <span class="faint mono">remote-lib.assets</span><span class="mono tnum">{{ snap?.assets?.length || 0 }}</span>
+          </div>
+          <div class="row">
+            <span class="faint mono">globalSnapshot.version</span><span class="mono tnum">{{ all.version }}</span>
+          </div>
         </div>
 
         <h3 class="sec">预取记录与资源 ({{ records.length }})</h3>

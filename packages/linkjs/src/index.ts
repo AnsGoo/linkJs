@@ -119,19 +119,13 @@ function loadApp<M = unknown>(entry: string, options?: LoadAppOptions): Promise<
   ensureRuntimeMethods();
   return getInstance().loadApp!(entry, options) as Promise<M | null>;
 }
-function loadLib<K extends keyof LinkjsRemoteTypes & string>(
-  entry: K,
-  options?: LoadLibOptions,
-): Promise<LinkjsRemoteTypes[K] | null>;
+function loadLib<K extends keyof LinkjsRemoteTypes & string>(entry: K, options?: LoadLibOptions): Promise<LinkjsRemoteTypes[K] | null>;
 function loadLib<M = unknown>(entry: string, options?: LoadLibOptions): Promise<M | null>;
 function loadLib(entry: string, options?: LoadLibOptions): Promise<unknown> {
   ensureRuntimeMethods();
   return getInstance().loadLib!(entry, options);
 }
-function loadRemote<K extends keyof LinkjsRemoteTypes & string>(
-  entry: K,
-  options?: LoadOptions,
-): Promise<LinkjsRemoteTypes[K] | null>;
+function loadRemote<K extends keyof LinkjsRemoteTypes & string>(entry: K, options?: LoadOptions): Promise<LinkjsRemoteTypes[K] | null>;
 function loadRemote<M = unknown>(entry: string, options?: LoadOptions): Promise<M | null>;
 function loadRemote(entry: string, options?: LoadOptions): Promise<unknown> {
   ensureRuntimeMethods();
@@ -278,23 +272,22 @@ export type { EventBus, EventHandler, LinkjsEvents } from './event-bus';
 export type { PreloadRemoteOptions, RemoteManifest, ManifestAsset, PrefetchRecord } from './preload';
 export { clearPrefetchCache } from './preload';
 export type { RemoteSnapshotEntry, GlobalSnapshot, RemoteLoadStatus } from './snapshot';
-export type { Diagnostic, LinkjsSnapshot, RemoteSnapshot, ShareSnapshot, ShareVersionSnapshot, ShareConflict, PluginSnapshot, DevtoolsOptions, DevtoolsOps, EventSnapshot } from './devtools';
+export type {
+  Diagnostic,
+  LinkjsSnapshot,
+  RemoteSnapshot,
+  ShareSnapshot,
+  ShareVersionSnapshot,
+  ShareConflict,
+  PluginSnapshot,
+  DevtoolsOptions,
+  DevtoolsOps,
+  EventSnapshot,
+} from './devtools';
 export { getPerfEntries, clearPerfEntries } from './perf';
 export type { PerfEntry } from './perf';
 
-export {
-  captureSnapshot,
-  restoreSnapshot,
-  activateSandbox,
-  deactivateSandbox,
-  deactivateAllSandboxes,
-} from './sandbox';
+export { captureSnapshot, restoreSnapshot, activateSandbox, deactivateSandbox, deactivateAllSandboxes } from './sandbox';
 export type { SandboxSnapshot } from './sandbox';
-export {
-  createShadowIsolation,
-  ensureShadowTarget,
-  beginStyleCapture,
-  endStyleCapture,
-  getShadowRoot,
-} from './sandbox/shadow';
+export { createShadowIsolation, ensureShadowTarget, beginStyleCapture, endStyleCapture, getShadowRoot } from './sandbox/shadow';
 export type { ShadowIsolation, ShadowTarget, CreateShadowIsolationOptions } from './sandbox/shadow';

@@ -261,11 +261,4 @@ async function preloadRemote(options: PreloadRemoteOptions): Promise<RemoteManif
   return manifest;
 }
 
-export {
-  preloadRemote,
-  getPrefetch,
-  getPrefetchRecords,
-  getPrefetchVersion,
-  recordPrefetch,
-  clearPrefetchCache,
-};
+export { preloadRemote, getPrefetch, getPrefetchRecords, getPrefetchVersion, recordPrefetch, clearPrefetchCache };

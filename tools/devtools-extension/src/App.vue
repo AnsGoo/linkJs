@@ -74,14 +74,7 @@ onUnmounted(() => {
           <span class="brand">LinkJS</span>
           <span class="id">{{ instanceId }}</span>
         </span>
-        <input
-          v-if="ok"
-          v-model="filter"
-          class="filter"
-          name="linkjs-filter"
-          aria-label="过滤 LinkJS 面板内容"
-          placeholder="过滤…"
-        />
+        <input v-if="ok" v-model="filter" class="filter" name="linkjs-filter" aria-label="过滤 LinkJS 面板内容" placeholder="过滤…" />
         <button v-if="ok" class="mini" title="复制当前快照 JSON" @click="copy">复制 JSON</button>
         <span class="dot" title="存在 error 诊断" />
       </div>

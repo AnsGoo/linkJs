@@ -27,8 +27,7 @@ const DEFAULT_STRATEGY = 'version-first';
 function registerShare(options: Record<string, ShareOption>) {
   const instance = getInstance();
   // 构建插件注入的共享依赖版本（见 unplugin-linkjs 的 linkjsSharedVersions）。
-  const injected = (globalThis as { __LINKJS_SHARED_VERSIONS__?: Record<string, string> })
-    .__LINKJS_SHARED_VERSIONS__;
+  const injected = (globalThis as { __LINKJS_SHARED_VERSIONS__?: Record<string, string> }).__LINKJS_SHARED_VERSIONS__;
   // 提供方：优先选项自带，其次环境注入（远程加载期间由 loader 设置），缺省视为宿主。
   const ambient = (globalThis as { __LINKJS_SHARE_PROVIDER__?: string }).__LINKJS_SHARE_PROVIDER__;
   for (const name in options) {
@@ -66,12 +65,7 @@ function registerShare(options: Record<string, ShareOption>) {
 }
 
 /** 版本不满足 `requiredVersion` 时的诊断（strict 则抛错）。 */
-function warnVersionMismatch(
-  name: string,
-  resolved: string,
-  requirement: string | false | undefined,
-  strict: boolean | undefined,
-): void {
+function warnVersionMismatch(name: string, resolved: string, requirement: string | false | undefined, strict: boolean | undefined): void {
   if (!requirement) {
     return;
   }
@@ -180,9 +174,7 @@ async function resolveVersionFirst(
   strict: boolean | undefined,
 ): Promise<RemoteModule | null> {
   const candidates = toCandidates(loaded, available);
-  const best = version
-    ? VersionComparator.findBestMatch(version, candidates, [])
-    : VersionComparator.findLatestVersion(candidates);
+  const best = version ? VersionComparator.findBestMatch(version, candidates, []) : VersionComparator.findLatestVersion(candidates);
 
   if (!best) {
     return null;
@@ -210,9 +202,7 @@ async function resolveLoadedFirst(
   strict: boolean | undefined,
 ): Promise<RemoteModule | null> {
   if (loaded.length > 0) {
-    const bestLoaded = version
-      ? VersionComparator.findBestMatch(version, loaded, [])
-      : VersionComparator.findLatestVersion(loaded);
+    const bestLoaded = version ? VersionComparator.findBestMatch(version, loaded, []) : VersionComparator.findLatestVersion(loaded);
     if (bestLoaded) {
       warnVersionMismatch(name, bestLoaded.version, requirement, strict);
       return bestLoaded.module as RemoteModule;
@@ -384,9 +374,7 @@ function getShare(
   }
 
   const loaded = collectLoaded(sharedMap, name);
-  const best = version
-    ? VersionComparator.findBestMatch(version, loaded, [])
-    : VersionComparator.findLatestVersion(loaded);
+  const best = version ? VersionComparator.findBestMatch(version, loaded, []) : VersionComparator.findLatestVersion(loaded);
 
   return (best?.module as RemoteModule) || null;
 }

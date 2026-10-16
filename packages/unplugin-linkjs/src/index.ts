@@ -10,18 +10,8 @@ import { watchRemoteTypes, type TypeWatcher } from './type-watcher.js';
 import { generateManifestFile, updateManifestFile } from './build-manifest.js';
 import { generateDependencyGraph, analyzeDependencies, extractPkgName, buildSharedPackageMap } from './dependency-graph.js';
 import { generateSharedEntryFile } from './build-shared.js';
-import {
-  REMOTE_VIRTUAL_PREFIX,
-  renderRemoteImport,
-  toRemoteImportId,
-  type RemoteImportRegistry,
-} from './remote-imports.js';
-import {
-  buildRuntimeBootstrap,
-  PRELOAD_GLOBAL,
-  REMOTE_HOSTS_GLOBAL,
-  selectRemoteImportNames,
-} from './runtime-bootstrap.js';
+import { REMOTE_VIRTUAL_PREFIX, renderRemoteImport, toRemoteImportId, type RemoteImportRegistry } from './remote-imports.js';
+import { buildRuntimeBootstrap, PRELOAD_GLOBAL, REMOTE_HOSTS_GLOBAL, selectRemoteImportNames } from './runtime-bootstrap.js';
 import { collectRemoteDependencyGraph, detectRemoteDependencyCycles, findCyclicComponents } from './remote-dep-graph.js';
 import { resolveExposeSources } from './expose-parse.js';
 import { linkjsVue, linkjsVueOptions } from './vue-plugin.js';
@@ -554,9 +544,7 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
       return remoteImportsEnabled ? toRemoteImportId(source, remoteImportRegistry) : null;
     },
     async load(id: string) {
-      const rendered = remoteImportsEnabled
-        ? renderRemoteImport(id, remoteImportRegistry, { shadow: remoteImportsShadow })
-        : null;
+      const rendered = remoteImportsEnabled ? renderRemoteImport(id, remoteImportRegistry, { shadow: remoteImportsShadow }) : null;
       if (rendered != null || !id.startsWith(REMOTE_VIRTUAL_PREFIX)) {
         return rendered;
       }
@@ -761,10 +749,7 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
           return { remotes, shared: [...sharedSet] };
         };
         const collectChunkDeps = (chunk: any) =>
-          collectDepsFrom([
-            ...((chunk?.moduleIds as string[]) ?? []),
-            ...(chunk?.facadeModuleId ? [chunk.facadeModuleId as string] : []),
-          ]);
+          collectDepsFrom([...((chunk?.moduleIds as string[]) ?? []), ...(chunk?.facadeModuleId ? [chunk.facadeModuleId as string] : [])]);
 
         const exposeAssets: NonNullable<ManifestJson['exposes']> = [];
         // d.ts 入口路径与内容哈希（供宿主类型转发 / 变更检测）。
@@ -774,7 +759,14 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
             return;
           }
           entry.types = path.join(baseDir, key);
-          const source = typeof item?.code === 'string' ? item.code : typeof item?.source === 'string' ? item.source : item?.source ? Buffer.from(item.source) : '';
+          const source =
+            typeof item?.code === 'string'
+              ? item.code
+              : typeof item?.source === 'string'
+                ? item.source
+                : item?.source
+                  ? Buffer.from(item.source)
+                  : '';
           typesHash = sha384(source);
         };
         // 构建产物里的 CSS 资源（Vite 下 cssCodeSplit:false 通常只有一个）。
@@ -817,8 +809,7 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
           const allIds = Array.from(this.getModuleIds(), (m) => String(m));
           for (const [name, info] of exposeRegistry) {
             const candidate = info.source ? path.resolve(path.dirname(info.file), info.source) : info.file;
-            const startId =
-              allIds.find((m) => m === candidate) ?? allIds.find((m) => m.startsWith(candidate)) ?? info.file;
+            const startId = allIds.find((m) => m === candidate) ?? allIds.find((m) => m.startsWith(candidate)) ?? info.file;
             exposeAssets.push({
               name,
               path: entry.js ?? '',
@@ -864,9 +855,7 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
           }
         });
 
-        const metaData: NonNullable<ManifestJson['metaData']> | undefined = entry.types
-          ? { types: entry.types, typesHash }
-          : undefined;
+        const metaData: NonNullable<ManifestJson['metaData']> | undefined = entry.types ? { types: entry.types, typesHash } : undefined;
         updateManifestFile(
           outDir,
           { entry, dependencies, exposes: exposeAssets, integrity, metaData, mode, remotes: resolveManifestRemotes() },

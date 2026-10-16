@@ -134,11 +134,7 @@ async function watchRemoteEvents(
  * `onChange` 会在收到 `snapshot` / `types-changed`（hash 有变化）时被调用，
  * 由调用方决定增量/全量刷新类型。
  */
-function watchRemoteTypes(
-  infos: RemoteTypeInfo[],
-  options: ConsumeTypesOptions,
-  onChange: (event: TypeChangeEvent) => void,
-): TypeWatcher {
+function watchRemoteTypes(infos: RemoteTypeInfo[], options: ConsumeTypesOptions, onChange: (event: TypeChangeEvent) => void): TypeWatcher {
   const reconnect: ResolvedReconnect = { ...DEFAULT_RECONNECT, ...options.reconnect };
   const controller = new AbortController();
 

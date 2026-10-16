@@ -94,9 +94,8 @@ await loadApp('remoteApp', { shadow: true });`;
     <header class="head">
       <h1>运行时加载</h1>
       <p class="sub">
-        宿主仅调用 <code>loadApp('remoteApp')</code>。remoteApp 在注册表声明了依赖
-        <code>remote-lib</code>，因此 linkjs 会先加载 remote-lib，再加载 remoteApp，最后用
-        <code>getRemote</code> 取用其暴露的组件。
+        宿主仅调用 <code>loadApp('remoteApp')</code>。remoteApp 在注册表声明了依赖 <code>remote-lib</code>，因此 linkjs 会先加载
+        remote-lib，再加载 remoteApp，最后用 <code>getRemote</code> 取用其暴露的组件。
       </p>
     </header>
 

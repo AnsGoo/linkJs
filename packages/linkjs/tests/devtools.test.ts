@@ -5,15 +5,7 @@ import { registerShare } from '../src/share';
 import { registerRemote } from '../src/loader';
 import { registerPlugin } from '../src/plugins';
 import { retryPlugin } from '../src/plugins/retry';
-import {
-  buildSnapshot,
-  clearDiagnostics,
-  clearEvents,
-  getDiagnostics,
-  getEvents,
-  onDiagnostic,
-  recordDiagnostic,
-} from '../src/devtools';
+import { buildSnapshot, clearDiagnostics, clearEvents, getDiagnostics, getEvents, onDiagnostic, recordDiagnostic } from '../src/devtools';
 import { LIB_EXPOSE, REMOTE_UPDATE } from '../src/event-bus/constant';
 
 beforeEach(() => {

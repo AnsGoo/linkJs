@@ -74,8 +74,7 @@ const LoadingSlot = defineComponent({
 });
 const ErrorSlot = defineComponent({
   props: { error: {} },
-  setup: (props) => () =>
-    h('div', { class: 'slot err' }, `error 槽：${(props.error as Error)?.message ?? String(props.error)}`),
+  setup: (props) => () => h('div', { class: 'slot err' }, `error 槽：${(props.error as Error)?.message ?? String(props.error)}`),
 });
 const GoodApp = createRemoteApp('remoteApp', { loading: LoadingSlot, error: ErrorSlot });
 const BrokenApp = createRemoteApp('brokenApp', {
@@ -114,9 +113,9 @@ const App = createRemoteApp('remoteApp', {
     <header class="head">
       <h1>加载生命周期 / 状态机</h1>
       <p class="sub">
-        远程状态流转 <code>unloaded → loading → loaded</code>（失败回退 <code>unloaded</code>），
-        以及 <code>unloadRemote</code> 卸载后重载；路线 B 的 <code>createRemoteApp</code> 支持
-        <code>loading</code>/<code>error</code> 槽，加载失败时优雅降级。
+        远程状态流转 <code>unloaded → loading → loaded</code>（失败回退 <code>unloaded</code>）， 以及
+        <code>unloadRemote</code> 卸载后重载；路线 B 的 <code>createRemoteApp</code> 支持 <code>loading</code>/<code>error</code>
+        槽，加载失败时优雅降级。
       </p>
     </header>
 
@@ -183,9 +182,9 @@ const App = createRemoteApp('remoteApp', {
         <section class="panel block">
           <h3 class="sec">实例</h3>
           <p class="faint mono">
-            remotes={{ (snapshot.remotes || []).length }} ·
-            plugins={{ (snapshot.plugins || []).length }} ·
-            events={{ (snapshot.events || []).length }}
+            remotes={{ (snapshot.remotes || []).length }} · plugins={{ (snapshot.plugins || []).length }} · events={{
+              (snapshot.events || []).length
+            }}
           </p>
         </section>
       </div>

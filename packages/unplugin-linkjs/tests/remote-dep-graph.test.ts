@@ -63,9 +63,7 @@ describe('findCyclicComponents (SCC)', () => {
   });
 
   test('two independent SCCs among a larger graph', () => {
-    const comps = norm(
-      findCyclicComponents({ A: ['B'], B: ['A', 'C'], C: ['D'], D: ['C'], E: ['A'] }),
-    );
+    const comps = norm(findCyclicComponents({ A: ['B'], B: ['A', 'C'], C: ['D'], D: ['C'], E: ['A'] }));
     expect(comps).toEqual([
       ['A', 'B'],
       ['C', 'D'],

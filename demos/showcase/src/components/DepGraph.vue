@@ -137,10 +137,7 @@ const kindClass = (k: Kind) => `kn-${k}`;
     <div class="graph-head">
       <span class="mono faint">dependency graph</span>
       <span class="legend">
-        <i class="lg kn-host" /> host
-        <i class="lg kn-app" /> app
-        <i class="lg kn-lib" /> lib
-        <i class="lg kn-shared" /> shared
+        <i class="lg kn-host" /> host <i class="lg kn-app" /> app <i class="lg kn-lib" /> lib <i class="lg kn-shared" /> shared
       </span>
     </div>
     <div class="graph-scroll">

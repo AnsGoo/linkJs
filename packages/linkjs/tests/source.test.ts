@@ -44,12 +44,8 @@ describe('selectRemoteSource', () => {
       ],
     });
 
-    expect((await selectRemoteSource(info, 'r', { skipHealthCheck: true, random: () => 0 }))?.host).toBe(
-      'http://a.example',
-    );
-    expect((await selectRemoteSource(info, 'r', { skipHealthCheck: true, random: () => 0.99 }))?.host).toBe(
-      'http://b.example',
-    );
+    expect((await selectRemoteSource(info, 'r', { skipHealthCheck: true, random: () => 0 }))?.host).toBe('http://a.example');
+    expect((await selectRemoteSource(info, 'r', { skipHealthCheck: true, random: () => 0.99 }))?.host).toBe('http://b.example');
   });
 
   test('weighted falls back to all sources when none are healthy', async () => {

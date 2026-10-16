@@ -1,7 +1,7 @@
 import { createHash } from 'crypto';
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
-import { defineConfig } from 'tsdown'
+import { defineConfig } from 'tsdown';
 import VuePlugin from 'unplugin-vue/rolldown';
 import { unpluginLinkjs, unpluginLinkjsRollowPlugin } from 'unplugin-linkjs';
 import tsdownPluginServer from 'tsdown-plugin-server';
@@ -97,4 +97,4 @@ export default defineConfig({
         ]
       : []),
   ],
-})
+});

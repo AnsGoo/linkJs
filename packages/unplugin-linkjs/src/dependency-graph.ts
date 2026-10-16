@@ -16,7 +16,7 @@ export function generateDependencyGraph(
   dependencyGraph: Map<string, Set<string>>,
   bundle: any,
   sharedDeps: Record<string, string[]> = {},
-  entrySharedDeps: string[] = []
+  entrySharedDeps: string[] = [],
 ) {
   if (!fs.existsSync(outDir)) {
     fs.mkdirSync(outDir, { recursive: true });
@@ -45,7 +45,7 @@ function generateTextGraph(
   dependencyGraph: Map<string, Set<string>>,
   sharedDeps: Record<string, string[]>,
   entrySharedDeps: string[] = [],
-  pkgMap: Map<string, string> = new Map()
+  pkgMap: Map<string, string> = new Map(),
 ): string {
   let textGraph = '=== Dependency Graph ===\n\n';
 
@@ -53,20 +53,21 @@ function generateTextGraph(
   const entryModules = identifyEntryModules(dependencyGraph);
 
   // 分析入口文件和共享依赖之间的依赖关系
-  entryModules.forEach(moduleId => {
+  entryModules.forEach((moduleId) => {
     const moduleName = path.basename(moduleId);
     textGraph += `${moduleName}\n`;
 
     // 入口声明的共享依赖优先；否则基于模块依赖图推断
-    const collectedSharedDeps = entrySharedDeps.length > 0
-      ? new Set(entrySharedDeps)
-      : findUsedSharedDeps(moduleId, dependencyGraph, pkgMap);
+    const collectedSharedDeps =
+      entrySharedDeps.length > 0 ? new Set(entrySharedDeps) : findUsedSharedDeps(moduleId, dependencyGraph, pkgMap);
 
     // 输出收集到的共享依赖
     if (collectedSharedDeps.size > 0) {
-      Array.from(collectedSharedDeps).sort().forEach(dep => {
-        textGraph += `  └── ${dep}\n`;
-      });
+      Array.from(collectedSharedDeps)
+        .sort()
+        .forEach((dep) => {
+          textGraph += `  └── ${dep}\n`;
+        });
     } else {
       textGraph += `  (no shared dependencies)\n`;
     }
@@ -82,7 +83,7 @@ function generateTextGraph(
     sharedEntries.forEach(([depName, deps]) => {
       textGraph += `${depName}\n`;
       if (deps.length > 0) {
-        deps.forEach(dep => {
+        deps.forEach((dep) => {
           textGraph += `  └── ${dep}\n`;
         });
       } else {
@@ -109,15 +110,14 @@ function generateJsonGraph(
   dependencyGraph: Map<string, Set<string>>,
   sharedDeps: Record<string, string[]>,
   entrySharedDeps: string[] = [],
-  pkgMap: Map<string, string> = new Map()
+  pkgMap: Map<string, string> = new Map(),
 ) {
   const entryModules = identifyEntryModules(dependencyGraph);
   const jsonGraph: Record<string, string[]> = {};
 
-  entryModules.forEach(moduleId => {
-    const collectedSharedDeps = entrySharedDeps.length > 0
-      ? new Set(entrySharedDeps)
-      : findUsedSharedDeps(moduleId, dependencyGraph, pkgMap);
+  entryModules.forEach((moduleId) => {
+    const collectedSharedDeps =
+      entrySharedDeps.length > 0 ? new Set(entrySharedDeps) : findUsedSharedDeps(moduleId, dependencyGraph, pkgMap);
     jsonGraph[moduleId] = Array.from(collectedSharedDeps).sort();
   });
 
@@ -138,7 +138,7 @@ function generateMermaidGraph(
   dependencyGraph: Map<string, Set<string>>,
   sharedDeps: Record<string, string[]>,
   entrySharedDeps: string[] = [],
-  pkgMap: Map<string, string> = new Map()
+  pkgMap: Map<string, string> = new Map(),
 ): string {
   const entryModules = identifyEntryModules(dependencyGraph);
   let mermaidGraph = 'graph TD\n';
@@ -146,7 +146,7 @@ function generateMermaidGraph(
   let nodeId = 0;
 
   // 添加 entry 节点
-  entryModules.forEach(moduleId => {
+  entryModules.forEach((moduleId) => {
     const sourceId = `N${nodeId++}`;
     const sourceName = path.basename(moduleId).replace(/\./g, '_');
     nodeMap.set(moduleId, sourceId);
@@ -154,7 +154,7 @@ function generateMermaidGraph(
   });
 
   // 添加 shared 依赖节点
-  Object.keys(sharedDeps).forEach(dep => {
+  Object.keys(sharedDeps).forEach((dep) => {
     if (!nodeMap.has(dep)) {
       const sourceId = `S${nodeId++}`;
       nodeMap.set(dep, sourceId);
@@ -164,17 +164,16 @@ function generateMermaidGraph(
 
   // 入口声明的共享依赖优先；否则基于模块依赖图推断
   const entryToSharedDeps: Record<string, Set<string>> = {};
-  entryModules.forEach(moduleId => {
-    entryToSharedDeps[moduleId] = entrySharedDeps.length > 0
-      ? new Set(entrySharedDeps)
-      : findUsedSharedDeps(moduleId, dependencyGraph, pkgMap);
+  entryModules.forEach((moduleId) => {
+    entryToSharedDeps[moduleId] =
+      entrySharedDeps.length > 0 ? new Set(entrySharedDeps) : findUsedSharedDeps(moduleId, dependencyGraph, pkgMap);
   });
 
   // 添加 entry 到共享依赖的边
-  entryModules.forEach(moduleId => {
+  entryModules.forEach((moduleId) => {
     const sourceId = nodeMap.get(moduleId);
     const sharedDepsForEntry = entryToSharedDeps[moduleId];
-    sharedDepsForEntry.forEach(dep => {
+    sharedDepsForEntry.forEach((dep) => {
       const targetId = nodeMap.get(dep);
       if (targetId) {
         mermaidGraph += `  ${sourceId} --> ${targetId}\n`;
@@ -186,7 +185,7 @@ function generateMermaidGraph(
   if (Object.keys(sharedDeps).length > 0) {
     Object.entries(sharedDeps).forEach(([dep, deps]) => {
       const sourceId = nodeMap.get(dep);
-      deps.forEach(d => {
+      deps.forEach((d) => {
         const targetId = nodeMap.get(d);
         if (targetId) {
           mermaidGraph += `  ${sourceId} --> ${targetId}\n`;
@@ -220,11 +219,7 @@ function identifyEntryModules(dependencyGraph: Map<string, Set<string>>): Set<st
  * @param dependencyGraph 依赖图
  * @param pkgMap 真实包名 -> 共享依赖名称的映射
  */
-function findUsedSharedDeps(
-  entryModule: string,
-  dependencyGraph: Map<string, Set<string>>,
-  pkgMap: Map<string, string>
-): Set<string> {
+function findUsedSharedDeps(entryModule: string, dependencyGraph: Map<string, Set<string>>, pkgMap: Map<string, string>): Set<string> {
   const used = new Set<string>();
   const visited = new Set<string>();
 
@@ -239,7 +234,7 @@ function findUsedSharedDeps(
       return;
     }
 
-    deps.forEach(dep => {
+    deps.forEach((dep) => {
       const pkgName = extractPkgName(dep);
       if (pkgName) {
         const sharedName = pkgMap.get(pkgName);
@@ -448,10 +443,7 @@ const sharedPackageMapCache = new Map<string, Map<string, string>>();
  * @param sharedKeys 共享依赖名称（真实包名）
  * @param resolveFrom 解析依赖的起始目录，默认为 cwd
  */
-export function buildSharedPackageMap(
-  sharedKeys: string[],
-  resolveFrom: string = process.cwd()
-): Map<string, string> {
+export function buildSharedPackageMap(sharedKeys: string[], resolveFrom: string = process.cwd()): Map<string, string> {
   const cacheKey = `${resolveFrom}::${[...sharedKeys].sort().join(',')}`;
   const cached = sharedPackageMapCache.get(cacheKey);
   if (cached) {

@@ -22,55 +22,55 @@ linkjs 的依赖按**载体**与**触发方式**两条轴展开，环会在不�
 
 ### A. Remote ↔ Remote
 
-| # | 场景 | 说明 |
-|---|---|---|
-| A1 | 声明式双向 | `A.remotes={B}`，`B.remotes={A}`；`loadApp(A)` 拓扑先载 B，B 又要 A |
-| A2 | 声明式 + 模块顶层 await | B 模块 eval 时 `await loadRemote('A')`，A 加载前先 await B → **互等死锁** |
-| A3 | 多跳环 | A→B→C→A |
-| A4 | 静态导入双向 | A 构建期 `import from 'B'`，B 构建期 `import from 'A'`（remoteImports）；挂载时互相 `loadRemote` |
-| A5 | 混合环 | A 声明依赖 B；B 静态导入 A 的组件（挂载触发 `loadRemote(A)`） |
-| A6 | 自依赖 | `A.remotes={A}` |
-| A7 | app↔lib 混合 | A(app)→B(lib)→A(app) |
-| A8 | 路线 B 互挂 | A 的 `mount` 里建 B 的 `createRemoteApp` 容器，B 的 `mount` 里建 A 的容器 |
-| A9 | 插件触发 | `beforeLoadRemote`/`apply` 里 `loadRemote` 对方 |
-| A10 | 卸载触发 | 卸载 A 触发加载/卸载 B，B 反向操作 A |
+| #   | 场景                    | 说明                                                                                             |
+| --- | ----------------------- | ------------------------------------------------------------------------------------------------ |
+| A1  | 声明式双向              | `A.remotes={B}`，`B.remotes={A}`；`loadApp(A)` 拓扑先载 B，B 又要 A                              |
+| A2  | 声明式 + 模块顶层 await | B 模块 eval 时 `await loadRemote('A')`，A 加载前先 await B → **互等死锁**                        |
+| A3  | 多跳环                  | A→B→C→A                                                                                          |
+| A4  | 静态导入双向            | A 构建期 `import from 'B'`，B 构建期 `import from 'A'`（remoteImports）；挂载时互相 `loadRemote` |
+| A5  | 混合环                  | A 声明依赖 B；B 静态导入 A 的组件（挂载触发 `loadRemote(A)`）                                    |
+| A6  | 自依赖                  | `A.remotes={A}`                                                                                  |
+| A7  | app↔lib 混合            | A(app)→B(lib)→A(app)                                                                             |
+| A8  | 路线 B 互挂             | A 的 `mount` 里建 B 的 `createRemoteApp` 容器，B 的 `mount` 里建 A 的容器                        |
+| A9  | 插件触发                | `beforeLoadRemote`/`apply` 里 `loadRemote` 对方                                                  |
+| A10 | 卸载触发                | 卸载 A 触发加载/卸载 B，B 反向操作 A                                                             |
 
 > 对照：**菱形** A→B、A→C、B→D、C→D **不是环**，需要的是**去重**（现有 inflight），不要与环混淆。
 
 ### B. Shared ↔ Shared
 
-| # | 场景 | 说明 |
-|---|---|---|
-| B1 | 包级互依 | 共享包 A peer 依赖 B，B peer 依赖 A |
-| B2 | 声明环 | `shared.A.dependencies=['B']` 且 `shared.B.dependencies=['A']` |
-| B3 | loader 内 await 对方 | A 的 `lib()` 里 `await loadShare('B')`，B 的 `lib()` 里 `await loadShare('A')` |
-| B4 | singleton 提供方互等 | A、B 都声明同名 singleton 且互相需要对方版本 |
-| B5 | 多作用域环 | scope1 的依赖指向 scope2，scope2 又指回 scope1 |
-| B6 | eager 环 | `eager:true` 注册即加载，立即成环 |
+| #   | 场景                 | 说明                                                                           |
+| --- | -------------------- | ------------------------------------------------------------------------------ |
+| B1  | 包级互依             | 共享包 A peer 依赖 B，B peer 依赖 A                                            |
+| B2  | 声明环               | `shared.A.dependencies=['B']` 且 `shared.B.dependencies=['A']`                 |
+| B3  | loader 内 await 对方 | A 的 `lib()` 里 `await loadShare('B')`，B 的 `lib()` 里 `await loadShare('A')` |
+| B4  | singleton 提供方互等 | A、B 都声明同名 singleton 且互相需要对方版本                                   |
+| B5  | 多作用域环           | scope1 的依赖指向 scope2，scope2 又指回 scope1                                 |
+| B6  | eager 环             | `eager:true` 注册即加载，立即成环                                              |
 
 ### C. Shared ↔ Remote 混合
 
-| # | 场景 | 说明 |
-|---|---|---|
-| C1 | shared 依赖 remote | 某 shared 包运行期依赖某 remote；该 remote 又依赖这个 shared |
-| C2 | loader 加载 remote | shared 的 `lib()` 里 `loadLib/loadRemote` 一个 remote；该 remote 声明对该 shared 的依赖 |
+| #   | 场景               | 说明                                                                                    |
+| --- | ------------------ | --------------------------------------------------------------------------------------- |
+| C1  | shared 依赖 remote | 某 shared 包运行期依赖某 remote；该 remote 又依赖这个 shared                            |
+| C2  | loader 加载 remote | shared 的 `lib()` 里 `loadLib/loadRemote` 一个 remote；该 remote 声明对该 shared 的依赖 |
 
 ### D. 构建期 / 类型期（不卡死，但要处理）
 
-| # | 场景 | 说明 |
-|---|---|---|
-| D1 | consumeTypes 类型环 | A 的 `.d.ts` 依赖 B，B 依赖 A → tsc/聚合声明环 |
-| D2 | manifest 生成环 | `remotes` / `shared.dependencies` 构建期互相引用 |
-| D3 | 图/transform 环 | dependency-graph 与 unplugin 把裸导入解析成环 |
+| #   | 场景                | 说明                                             |
+| --- | ------------------- | ------------------------------------------------ |
+| D1  | consumeTypes 类型环 | A 的 `.d.ts` 依赖 B，B 依赖 A → tsc/聚合声明环   |
+| D2  | manifest 生成环     | `remotes` / `shared.dependencies` 构建期互相引用 |
+| D3  | 图/transform 环     | dependency-graph 与 unplugin 把裸导入解析成环    |
 
 ### E. 运行时 / 环境相关
 
-| # | 场景 | 说明 |
-|---|---|---|
-| E1 | TLA 引起的 ESM 环 | 同一 bundle 内 A、B 模块顶层互相 `await`（静态导入放大触发） |
-| E2 | HMR 环 | 远端 re-expose → 对方 `REMOTE_UPDATE` 重挂载 → 再触发 re-expose |
-| E3 | 工具触发 | DevTools、快照、预取自动调用 `loadRemote/loadShare` 意外成环 |
-| E4 | 多实例/多宿主 | H1 的 A 依赖 H2 的 B，B 又依赖 H1 的 A |
+| #   | 场景              | 说明                                                            |
+| --- | ----------------- | --------------------------------------------------------------- |
+| E1  | TLA 引起的 ESM 环 | 同一 bundle 内 A、B 模块顶层互相 `await`（静态导入放大触发）    |
+| E2  | HMR 环            | 远端 re-expose → 对方 `REMOTE_UPDATE` 重挂载 → 再触发 re-expose |
+| E3  | 工具触发          | DevTools、快照、预取自动调用 `loadRemote/loadShare` 意外成环    |
+| E4  | 多实例/多宿主     | H1 的 A 依赖 H2 的 B，B 又依赖 H1 的 A                          |
 
 ## 2. 成因分析（“为什么会卡死”）
 
@@ -122,10 +122,10 @@ linkjs 的依赖按**载体**与**触发方式**两条轴展开，环会在不�
 
 ### 层 5：语义与支持级别
 
-| 拓扑 | 支持级别 |
-|---|---|
-| **DAG（无环）** | 完全支持（现状） |
-| **有环** | 默认**构建期阻断**；若要运行，需显式 `cycle: 'allow-lazy'` 且遵守“惰性访问”约束 |
+| 拓扑            | 支持级别                                                                        |
+| --------------- | ------------------------------------------------------------------------------- |
+| **DAG（无环）** | 完全支持（现状）                                                                |
+| **有环**        | 默认**构建期阻断**；若要运行，需显式 `cycle: 'allow-lazy'` 且遵守“惰性访问”约束 |
 
 ## 4. 建议路线
 
@@ -144,11 +144,11 @@ linkjs 的依赖按**载体**与**触发方式**两条轴展开，环会在不�
 
 ### 7.1 检测的三张图
 
-| 图 | 边来源 | 可得性 | 难点 |
-|---|---|---|---|
-| **① remote 依赖图** | `remotes`（registry / consumeTypes 派生 / `manifest.remotes`） | 本构建直接拿到“我声明的依赖” | 环可能在下游：`A→B→A` 需读 **B 的 manifest.remotes** → 要**传递拉取** |
-| **② shared 依赖图** | `analyzeDependencies(shared)`（`shared[dep].dependencies` / package.json 闭包） | **纯本地**、零网络、最稳 | 无 |
-| **③ 静态导入图** | 源码 `import … from '<remote>'` | 单项目只知道“我 import 了谁” | 跨项目看不到对方；且与 ① 高度重合 |
+| 图                  | 边来源                                                                          | 可得性                       | 难点                                                                  |
+| ------------------- | ------------------------------------------------------------------------------- | ---------------------------- | --------------------------------------------------------------------- |
+| **① remote 依赖图** | `remotes`（registry / consumeTypes 派生 / `manifest.remotes`）                  | 本构建直接拿到“我声明的依赖” | 环可能在下游：`A→B→A` 需读 **B 的 manifest.remotes** → 要**传递拉取** |
+| **② shared 依赖图** | `analyzeDependencies(shared)`（`shared[dep].dependencies` / package.json 闭包） | **纯本地**、零网络、最稳     | 无                                                                    |
+| **③ 静态导入图**    | 源码 `import … from '<remote>'`                                                 | 单项目只知道“我 import 了谁” | 跨项目看不到对方；且与 ① 高度重合                                     |
 
 **建议**：②必做；①在**宿主侧/CLI**做传递图（宿主持有全部 remotes 的 host）；③并入①（静态导入本应同步进 `manifest.remotes`），不单独建图。
 
