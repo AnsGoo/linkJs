@@ -5,14 +5,14 @@ import { createHash } from 'crypto';
 import { readFileSync } from 'fs';
 
 import type { ManifestAsset, ManifestJson, UnpluginLinkjsOptions } from './types.js';
-import { consumeRemoteTypes, type ConsumeTypesResult } from './consume-types.js';
+import { consumeRemoteTypes, resolveToken, type ConsumeTypesResult } from './consume-types.js';
 import { watchRemoteTypes, type TypeWatcher } from './type-watcher.js';
 import { generateManifestFile, updateManifestFile } from './build-manifest.js';
 import { generateDependencyGraph, analyzeDependencies, extractPkgName, buildSharedPackageMap } from './dependency-graph.js';
 import { generateSharedEntryFile } from './build-shared.js';
 import { REMOTE_VIRTUAL_PREFIX, renderRemoteImport, toRemoteImportId, type RemoteImportRegistry } from './remote-imports.js';
 import { buildRuntimeBootstrap, PRELOAD_GLOBAL, REMOTE_HOSTS_GLOBAL, selectRemoteImportNames } from './runtime-bootstrap.js';
-import { collectRemoteDependencyGraph, detectRemoteDependencyCycles, findCyclicComponents } from './remote-dep-graph.js';
+import { collectRemoteDependencyGraph, findCyclicComponents } from './remote-dep-graph.js';
 import { resolveExposeSources } from './expose-parse.js';
 import { linkjsVue, linkjsVueOptions } from './vue-plugin.js';
 import path from 'path';
@@ -44,15 +44,16 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
     consumeTypes,
     remoteImports,
     remotes: declaredRemotes,
+    cycleMaxNodes = 200,
   } = options;
 
-  /** 远程资源的 origin（用于派生依赖 host）。 */
-  function originOf(url: string | undefined): string | undefined {
+  /** 远程 manifest 的基址目录（用于派生依赖 host，保留子路径，使 `${host}/manifest.json` 可回指）。 */
+  function manifestBaseOf(url: string | undefined): string | undefined {
     if (!url) {
       return undefined;
     }
     try {
-      return new URL(url).origin;
+      return new URL('.', url).href;
     } catch {
       return undefined;
     }
@@ -66,7 +67,7 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
   function resolveManifestRemotes(): ManifestJson['remotes'] | undefined {
     const derived: NonNullable<ManifestJson['remotes']> = {};
     for (const target of consumeTypes?.remotes ?? []) {
-      const host = target.host ?? originOf(target.manifestUrl);
+      const host = target.host ?? manifestBaseOf(target.manifestUrl);
       derived[target.name] = host ? { host } : {};
     }
     const merged = { ...derived, ...declaredRemotes };
@@ -149,40 +150,59 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
 
   /**
    * 收集**传递**的远程依赖图：从 consumeTypes 的远程出发，BFS 拉取各 manifest 的 `remotes`。
+   * 与 consumeTypes 一致地附加鉴权 token；并把「无法解析 / 图被截断」的节点收集为 `warnings`，
+   * 避免下游 manifest 未就绪时**静默漏检**环。
    */
-  async function collectRemoteGraph(result?: ConsumeTypesResult): Promise<Record<string, string[]>> {
+  async function collectRemoteGraph(result?: ConsumeTypesResult): Promise<{ graph: Record<string, string[]>; warnings: string[] }> {
     if (!result) {
-      return {};
+      return { graph: {}, warnings: [] };
     }
-    return collectRemoteDependencyGraph(
+    const token = await resolveToken(consumeTypes?.auth);
+    const warnings: string[] = [];
+    const graph = await collectRemoteDependencyGraph(
       result.remotes.map((r) => ({ name: r.name, host: r.host })),
-      { timeout: consumeTypes?.timeout ?? 3000 },
+      {
+        timeout: consumeTypes?.timeout ?? 3000,
+        maxNodes: cycleMaxNodes,
+        auth: token ? { token, queryParam: consumeTypes?.auth?.queryParam ?? 'token' } : undefined,
+        onUnresolved: ({ name, host, reason, status }) => {
+          const detail =
+            reason === 'no-host' ? '未声明 host' : reason === 'http-error' ? `manifest 返回 ${status}` : 'manifest 不可达/超时';
+          warnings.push(`无法解析远程 "${name}"（${detail}${host ? `，host=${host}` : ''}）；其下游依赖未纳入环检测，可能漏检环。`);
+        },
+        onTruncated: ({ maxNodes, pending }) => {
+          warnings.push(`远程依赖图超过 ${maxNodes} 个节点被截断（剩余 ${pending} 个未处理），可能漏检环；可调大 \`cycleMaxNodes\`。`);
+        },
+      },
     );
+    return { graph, warnings };
   }
 
   /**
    * 构建期循环依赖检测：**shared 依赖图** + **传递的 remote 依赖图**。
-   * `mode==='build'` 时抛错阻断；dev 仅告警。
+   *
+   * 输出**强连通分量（SCC）**（而非单条环路径）：SCC 是「必须并载」的完整成员集合，
+   * 避免单点 DFS 枚举不全导致「环路径」与 SCC 不一致而误导拆环。
+   * `mode==='build'` 时抛错阻断；dev 仅告警。未解析/截断的节点始终以 warn 提示。
    */
   async function checkDependencyCycles(mode: 'build' | 'dev', result?: ConsumeTypesResult): Promise<void> {
     const sharedGraph = analyzeDependencies(shared);
-    const sharedCycles = detectRemoteDependencyCycles(sharedGraph);
-    const remoteGraph = await collectRemoteGraph(result);
-    const remoteCycles = detectRemoteDependencyCycles(remoteGraph);
-    if (sharedCycles.length === 0 && remoteCycles.length === 0) {
+    const sharedScc = findCyclicComponents(sharedGraph);
+    const { graph: remoteGraph, warnings } = await collectRemoteGraph(result);
+    const remoteScc = findCyclicComponents(remoteGraph);
+    for (const warning of warnings) {
+      console.warn(`[linkjs] ${warning}`);
+    }
+    if (sharedScc.length === 0 && remoteScc.length === 0) {
       return;
     }
-    const fmt = (cycles: string[][]) => cycles.map((c) => `  ${c.join(' → ')}`).join('\n');
-    const scc = (graph: Record<string, string[]>) => {
-      const comps = findCyclicComponents(graph);
-      return comps.length > 0 ? `\n  需并载的强连通分量：${comps.map((c) => `{ ${c.join(', ')} }`).join(' ')}` : '';
-    };
+    const fmtScc = (comps: string[][]) => comps.map((c) => `  { ${c.join(', ')} }`).join('\n');
     const lines: string[] = [];
-    if (remoteCycles.length > 0) {
-      lines.push(`[linkjs] 远程依赖环：\n${fmt(remoteCycles)}${scc(remoteGraph)}`);
+    if (remoteScc.length > 0) {
+      lines.push(`[linkjs] 远程依赖环（需并载的强连通分量）：\n${fmtScc(remoteScc)}`);
     }
-    if (sharedCycles.length > 0) {
-      lines.push(`[linkjs] 共享依赖环：\n${fmt(sharedCycles)}${scc(sharedGraph)}`);
+    if (sharedScc.length > 0) {
+      lines.push(`[linkjs] 共享依赖环（需并载的强连通分量）：\n${fmtScc(sharedScc)}`);
     }
     const message = `${lines.join('\n')}\n（循环依赖会导致加载死锁，请拆分或抽第三模块打破环。详见 docs/remote-dependency-cycles.md）`;
     if (mode === 'build') {

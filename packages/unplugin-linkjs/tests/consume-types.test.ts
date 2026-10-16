@@ -56,6 +56,16 @@ describe('consumeRemoteTypes', () => {
     });
   });
 
+  it('derives host from the manifest directory (not origin) when host is omitted', async () => {
+    await withTempOutDir(async (root) => {
+      const result = await consumeRemoteTypes(
+        { remotes: [{ name: 'remoteLib', manifestUrl: 'http://cdn/mf/manifest.json' }], fetch: manifestFetch() },
+        root,
+      );
+      expect(result.remotes[0].host).toBe('http://cdn/mf/');
+    });
+  });
+
   it('skips remotes without a declared types path', async () => {
     await withTempOutDir(async (root) => {
       const fetchImpl = vi.fn(async () => ({

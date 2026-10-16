@@ -101,4 +101,68 @@ describe('collectRemoteDependencyGraph', () => {
     });
     expect(graph).toEqual({ A: [] });
   });
+
+  test('applies the auth token to every manifest fetch', async () => {
+    const seen: string[] = [];
+    const fetchImpl = (async (input: string | URL) => {
+      const url = String(input);
+      seen.push(url);
+      return { ok: true, json: async () => ({ remotes: {} }) } as unknown as Response;
+    }) as unknown as typeof fetch;
+    await collectRemoteDependencyGraph([{ name: 'A', host: 'http://a' }], {
+      fetch: fetchImpl,
+      auth: { token: 'T', queryParam: 'access_token' },
+    });
+    expect(seen).toEqual(['http://a/manifest.json?access_token=T']);
+  });
+
+  test('reports unresolved nodes (http-error / no-host) instead of silently treating as leaves', async () => {
+    const unresolved: Array<{ name: string; reason: string }> = [];
+    const hostless: Array<{ name: string; reason: string }> = [];
+    await collectRemoteDependencyGraph([{ name: 'Root', host: 'http://root' }, { name: 'NoHost' }], {
+      fetch: fakeFetch({}), // Root 的 manifest 404
+      onUnresolved: (info) => {
+        (info.reason === 'no-host' ? hostless : unresolved).push(info);
+      },
+    });
+    expect(unresolved).toEqual([{ name: 'Root', host: 'http://root', reason: 'http-error', status: undefined }]);
+    expect(hostless.map((i) => i.name)).toEqual(['NoHost']);
+  });
+
+  test('reports truncation when the graph exceeds maxNodes', async () => {
+    let truncated: { processed: number; maxNodes: number; pending: number } | undefined;
+    const chain = fakeFetch({
+      'http://a': { B: { host: 'http://b' } },
+      'http://b': { C: { host: 'http://c' } },
+      'http://c': {},
+    });
+    await collectRemoteDependencyGraph([{ name: 'A', host: 'http://a' }], {
+      fetch: chain,
+      maxNodes: 2,
+      onTruncated: (info) => {
+        truncated = info;
+      },
+    });
+    expect(truncated).toBeDefined();
+    expect(truncated!.maxNodes).toBe(2);
+    expect(truncated!.pending).toBeGreaterThan(0);
+  });
+
+  test('includes expose-level remote deps (manifest.exposes[].deps.remotes)', async () => {
+    const fetchImpl = (async (input: string | URL) => {
+      const url = String(input);
+      if (url.startsWith('http://a')) {
+        return {
+          ok: true,
+          json: async () => ({
+            remotes: {},
+            exposes: [{ name: 'X', deps: { remotes: { B: { host: 'http://b' } } } }],
+          }),
+        } as unknown as Response;
+      }
+      return { ok: true, json: async () => ({ remotes: {} }) } as unknown as Response;
+    }) as unknown as typeof fetch;
+    const graph = await collectRemoteDependencyGraph([{ name: 'A', host: 'http://a' }], { fetch: fetchImpl });
+    expect(graph).toEqual({ A: ['B'], B: [] });
+  });
 });

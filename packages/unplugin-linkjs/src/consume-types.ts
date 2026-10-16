@@ -20,8 +20,6 @@ export interface RemoteTypeInfo {
   cacheRel: string;
   exposes: string[];
   mode: 'development' | 'production';
-  /** 该远程 manifest 声明的远程依赖名（构建期环检测用）。 */
-  dependencyNames: string[];
   /** d.ts 内容（用于内联进聚合声明）。 */
   content: string;
 }
@@ -49,7 +47,7 @@ function resolveManifestUrl(target: RemoteTypeTarget): string {
   throw new Error(`[linkjs] consumeTypes: remote "${target.name}" requires \`manifestUrl\` or \`host\``);
 }
 
-async function resolveToken(auth?: ConsumeTypesAuth): Promise<string | undefined> {
+export async function resolveToken(auth?: ConsumeTypesAuth): Promise<string | undefined> {
   const provider = auth?.token;
   if (provider == null) {
     return undefined;
@@ -201,13 +199,14 @@ async function fetchRemoteType(
   return {
     name: target.name,
     manifestUrl,
-    host: target.host ?? new URL(manifestUrl).origin,
+    // 未显式给 host 时，取 manifest 的**目录**（而非 origin），使 `${host}/manifest.json`
+    // 能回指到该 manifest，且子路径托管（如 `/mf/`）下资源基址正确。
+    host: target.host ?? new URL('.', manifestUrl).href,
     typesUrl,
     typesHash,
     cacheRel,
     exposes: resolveExposes(manifest),
     mode: resolveMode(target, manifest),
-    dependencyNames: manifest.remotes && typeof manifest.remotes === 'object' ? Object.keys(manifest.remotes) : [],
     content: dtsContent,
   };
 }

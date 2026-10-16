@@ -28,6 +28,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "linkjs": "workspace:*",
     "unplugin": "^2.3.11"
   },
   "devDependencies": {
