@@ -170,7 +170,7 @@ function updateManifestFile(
     manifestJson.entry = { ...manifestJson.entry, ...entry };
     manifestJson.dependencies = dependencies;
     if (remotes) {
-      manifestJson.remotes = { ...(manifestJson.remotes || {}), ...remotes };
+      manifestJson.remotes = { ...manifestJson.remotes, ...remotes };
     }
 
     if (exposes) {

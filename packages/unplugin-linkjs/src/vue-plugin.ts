@@ -59,7 +59,7 @@ export function linkjsVueOptions(options: LinkjsVueOptions = {}): Record<string,
   return {
     ...rest,
     features: {
-      ...(features ?? {}),
+      ...features,
       componentIdGenerator:
         userGenerator ??
         ((filepath: string, _source: string, _isProduction: boolean | undefined, getHash: (text: string) => string) =>

@@ -69,7 +69,7 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
       const host = target.host ?? originOf(target.manifestUrl);
       derived[target.name] = host ? { host } : {};
     }
-    const merged = { ...derived, ...(declaredRemotes ?? {}) };
+    const merged = { ...derived, ...declaredRemotes };
     return Object.keys(merged).length > 0 ? merged : undefined;
   }
 

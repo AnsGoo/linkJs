@@ -1,5 +1,6 @@
 import { getInstance } from '..';
 import { __LINKJS_REMOTE_HOSTS__ } from '../constant';
+import { debugLog } from '../debug';
 import { LIB_EXPOSE } from '../event-bus/constant';
 import { getShadowRoot } from '../sandbox/shadow';
 import type { RegistryOption, RemoteEntry, RemoteInfo, RemoteSource } from '../state/instance';
@@ -259,7 +260,7 @@ function getRemoteFromCache<M = unknown>(entry: string, remoteCache: RemoteCache
   if (!remoteCache.has(appName)) {
     return null;
   }
-  console.log(`Remote module ${appName} already loaded, returning from cache`);
+  debugLog(`Remote module ${appName} already loaded, returning from cache`);
   const appModule = remoteCache.get(appName);
   if (!appModule) {
     console.warn(`Remote module ${appName} not found in cache, please load it first: loadRemote('${appName}')`);
@@ -303,7 +304,7 @@ function useHandleExpose<M = unknown>(remoteCache: RemoteCache, resolve: (value:
       clearTimeout(options.timeoutId);
     }
     remoteCache.set(appName, data.lib);
-    console.log(`Remote module ${appName} cached`);
+    debugLog(`Remote module ${appName} cached`);
     if (modelName) {
       return resolve((data.lib[modelName] as M) || null);
     }

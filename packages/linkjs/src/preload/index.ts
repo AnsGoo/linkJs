@@ -213,7 +213,7 @@ async function preloadRemote(options: PreloadRemoteOptions): Promise<RemoteManif
       }
       if (manifest.remotes && typeof manifest.remotes === 'object') {
         // 合并 manifest 声明的远程依赖（注册表已声明的保留）。
-        info.remotes = { ...(info.remotes || {}), ...manifest.remotes };
+        info.remotes = { ...info.remotes, ...manifest.remotes };
       }
       if (Array.isArray(manifest.exposes) && manifest.exposes.length > 0) {
         // 记录 exposes（含每 expose 的 deps），供 expose 级依赖解析。

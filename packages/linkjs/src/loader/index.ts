@@ -1,5 +1,6 @@
 import { getInstance } from '..';
 import { LIB_EXPOSE, LOAD_STATUS, REMOTE_UPDATE } from '../event-bus/constant';
+import { debugLog } from '../debug';
 import { getRemoteInfo, useGetRemote, type RemoteCache } from './utils';
 import { useLoadRemoteLib, type LoadLibOptions } from './lib';
 import { useLoadApp, type LoadAppOptions } from './app';
@@ -41,7 +42,7 @@ function ensureRemoteUpdates(): void {
     const isUpdate = remoteCache().has(data.libName);
     remoteCache().set(data.libName, data.lib);
     if (isUpdate) {
-      console.log(`Remote module ${data.libName} re-exposed, broadcasting update`);
+      debugLog(`Remote module ${data.libName} re-exposed, broadcasting update`);
       getInstance().eventBus.emit(REMOTE_UPDATE, { appName: data.libName });
     }
   });
@@ -202,10 +203,10 @@ function getRemote<M = unknown>(entry: string): M | null {
 function clearRemoteCache(appName?: string): void {
   if (appName) {
     remoteCache().delete(appName);
-    console.log(`Remote cache for ${appName} cleared`);
+    debugLog(`Remote cache for ${appName} cleared`);
   } else {
     remoteCache().clear();
-    console.log('All remote cache cleared');
+    debugLog('All remote cache cleared');
   }
 }
 
