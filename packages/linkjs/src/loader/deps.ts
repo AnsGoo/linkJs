@@ -61,38 +61,8 @@ function verifyVersion(name: string, range: string | undefined): void {
   }
 }
 
-/** 有向图是否存在环（迭代式 DFS，深图安全）。 */
-export function hasDependencyCycle(graph: Record<string, string[]>): boolean {
-  const visited = new Set<string>();
-  const onStack = new Set<string>();
-  for (const start of Object.keys(graph)) {
-    if (visited.has(start)) {
-      continue;
-    }
-    const stack: Array<{ node: string; next: number }> = [{ node: start, next: 0 }];
-    visited.add(start);
-    onStack.add(start);
-    while (stack.length > 0) {
-      const frame = stack[stack.length - 1];
-      const children = graph[frame.node] ?? [];
-      if (frame.next >= children.length) {
-        onStack.delete(frame.node);
-        stack.pop();
-        continue;
-      }
-      const child = children[frame.next++];
-      if (onStack.has(child)) {
-        return true;
-      }
-      if (!visited.has(child)) {
-        visited.add(child);
-        onStack.add(child);
-        stack.push({ node: child, next: 0 });
-      }
-    }
-  }
-  return false;
-}
+/** 有向图是否存在环（与构建期共用 `linkjs/graph` 的实现，避免两套漂移）。 */
+export { hasDependencyCycle } from '../graph';
 
 /** expose 引用计数 +1（key 形如 `<appName>/<Expose>`）。 */
 export function retainExpose(key: string): void {

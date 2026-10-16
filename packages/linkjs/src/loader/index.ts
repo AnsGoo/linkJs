@@ -4,7 +4,8 @@ import { debugLog } from '../debug';
 import { getRemoteInfo, useGetRemote, type RemoteCache } from './utils';
 import { useLoadRemoteLib, type LoadLibOptions } from './lib';
 import { useLoadApp, type LoadAppOptions } from './app';
-import { resolveRemoteDeps, releaseRemote, retainRemote, hasDependencyCycle, type ResolveDepsContext } from './deps';
+import { resolveRemoteDeps, releaseRemote, retainRemote, type ResolveDepsContext } from './deps';
+import { hasDependencyCycle, findCyclicComponents } from '../graph';
 import { recordDiagnostic } from '../devtools';
 import type { RemoteDependency } from '../state/instance';
 import type { LoadOptions } from './options';
@@ -116,10 +117,13 @@ function resolveDepsFor(appName: string, options?: { deps?: boolean; expose?: st
 
   // 有环：改为**并行**加载所有可达依赖（去重），避免环上顺序 await 导致死锁。
   if (hasDependencyCycle(graph)) {
+    const components = findCyclicComponents(graph)
+      .map((comp) => `{ ${comp.join(', ')} }`)
+      .join(' ');
     recordDiagnostic({
       level: 'warn',
       code: 'REMOTE_DEP_CYCLE',
-      message: `remote dependency cycle involving "${appName}"；回退为并行加载：${JSON.stringify(graph)}`,
+      message: `remote dependency cycle involving "${appName}"（需并载：${components}）；回退为并行加载：${JSON.stringify(graph)}`,
     });
     const instance = getInstance();
     const tasks = [...depMap].map(async ([name, dep]) => {
