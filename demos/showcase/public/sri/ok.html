@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <title>sri-ok</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <!-- 正确的 SRI：脚本哈希匹配，浏览器放行 -->
+    <script
+      type="module"
+      src="./entry.js"
+      integrity="sha384-9WCjGwb5nqRppFp1aO+X++YB4X0avLJhOite8+hHXGJhUPQwjDdwghO8NPvfmLVc"
+    ></script>
+  </body>
+</html>

@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <title>sri-bad</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <!-- 错误的 SRI：哈希不匹配，浏览器将拒绝执行该脚本。
+         用独立 URL（?bad=1）绕开浏览器模块缓存，确保真的发起请求并做 SRI 校验。 -->
+    <script
+      type="module"
+      src="./entry.js?bad=1"
+      integrity="sha384-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+    ></script>
+  </body>
+</html>
