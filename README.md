@@ -181,16 +181,18 @@ pnpm run build
 pnpm run test
 
 # 一键启动示例（remote-lib + remoteApp + showcase）
-pnpm dev:all
+pnpm dev:all     # 等价于 pnpm dev:showcase
+pnpm dev:showcase
 
 # 或分别启动（三个终端）
 pnpm --filter vue-components-starter dev   # remote-lib  :4001
 pnpm --filter RemoteApp dev                # remoteApp   :8081（类型 :4002）
-pnpm dev:showcase                          # 示例集      :5190
+pnpm dev:host                              # 仅示例集宿主 :5190
 ```
 
-> `pnpm dev:all` 会先 `pnpm build`（构建 workspace 包），再并行启动三个服务，避免并行重建 dist 与
-> showcase 加载配置的竞态。浏览器打开 **http://localhost:5190**。
+> `pnpm dev:all` / `pnpm dev:showcase` 会先 `pnpm build`（构建 workspace 包），再按序启动三个服务，
+> 避免并行重建 dist 与 showcase 加载配置的竞态。浏览器打开 **http://localhost:5190**。
+> 只想单独调宿主（远程已热着）时用 `pnpm dev:host`。
 
 > 说明：各包以 **dist 产物**对外（`exports` 只指向 dist，无 `src` 回退），因此不会出现
 > “dev 用 src、构建用 dist” 的漂移。demo 的 `dev`/`build` 脚本会先构建所用到的 workspace
