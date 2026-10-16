@@ -164,9 +164,10 @@ init();
 
 项目包含一套完整示例：
 
-- `demos/showcase` - **精美示例集（宿主，多页）**：总览 / 运行时加载 / 构建期 import / 依赖拓扑 / 路由级预取 / 多源灰度 / Shadow 隔离 / 插件机制 / 类型转发 / HMR / 可观测
+- `demos/showcase` - **精美示例集（宿主，多页）**：总览 / 运行时加载 / 构建期 import / 依赖拓扑 / 路由级预取 / 多源灰度 / 共享依赖协商 / 故障注入 / 加载生命周期 / 事件总线 / 安全 SRI/CSP / Shadow 隔离 / 插件机制 / 类型转发 / HMR / 可观测
 - `demos/remote` - 远程应用（remoteApp，声明依赖 `remote-lib`）
 - `demos/remote-lib` - 远程库（vue-components-starter）
+- `demos/share-remote` - 共享依赖协商演示远端（注入不同版本的共享库 `linkkit`）
 
 ## 开发
 
@@ -180,17 +181,18 @@ pnpm run build
 # 运行测试
 pnpm run test
 
-# 一键启动示例（remote-lib + remoteApp + showcase）
+# 一键启动示例（remote-lib + remoteApp + share-remote + showcase）
 pnpm dev:all     # 等价于 pnpm dev:showcase
 pnpm dev:showcase
 
-# 或分别启动（三个终端）
+# 或分别启动（终端）
 pnpm --filter vue-components-starter dev   # remote-lib  :4001
 pnpm --filter RemoteApp dev                # remoteApp   :8081（类型 :4002）
+pnpm --filter ShareRemote dev              # share-remote :8091
 pnpm dev:host                              # 仅示例集宿主 :5190
 ```
 
-> `pnpm dev:all` / `pnpm dev:showcase` 会先 `pnpm build`（构建 workspace 包），再按序启动三个服务，
+> `pnpm dev:all` / `pnpm dev:showcase` 会先 `pnpm build`（构建 workspace 包），再按序启动四个服务，
 > 避免并行重建 dist 与 showcase 加载配置的竞态。浏览器打开 **http://localhost:5190**。
 > 只想单独调宿主（远程已热着）时用 `pnpm dev:host`。
 
