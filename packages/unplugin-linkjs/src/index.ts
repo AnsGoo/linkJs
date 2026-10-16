@@ -93,6 +93,45 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
   const remoteImportsShadow = typeof remoteImports === 'object' && remoteImports ? remoteImports.shadow === true : false;
   const remoteImportRegistry: RemoteImportRegistry = new Map();
 
+  // ---- consumeTypes 就绪等待：虚拟模块的 load 可能早于 consumeTypes 完成（启动/扫描竞态）----
+  let consumeWaiters: Array<{ name: string; resolve: () => void }> = [];
+
+  /** consumeTypes 刷新后唤醒已就绪的等待者（registry 已含对应 remote）。 */
+  function notifyConsumeWaiters(): void {
+    if (consumeWaiters.length === 0) {
+      return;
+    }
+    const pending: typeof consumeWaiters = [];
+    for (const waiter of consumeWaiters) {
+      if (remoteImportRegistry.has(waiter.name)) {
+        waiter.resolve();
+      } else {
+        pending.push(waiter);
+      }
+    }
+    consumeWaiters = pending;
+  }
+
+  /** 等待某个 remote 进入注册表；超时后返回，由调用方决定如何降级。 */
+  function waitForRemote(name: string, timeoutMs: number): Promise<void> {
+    if (remoteImportRegistry.has(name)) {
+      return Promise.resolve();
+    }
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = () => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        clearTimeout(timer);
+        resolve();
+      };
+      const timer = setTimeout(finish, timeoutMs);
+      consumeWaiters.push({ name, resolve: finish });
+    });
+  }
+
   /**
    * 允许 `import { X } from '<remote>'` 语法的远程名集合。
    * 只有声明了 `preload`（构建期注入预加载）的 remote 才支持；未声明的按 lazy 处理，
@@ -115,6 +154,7 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
       }
       remoteImportRegistry.set(info.name, { name: info.name, host: info.host, exposes: info.exposes });
     }
+    notifyConsumeWaiters();
   }
 
   /**
@@ -162,25 +202,54 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
   }
 
   let consumeRetry = 0;
+  let consumeInFlight: Promise<ConsumeTypesResult | undefined> | undefined;
 
-  async function runConsumeTypes(): Promise<ConsumeTypesResult | undefined> {
+  /**
+   * 有限次退避重试。
+   * `consumeRemoteTypes` 对单个 remote 失败是**内部吞掉**的（保留旧缓存并 warn），
+   * 因此“调用未抛错”不等于“全部 remote 已解析”，需要按 registry 实际结果决定是否重试。
+   */
+  function scheduleConsumeRetry(): void {
+    if (consumeRetry >= 3) {
+      consumeRetry = 0;
+      return;
+    }
+    consumeRetry += 1;
+    setTimeout(() => void runConsumeTypes(), 1500 * consumeRetry);
+  }
+
+  async function consumeAttempt(): Promise<ConsumeTypesResult | undefined> {
     if (!consumeTypes?.remotes?.length) {
       return undefined;
     }
     try {
       const result = await consumeRemoteTypes(consumeTypes);
       syncRemoteImports(result);
-      consumeRetry = 0;
+      const missing = [...eligibleImportNames()].some((name) => !remoteImportRegistry.has(name));
+      if (missing) {
+        scheduleConsumeRetry();
+      } else {
+        consumeRetry = 0;
+      }
       return result;
     } catch (error) {
       console.warn(`[linkjs] consumeTypes failed: ${String((error as { message?: string })?.message ?? error)}`);
       // 远端可能尚未启动：有限次退避重试，避免虚拟模块因 registry 为空而失效。
-      if (consumeRetry < 3) {
-        consumeRetry += 1;
-        setTimeout(() => void runConsumeTypes(), 1500 * consumeRetry);
-      }
+      scheduleConsumeRetry();
       return undefined;
     }
+  }
+
+  /** 并发触发（configureServer / 虚拟模块 load / typeWatcher）时去重，只跑一次。 */
+  function runConsumeTypes(): Promise<ConsumeTypesResult | undefined> {
+    if (consumeInFlight) {
+      return consumeInFlight;
+    }
+    consumeInFlight = consumeAttempt();
+    void consumeInFlight.finally(() => {
+      consumeInFlight = undefined;
+    });
+    return consumeInFlight;
   }
 
   function startTypeWatchers(result: ConsumeTypesResult): void {
@@ -484,8 +553,29 @@ const unpluginLinkjsBase = createUnplugin((options: UnpluginLinkjsOptions = {}) 
       }
       return remoteImportsEnabled ? toRemoteImportId(source, remoteImportRegistry) : null;
     },
-    load(id: string) {
-      return remoteImportsEnabled ? renderRemoteImport(id, remoteImportRegistry, { shadow: remoteImportsShadow }) : null;
+    async load(id: string) {
+      const rendered = remoteImportsEnabled
+        ? renderRemoteImport(id, remoteImportRegistry, { shadow: remoteImportsShadow })
+        : null;
+      if (rendered != null || !id.startsWith(REMOTE_VIRTUAL_PREFIX)) {
+        return rendered;
+      }
+      // 虚拟模块已解析、但 registry 尚未就绪（consumeTypes 与首次 load 竞态）。
+      // 若直接返回 null，Vite 会把 `\0linkjs-remote:<name>` 当作磁盘路径读取并抛
+      // “path ... null bytes”。这里确保拉取已触发并等待该 remote 注册后再渲染。
+      if (consumeTypes?.remotes?.length) {
+        void runConsumeTypes();
+      }
+      const name = id.slice(REMOTE_VIRTUAL_PREFIX.length).split('/')[0];
+      await waitForRemote(name, Math.max(consumeTypes?.timeout ?? 5000, 5000));
+      const ready = renderRemoteImport(id, remoteImportRegistry, { shadow: remoteImportsShadow });
+      if (ready != null) {
+        return ready;
+      }
+      throw new Error(
+        `[linkjs] remote "${name}" 不可用：consumeTypes 未解析到该 remote 或其 expose。` +
+          `请确认 manifestUrl/host 可达，且该 expose 已在远端声明。`,
+      );
     },
 
     vite: {

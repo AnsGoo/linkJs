@@ -60,8 +60,9 @@ export default defineConfig({
   sourcemap: true,
   outDir: 'mf',
   exports: false,
-  external: [],
-  noExternal: ['vue', 'pinia', 'vue-router'],
+  deps: {
+    alwaysBundle: ['vue', 'pinia', 'vue-router'],
+  },
   plugins: [
     // 保留 VuePlugin()，仅用 unpluginLinkjs.vueOptions() 补充 per-app scoped id 作用域
     VuePlugin(unpluginLinkjs.vueOptions({ isProduction: true })),
