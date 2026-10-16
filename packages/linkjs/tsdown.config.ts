@@ -2,7 +2,7 @@ import { defineConfig } from 'tsdown';
 
 export default defineConfig({
   dts: true,
-  entry: { index: 'src/index.ts', vue: 'src/vue.ts' },
+  entry: { index: 'src/index.ts', vue: 'src/vue.ts', graph: 'src/graph.ts' },
   outDir: 'dist',
   sourcemap: true,
   exports: false,

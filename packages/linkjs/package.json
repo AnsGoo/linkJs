@@ -20,12 +20,14 @@
   "exports": {
     ".": "./dist/index.mjs",
     "./vue": "./dist/vue.mjs",
+    "./graph": "./dist/graph.mjs",
     "./package.json": "./package.json"
   },
   "publishConfig": {
     "exports": {
       ".": "./dist/index.mjs",
       "./vue": "./dist/vue.mjs",
+      "./graph": "./dist/graph.mjs",
       "./package.json": "./package.json"
     }
   },
