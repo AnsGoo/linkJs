@@ -4,6 +4,9 @@
   "description": "",
   "license": "ISC",
   "author": "",
+  "files": [
+    "dist"
+  ],
   "exports": {
     ".": "./dist/index.mjs",
     "./package.json": "./package.json"

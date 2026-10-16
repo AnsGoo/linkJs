@@ -1,6 +1,6 @@
 {
   "name": "linkjs",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "LinkJS runtime: module loading, shared-dependency management, and remote exposure for micro-frontends.",
   "homepage": "https://github.com/AnsGoo/linkJs#readme",
   "bugs": {

@@ -6,9 +6,7 @@ import './register-shares';
 const isHosted = new URL(import.meta.url).origin !== location.origin;
 
 if (isHosted) {
-  console.log('[remote] loaded by host, exposing components');
   import('./index.ts');
 } else {
-  console.log('[remote] standalone, mounting app');
   import('./loadApp');
 }

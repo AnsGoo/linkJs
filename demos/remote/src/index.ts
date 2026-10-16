@@ -27,7 +27,6 @@ expose('remoteApp', { mount, unmount, HelloWorld, RemoteLibSlot, RemoteLibStatic
 if (import.meta.hot) {
   import.meta.hot.on('vite:afterUpdate', () => {
     expose('remoteApp', { mount, unmount, HelloWorld, RemoteLibSlot, RemoteLibStatic }, { version: '1.0.0' });
-    console.log('[remote] re-exposed remoteApp (HMR) → REMOTE_UPDATE');
   });
 }
 

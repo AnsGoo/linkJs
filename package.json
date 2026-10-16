@@ -1,6 +1,7 @@
 {
   "name": "linkjs-space",
   "version": "1.0.0",
+  "private": true,
   "description": "",
   "homepage": "https://github.com/AnsGoo/linkJs#readme",
   "bugs": {

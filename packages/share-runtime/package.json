@@ -4,6 +4,9 @@
   "description": "Standalone CLI to bundle dependencies as CDN-ready ESM packages (experimental; NOT part of the linkjs runtime).",
   "license": "ISC",
   "author": "",
+  "files": [
+    "lib"
+  ],
   "type": "module",
   "exports": {
     ".": "./lib/index.mjs",
