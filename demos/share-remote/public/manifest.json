@@ -1,0 +1,16 @@
+{
+  "name": "shareRemote",
+  "version": "0.0.0",
+  "description": "LinkJS 共享依赖协商演示远端",
+  "entry": {
+    "html": "index.html"
+  },
+  "expose": ["NegotiationProbe"],
+  "shared": {
+    "vue": {
+      "version": "^3.5.43",
+      "scope": "global",
+      "singleton": true
+    }
+  }
+}

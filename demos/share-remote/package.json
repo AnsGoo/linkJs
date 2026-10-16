@@ -1,0 +1,24 @@
+{
+  "name": "ShareRemote",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "LinkJS 共享依赖协商演示远端：注册不同版本的共享库并提供消费探针。",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "linkjs": "workspace:*",
+    "vue": "^3.5.43"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.9",
+    "unplugin-linkjs": "workspace:*",
+    "vite": "beta"
+  },
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  }
+}
