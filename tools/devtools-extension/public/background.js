@@ -1,9 +1,9 @@
 'use strict';
 
-// 后台：检测标签页是否加载了 linkjs，据此启用/置灰工具栏图标。
-// - 有 linkjs：启用（可点）+ 绿色徽标 ●
-// - 明确没有（注入成功但无 __LINKJS__）：置灰不可点
-// - 无法判断（注入失败/无网站权限/chrome:// 等）：fail-open 保持可点，避免“点不动”
+// 后台：检测标签页是否加载了 linkjs，据此切换工具栏图标状态（纯状态指示，点击不弹窗）。
+// - 有 linkjs：彩色图标 + 绿色徽标 ●
+// - 明确没有（注入成功但无 __LINKJS__）：灰色图标
+// - 无法判断（注入失败/无网站权限/chrome:// 等）：fail-open 保持灰色但不禁用，避免误判
 
 const DETECT = () =>
   Boolean(window.__LINKJS__ && typeof window.__LINKJS__.getSnapshot === 'function');
@@ -49,7 +49,7 @@ async function refreshActionState(tabId) {
       await chrome.action.setBadgeText({ tabId, text: '' });
       await chrome.action.disable(tabId);
     } else {
-      // fail-open：无法判断时保持可点（弹窗内会给出原因）。
+      // fail-open：无法判断时保持灰色但不禁用，避免误判。
       await chrome.action.setIcon({ tabId, path: ICON_OFF });
       await chrome.action.setBadgeText({ tabId, text: '' });
       await chrome.action.enable(tabId);

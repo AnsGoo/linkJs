@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "LinkJS DevTools",
-  "version": "0.4.0",
-  "description": "Inspect LinkJS remotes / shares / conflicts / plugins / metrics / events / diagnostics — DevTools panel + toolbar popup.",
+  "version": "0.4.1",
+  "description": "Inspect LinkJS remotes / shares / conflicts / plugins / metrics / events / diagnostics — DevTools panel with a toolbar status indicator.",
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",
@@ -12,7 +12,6 @@
   "devtools_page": "devtools.html",
   "action": {
     "default_title": "LinkJS",
-    "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon-off-16.png",
       "32": "icons/icon-off-32.png",
