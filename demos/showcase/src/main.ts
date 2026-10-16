@@ -1,5 +1,5 @@
 import './styles/global.css';
-import { createInstance, type RuntimePlugin } from 'linkjs';
+import { createInstance, registerShare, type RuntimePlugin } from 'linkjs';
 import { createApp } from 'vue';
 import App from './App.vue';
 import router from './router';
@@ -40,7 +40,35 @@ createInstance({
     vue: { name: 'vue', lib: () => import('vue') },
     pinia: { name: 'pinia', lib: () => import('pinia') },
     'vue-router': { name: 'vue-router', lib: () => import('vue-router') },
+    // 共享依赖协商演示：宿主提供 linkkit@1.0.0（非单例），
+    // 远端 share-remote 加载时会注入 linkkit@2.0.0，二者进入同一注册表参与协商。
+    linkkit: {
+      name: 'linkkit',
+      version: '1.0.0',
+      scope: 'global',
+      provider: 'host',
+      lib: () => import('./demo-kit/v1'),
+    },
+    // eager：注册后立即加载（运行时近似 Module Federation 的 eager 语义）。
+    'linkkit-eager': {
+      name: 'linkkit-eager',
+      version: '1.0.0',
+      scope: 'global',
+      eager: true,
+      lib: () => import('./demo-kit/v1'),
+    },
   },
 }).loadRegistry(registry);
+
+// 多 shareScope 演示：同名库 linkkit 在 tenant-a 作用域下另注册一个版本，与 global 隔离。
+registerShare({
+  linkkit: {
+    name: 'linkkit',
+    version: '3.0.0',
+    scope: 'tenant-a',
+    provider: 'host',
+    lib: () => import('./demo-kit/tenant'),
+  },
+});
 
 createApp(App).use(router).mount('#app');

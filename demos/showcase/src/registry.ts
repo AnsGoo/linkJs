@@ -32,6 +32,14 @@ const registry: RegistryOption[] = [
       { host: 'http://localhost:4001', weight: 3, labels: { region: 'cn', tier: 'stable' } },
     ],
   },
+  {
+    // 共享依赖协商演示远端：加载时注册 linkkit@2.0.0，与宿主的 linkkit@1.0.0 协商。
+    name: 'shareRemote',
+    type: 'app',
+    host: 'http://localhost:8091',
+    entry: { html: 'index.html' },
+    shared: sharedDeps,
+  },
 ];
 
 export default registry;
